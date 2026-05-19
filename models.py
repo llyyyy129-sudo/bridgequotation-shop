@@ -9,6 +9,10 @@ class Product(Base):
     price = Column(Integer)
     description = Column(String)
     image = Column(String)
+    moq = Column(Integer)
+    material = Column(String)
+    volume = Column(String)
+    size = Column(String)
 
 class User(Base):
     __tablename__ = "users"

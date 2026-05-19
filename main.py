@@ -70,6 +70,10 @@ def seed_products():
                     name="COFFEE_MAKER", 
                     price=6666, 
                     description="WE ARE THE BEST",
+                    moq =500,
+                    material = "Plastic",
+                    volume = "2m³",
+                    size = 5*5*5,
                     image="/static/image/COFFEE_MAKER.png"),
 
             Product(
@@ -77,6 +81,10 @@ def seed_products():
                 name="SNACK_BOX", 
                 price=4444, 
                 description="WE WILL BE TOGETHER FOREVER",
+                moq =3300,
+                material = "Plastic",
+                volume = "5m³",
+                size = 25*25*5,
                 image="/static/image/SNACK_BOX.png"),
 
             Product(
@@ -84,6 +92,10 @@ def seed_products():
                 name="BAKE_SET", 
                 price=2222, 
                 description="4PCS BAKEWARE SET",
+                moq =500,
+                material = "Aluminum",
+                volume = "1m³",
+                size = 15*45*25,
                 image="/static/image/BAKE_SET.png"),
 
             Product(
@@ -91,6 +103,10 @@ def seed_products():
                 name="STORGE_BOX", 
                 price=1111, 
                 description="I LOVE YOU TOO",
+                moq =500,
+                material = "Plastic",
+                volume = "2m³",
+                size = 5*5*5,
                 image="/static/image/STORGE_BOX.png"),
         ]
 
@@ -153,7 +169,11 @@ def get_product(product_id: int):
             "name": product.name,
             "price": product.price,
             "description": product.description,
-            "image": product.image
+            "image": product.image,
+            "moq": product.moq,
+            "material": product.material,
+            "volume": product.volume,
+            "size": product.size
         }
 
     return {"error": "Product not found"}

@@ -25,6 +25,10 @@ fetch(`/products/${id}`)
       <h3>${product.name}</h3>
       <p>${product.description}</p>
       <p>价格: $${product.price}</p>
+      <p>MOQ: ${product.moq}</p>
+      <p>材质: ${product.material}</p>
+      <p>体积: ${product.volume}</p>
+      <p>尺寸: ${product.size}</p>
     `;
 
     window.currentProduct = product;
