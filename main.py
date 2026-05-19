@@ -60,10 +60,10 @@ def seed_products():
             ),
             Product(
                 id=6, 
-                    name="BATHROOM_SET", 
+                    name="BATHROOM_SETS", 
                     price=8888, 
                     description="WXY IS THE BEST",
-                    image="/static/image/BATHROOM_SET.png"),
+                    image="/static/image/BATHROOM_SETS.png"),
             
             Product(
                     id=7, 
@@ -78,7 +78,6 @@ def seed_products():
                 price=4444, 
                 description="WE WILL BE TOGETHER FOREVER",
                 image="/static/image/SNACK_BOX.png"),
-
 
             Product(
                 id=9, 
