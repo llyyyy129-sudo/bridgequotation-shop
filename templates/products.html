@@ -18,7 +18,7 @@ if (!user) {
 
 const container = document.getElementById("list");
 
-fetch("http://127.0.0.1:8000/products")
+fetch("/products")
   .then(response => response.json())
   .then(products => {
 

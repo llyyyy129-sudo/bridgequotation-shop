@@ -16,7 +16,7 @@
 const params = new URLSearchParams(window.location.search);
 const id = params.get("id");
 
-fetch(`http://127.0.0.1:8000/products/${id}`)
+fetch(`/products/${id}`)
   .then(response => response.json())
   .then(product => {
 

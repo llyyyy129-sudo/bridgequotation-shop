@@ -100,7 +100,7 @@ function checkout() {
 
   const user = localStorage.getItem("user");
 
-  fetch("http://127.0.0.1:8000/create-order", {
+  fetch("/create-order", {
 
     method: "POST",
 
