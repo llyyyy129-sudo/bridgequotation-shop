@@ -8,16 +8,16 @@ Base.metadata.create_all(bind=engine)
 db = SessionLocal()
 
 products = [
-    Product(id=1, name="VR", price=500, description="Basic item",image="image/vr.jpg"),
-    Product(id=2, name="GP", price=1000, description="Premium item",image="image/GP.jpg"),
-    Product(id=3, name="SF", price=520, description="I LOVE YOU",image="image/SF.jpg"),
-    Product(id=4, name="PJ", price=1314, description="WILL BE TOGETHER FOREVER",image="image/PJ.jpg"),
-    Product(id=5, name="Heart", price=9999, description="LYY IS THE BEST",image="image/1.png"),
-    Product(id=6, name="Product F", price=8888, description="WXY IS THE BEST",image="https://via.placeholder.com/200"),
-    Product(id=7, name="Product G", price=6666, description="WE ARE THE BEST",image="https://via.placeholder.com/200"),
-    Product(id=8, name="Product H", price=4444, description="WE WILL BE TOGETHER FOREVER",image="https://via.placeholder.com/200"),
-    Product(id=9, name="Product I", price=2222, description="I MISS YOU",image="https://via.placeholder.com/200"),
-    Product(id=10, name="Product J", price=1111, description="I LOVE YOU TOO",image="https://via.placeholder.com/200"),
+    Product(id=1, name="VR", price=500, description="Basic item",image="/static/image/VR.jpg"),
+    Product(id=2, name="GP", price=1000, description="Premium item",image="/static/image/GP.jpg"),
+    Product(id=3, name="SF", price=520, description="I LOVE YOU",image="/static/image/SF.jpg"),
+    Product(id=4, name="PJ", price=1314, description="WILL BE TOGETHER FOREVER",image="/static/image/PJ.jpg"),
+    Product(id=5, name="Heart", price=9999, description="LYY IS THE BEST",image="/static/image/1.png"),
+    Product(id=6, name="BATHROOM SET", price=8888, description="WXY IS THE BEST",image="/static/image/BATHROOM SET.png"),
+    Product(id=7, name="COFFEE MAKER", price=6666, description="WE ARE THE BEST",image="/static/image/COFFEE MAKER.png"),
+    Product(id=8, name="SNACK BOX", price=4444, description="WE WILL BE TOGETHER FOREVER",image="/static/image/SNACK BOX.png.png"),
+    Product(id=9, name="BAKE SET", price=2222, description="I MISS YOU",image="/static/image/BAKE SET.png"),
+    Product(id=10, name="STORAGE BOX", price=1111, description="I LOVE YOU TOO",image="/static/image/STORGE BOX.png"),
    ]
 
 for p in products:
