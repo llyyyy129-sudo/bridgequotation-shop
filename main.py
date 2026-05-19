@@ -84,13 +84,6 @@ def seed_products():
                 name="BAKE_SET", 
                 price=2222, 
                 description="4PCS BAKEWARE SET",
-                material="0.5MM CARBON STEEL",
-                specification="ROUND PAN: D 26*H4.7 ;
-                                LOAF PAN: 29.2*14.6*6.3 ;
-                                SQUARE PAN: 29.5*26.5*6.3 ;
-                                RECTANGLE CAKE PAN: 43.5*31.7*6.5 ",
-                packing="BROWN BOX+STICKER/SINGLE COLOUR PRINTING",
-                moq=1000,
                 image="/static/image/BAKE_SET.png"),
 
             Product(

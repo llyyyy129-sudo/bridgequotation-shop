@@ -20,7 +20,12 @@ def seed_products():
     Product(id=6, name="BATHROOM_SETS", price=8888, description="WXY IS THE BEST",image="/static/image/BATHROOM_SETS.png"),
     Product(id=7, name="COFFEE_MAKER", price=6666, description="WE ARE THE BEST",image="/static/image/COFFEE_MAKER.png"),
     Product(id=8, name="SNACK_BOX", price=4444, description="WE WILL BE TOGETHER FOREVER",image="/static/image/SNACK_BOX.png"),
-    Product(id=9, name="BAKE_SET", price=2222, description="I MISS YOU",image="/static/image/BAKE_SET.png"),
+    Product(
+                id=9, 
+                name="BAKE_SET", 
+                price=2222, 
+                description="4PCS BAKEWARE SET",
+                image="/static/image/BAKE_SET.png"),
     Product(id=10, name="STORGE_BOX", price=1111, description="I LOVE YOU TOO",image="/static/image/STORGE_BOX.png")
    ]
         db.add_all(products)
