@@ -35,7 +35,7 @@ def get_products():
             "id": p.id,
             "name": p.name,
             "price": p.price,
-            "description": p.description
+            "description": p.description,
             "image": p.image
         })
 
