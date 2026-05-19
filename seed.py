@@ -17,7 +17,7 @@ def seed_products():
     Product(id=3, name="SF", price=520, description="I LOVE YOU",image="/static/image/SF.jpg"),
     Product(id=4, name="PJ", price=1314, description="WILL BE TOGETHER FOREVER",image="/static/image/PJ.jpg"),
     Product(id=5, name="Heart", price=9999, description="LYY IS THE BEST",image="/static/image/1.png"),
-    Product(id=6, name="BATHROOM_SET", price=8888, description="WXY IS THE BEST",image="/static/image/BATHROOM_SET.png"),
+    Product(id=6, name="BATHROOM_SETS", price=8888, description="WXY IS THE BEST",image="/static/image/BATHROOM_SETS.png"),
     Product(id=7, name="COFFEE_MAKER", price=6666, description="WE ARE THE BEST",image="/static/image/COFFEE_MAKER.png"),
     Product(id=8, name="SNACK_BOX", price=4444, description="WE WILL BE TOGETHER FOREVER",image="/static/image/SNACK_BOX.png"),
     Product(id=9, name="BAKE_SET", price=2222, description="I MISS YOU",image="/static/image/BAKE_SET.png"),
