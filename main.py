@@ -126,3 +126,22 @@ def create_order(data: dict):
         "success": True,
         "message": "订单创建成功了捏！"
     }
+@app.get("/login.html")
+def login_page():
+    return FileResponse("templates/login.html")
+
+@app.get("/register.html")
+def register_page():
+    return FileResponse("templates/register.html")
+
+@app.get("/products.html")
+def products_page():
+    return FileResponse("templates/products.html")
+
+@app.get("/product.html")
+def product_page():
+    return FileResponse("templates/product.html")
+
+@app.get("/cart.html")
+def cart_page():
+    return FileResponse("templates/cart.html")
