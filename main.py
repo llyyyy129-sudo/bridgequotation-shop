@@ -83,7 +83,14 @@ def seed_products():
                 id=9, 
                 name="BAKE_SET", 
                 price=2222, 
-                description="I MISS YOU",
+                description="4PCS BAKEWARE SET",
+                material="0.5MM CARBON STEEL",
+                specification="" ROUND PAN: D26*H4.7CM
+                                LOAF PAN: 29.2*14.6*6.3 CM;
+                                SQUARE PAN: 29.5*26.5*6.3 CM;
+                                RECTANGLE CAKE PAN: 43.5*31.7*6.5 CM",
+                packing="BROWN BOX+STICKER/SINGLE COLOUR PRINTING",
+                moq=1000,
                 image="/static/image/BAKE_SET.png"),
 
             Product(
