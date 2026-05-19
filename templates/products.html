@@ -1,0 +1,62 @@
+<link rel="stylesheet" href="/static/style.css">
+
+<h2>商品列表</h2>
+
+<button onclick="goCart()">去看看买了些啥</button>
+<button onclick="logout()">
+  咱们退出咯~~
+</button>
+
+<div id="list"></div>
+
+<script>
+const user = localStorage.getItem("user");
+
+if (!user) {
+  window.location.href = "login.html";
+}
+
+const container = document.getElementById("list");
+
+fetch("http://127.0.0.1:8000/products")
+  .then(response => response.json())
+  .then(products => {
+
+    products.forEach(p => {
+
+      const div = document.createElement("div");
+
+      div.innerHTML = `
+       <img src="${p.image}" width="200">
+        <h3>${p.name}</h3>
+        <p>价格: $${p.price}</p>
+
+        <button onclick="view(${p.id})">
+          让我see一see
+        </button>
+      `;
+
+      container.appendChild(div);
+
+    });
+
+  });
+
+function view(id) {
+  window.location.href = "product.html?id=" + id;
+}
+
+function goCart() {
+  window.location.href = "cart.html";
+}
+
+function logout() {
+
+  localStorage.removeItem("user");
+
+  alert("宝~您已退出登录啦");
+
+  window.location.href = "login.html";
+}
+
+</script>

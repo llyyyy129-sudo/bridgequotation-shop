@@ -1,10 +1,13 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine, SessionLocal
 from models import Product, User, Order, Base
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 Base.metadata.create_all(bind=engine)
 
@@ -16,10 +19,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-def read_root():
-    return {"message": "Backend is running!"}
 
+@app.get("/")
+def root():
+    return FileResponse("templates/login.html")
 
 @app.get("/products")
 def get_products():

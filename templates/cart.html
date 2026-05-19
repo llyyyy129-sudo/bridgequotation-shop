@@ -1,0 +1,135 @@
+<link rel="stylesheet" href="/static/style.css">
+<h2>购物车</h2>
+
+<div id="cart"></div>
+
+<h3 id="total"></h3>
+
+<button onclick="goBack()">继续购物</button>
+<button onclick="checkout()">要花钱咯</button>
+
+<script>
+let cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+const container = document.getElementById("cart");
+
+function renderCart() {
+
+  container.innerHTML = "";
+
+  let total = 0;
+
+  if (cart.length === 0) {
+
+    container.innerHTML = "<p>您的爱车空空如也哦！ 快去选购吧~</p>";
+
+    document.getElementById("total").innerText = "";
+
+    localStorage.removeItem("cart");
+
+    return;
+  }
+
+  cart.forEach(item => {
+
+    total += item.price * item.quantity;
+
+    const div = document.createElement("div");
+
+    div.innerHTML = `
+      <h3>${item.name}</h3>
+      <p>价格: $${item.price}</p>
+      <p>数量: ${item.quantity}</p>
+
+      <button onclick="increase(${item.id})">+</button>
+
+      <button onclick="decrease(${item.id})">-</button>
+
+      <button onclick="removeItem(${item.id})">删除</button>
+
+      <hr>
+    `;
+
+    container.appendChild(div);
+  });
+
+  document.getElementById("total").innerText =
+    "总价: $" + total;
+
+  localStorage.setItem("cart", JSON.stringify(cart));
+}
+
+function increase(id) {
+
+  const item = cart.find(i => i.id === id);
+
+  item.quantity++;
+
+  renderCart();
+}
+
+function decrease(id) {
+
+  const item = cart.find(i => i.id === id);
+
+  item.quantity--;
+
+  if (item.quantity <= 0) {
+
+    cart = cart.filter(i => i.id !== id);
+  }
+
+  renderCart();
+}
+
+function removeItem(id) {
+
+  cart = cart.filter(i => i.id !== id);
+
+  renderCart();
+}
+
+function goBack() {
+
+  window.location.href = "products.html";
+}
+
+renderCart();
+
+function checkout() {
+
+  const user = localStorage.getItem("user");
+
+  fetch("http://127.0.0.1:8000/create-order", {
+
+    method: "POST",
+
+    headers: {
+      "Content-Type": "application/json"
+    },
+
+    body: JSON.stringify({
+      username: user,
+      items: JSON.stringify(cart),
+      total: cart.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      )
+    })
+
+  })
+
+  .then(response => response.json())
+
+  .then(data => {
+
+    alert(data.message);
+
+    localStorage.removeItem("cart");
+
+    location.reload();
+
+  });
+
+}
+</script>
