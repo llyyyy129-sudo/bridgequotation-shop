@@ -92,7 +92,7 @@ def seed_products():
                 name="STORGE_BOX", 
                 price=1111, 
                 description="I LOVE YOU TOO",
-                image="/static/image/STORGE_BOX.png")
+                image="/static/image/STORGE_BOX.png"),
         ]
 
         db.add_all(products)
