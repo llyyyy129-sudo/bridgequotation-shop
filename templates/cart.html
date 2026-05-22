@@ -7,6 +7,11 @@
 
 <button onclick="goBack()">Keep Shopping</button>
 <button onclick="checkout()">Checkout</button>
+<br><br>
+
+<button onclick="shareCart()">
+  Generate Share Link
+</button>
 
 <script>
 let cart = JSON.parse(localStorage.getItem("cart")) || [];
@@ -131,5 +136,21 @@ function checkout() {
 
   });
 
+}
+
+function shareCart() {
+
+  const cart = localStorage.getItem("cart");
+
+  const encoded = encodeURIComponent(cart);
+
+  const link =
+    window.location.origin +
+    "/share.html?cart=" +
+    encoded;
+
+  navigator.clipboard.writeText(link);
+
+  alert("Share link has been copied!");
 }
 </script>

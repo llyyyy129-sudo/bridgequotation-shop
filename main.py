@@ -256,3 +256,7 @@ def product_page():
 @app.get("/cart.html")
 def cart_page():
     return FileResponse("templates/cart.html")
+
+@app.get("/share.html")
+def share_page():
+    return FileResponse("templates/share.html")
