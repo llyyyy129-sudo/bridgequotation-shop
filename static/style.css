@@ -1,4 +1,21 @@
 body {
+  margin: 0;
+  padding: 0;
+
+  height: 100vh;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background-image: url("/static/image/bg.jpg");
+  background-size: cover;
+  background-position: center;
+
+  font-family: Arial, sans-serif;
+}
+
+body {
   font-family: Arial, sans-serif;
   background: #f5f6fa;
   margin: 0;
