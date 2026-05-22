@@ -75,10 +75,35 @@ input {
   justify-content: center;
   align-items: center;
 
+  background-color: #f5f6fa;
+
+  position: relative;
+}
+
+.auth-page::before {
+  content: "";
+
+  position: absolute;
+
+  top: 30px;
+
+  left: 50%;
+
+  transform: translateX(-50%);
+
+  width: 500px;
+
+  height: 120px;
+
   background-image: url("/static/image/bg.png");
 
-  background-size: cover;
+  background-size: contain;
+
+  background-repeat: no-repeat;
+
   background-position: center;
+
+  opacity: 0.18;
 }
 
 .box {
@@ -91,6 +116,9 @@ input {
   width: 350px;
 
   text-align: center;
+
+  position: relative;
+  z-index: 2;
 
   box-shadow: 0 8px 30px rgba(0,0,0,0.2);
 }
