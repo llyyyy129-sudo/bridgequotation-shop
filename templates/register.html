@@ -1,67 +1,63 @@
-<div class="box">
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>用户注册</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
 
-<link rel="stylesheet" href="/static/style.css">
+<body class="auth-page">
 
-<h2>用户注册</h2>
+  <div class="box">
 
-<input id="username" placeholder="用户名">
+    <h2>用户注册</h2>
 
-<br><br>
+    <input id="username" placeholder="用户名">
 
-<input id="password" type="password" placeholder="密码">
+    <br><br>
 
-<br><br>
+    <input id="password" type="password" placeholder="密码">
 
-<button onclick="register()">
-  注册
-</button>
+    <br><br>
 
-<br><br>
+    <button onclick="register()">注册</button>
 
-<button onclick="goLogin()">
-  去登录
-</button>
+    <br><br>
 
-<script>
+    <button onclick="goLogin()">去登录</button>
 
-function register() {
+  </div>
 
-  const username = document.getElementById("username").value;
-  const password = document.getElementById("password").value;
+  <script>
+    function register() {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
 
-  fetch("/register", {
+      fetch("/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          username: username,
+          password: password
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        alert(data.message);
 
-    method: "POST",
-
-    headers: {
-      "Content-Type": "application/json"
-    },
-
-    body: JSON.stringify({
-      username: username,
-      password: password
-    })
-
-  })
-
-  .then(response => response.json())
-
-  .then(data => {
-
-    alert(data.message);
-
-    if (data.success) {
-      window.location.href = "login.html";
+        if (data.success) {
+          window.location.href = "login.html";
+        }
+      });
     }
 
-  });
+    function goLogin() {
+      window.location.href = "login.html";
+    }
+  </script>
 
-}
+</body>
+</html>
 
-function goLogin() {
-  window.location.href = "login.html";
-}
-
-</script>
-
-</div>

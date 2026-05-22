@@ -1,70 +1,82 @@
-<div class="box">
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>用户登录</title>
 
-<link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
 
-<h2>用户登录</h2>
+<body class="auth-page">
 
-<input id="username" placeholder="用户名">
+  <div class="box">
 
-<br><br>
+    <h2>用户登录</h2>
 
-<input id="password" type="password" placeholder="密码">
+    <input id="username" placeholder="用户名">
 
-<br><br>
+    <br><br>
 
-<button onclick="login()">
-  登录
-</button>
+    <input id="password" type="password" placeholder="密码">
 
-<br><br>
+    <br><br>
 
-<button onclick="goRegister()">
-  去注册
-</button>
+    <button onclick="login()">
+      登录
+    </button>
 
-<script>
+    <br><br>
 
-function login() {
+    <button onclick="goRegister()">
+      去注册
+    </button>
 
-  const username = document.getElementById("username").value;
-  const password = document.getElementById("password").value;
+  </div>
 
-  fetch("/login", {
+  <script>
 
-    method: "POST",
+    function login() {
 
-    headers: {
-      "Content-Type": "application/json"
-    },
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
 
-    body: JSON.stringify({
-      username: username,
-      password: password
-    })
+      fetch("/login", {
 
-  })
+        method: "POST",
 
-  .then(response => response.json())
+        headers: {
+          "Content-Type": "application/json"
+        },
 
-  .then(data => {
+        body: JSON.stringify({
+          username: username,
+          password: password
+        })
 
-    alert(data.message);
+      })
 
-    if (data.success) {
+      .then(response => response.json())
 
-      localStorage.setItem("user", username);
+      .then(data => {
 
-      window.location.href = "products.html";
+        alert(data.message);
+
+        if (data.success) {
+
+          localStorage.setItem("user", username);
+
+          window.location.href = "products.html";
+        }
+
+      });
+
     }
 
-  });
+    function goRegister() {
+      window.location.href = "register.html";
+    }
 
-}
+  </script>
 
-function goRegister() {
-  window.location.href = "register.html";
-}
-
-</script>
-
-</div>
+</body>
+</html>
