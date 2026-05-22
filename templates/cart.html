@@ -1,12 +1,12 @@
 <link rel="stylesheet" href="/static/style.css">
-<h2>购物车</h2>
+<h2>Shopping Cart</h2>
 
 <div id="cart"></div>
 
 <h3 id="total"></h3>
 
-<button onclick="goBack()">继续购物</button>
-<button onclick="checkout()">要花钱咯</button>
+<button onclick="goBack()">Keep Shopping</button>
+<button onclick="checkout()">Checkout</button>
 
 <script>
 let cart = JSON.parse(localStorage.getItem("cart")) || [];
@@ -21,7 +21,7 @@ function renderCart() {
 
   if (cart.length === 0) {
 
-    container.innerHTML = "<p>您的爱车空空如也哦！ 快去选购吧~</p>";
+    container.innerHTML = "<p>Your cart is empty! Start shopping~</p>";
 
     document.getElementById("total").innerText = "";
 
@@ -38,14 +38,14 @@ function renderCart() {
 
     div.innerHTML = `
       <h3>${item.name}</h3>
-      <p>价格: $${item.price}</p>
-      <p>数量: ${item.quantity}</p>
+      <p>Price: $${item.price}</p>
+      <p>Quantity: ${item.quantity}</p>
 
       <button onclick="increase(${item.id})">+</button>
 
       <button onclick="decrease(${item.id})">-</button>
 
-      <button onclick="removeItem(${item.id})">删除</button>
+      <button onclick="removeItem(${item.id})">Delete</button>
 
       <hr>
     `;
@@ -54,7 +54,7 @@ function renderCart() {
   });
 
   document.getElementById("total").innerText =
-    "总价: $" + total;
+    "Total: $" + total;
 
   localStorage.setItem("cart", JSON.stringify(cart));
 }

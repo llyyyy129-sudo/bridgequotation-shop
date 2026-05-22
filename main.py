@@ -186,7 +186,7 @@ def register(user: dict):
 
     if existing:
         db.close()
-        return {"success": False, "message": "宝~用户名已存在啦！"}
+        return {"success": False, "message": "Username already exists!"}
 
     new_user = User(
         username=user["username"],
@@ -197,7 +197,7 @@ def register(user: dict):
     db.commit()
     db.close()
 
-    return {"success": True, "message": "注册成功了捏！"}
+    return {"success": True, "message": "Registration successful!"}
 
 
 @app.post("/login")
@@ -212,9 +212,9 @@ def login(user: dict):
     db.close()
 
     if existing:
-        return {"success": True, "message": "登上啦！"}
+        return {"success": True, "message": "Login successful!"}
 
-    return {"success": False, "message": "用户名或密码输入错误咯"}
+    return {"success": False, "message": "Invalid username or password"}
 
 @app.post("/create-order")
 def create_order(data: dict):
@@ -235,7 +235,7 @@ def create_order(data: dict):
 
     return {
         "success": True,
-        "message": "订单创建成功了捏！"
+        "message": "Order created successfully!"
     }
 @app.get("/login.html")
 def login_page():

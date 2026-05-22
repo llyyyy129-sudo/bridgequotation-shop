@@ -1,10 +1,10 @@
 <link rel="stylesheet" href="/static/style.css">
 
-<h2>商品列表</h2>
+<h2>Products List</h2>
 
-<button onclick="goCart()">去看看买了些啥</button>
+<button onclick="goCart()">View Cart</button>
 <button onclick="logout()">
-  咱们退出咯~~
+  Logout
 </button>
 
 <div id="list"></div>
@@ -29,10 +29,10 @@ fetch("/products")
       div.innerHTML = `
        <img src="${p.image}" width="200">
         <h3>${p.name}</h3>
-        <p>价格: $${p.price}</p>
+        <p>Price: $${p.price}</p>
 
         <button onclick="view(${p.id})">
-          让我see一see
+          View Details
         </button>
       `;
 
@@ -54,7 +54,7 @@ function logout() {
 
   localStorage.removeItem("user");
 
-  alert("宝~您已退出登录啦");
+  alert("You have been logged out.");
 
   window.location.href = "login.html";
 }

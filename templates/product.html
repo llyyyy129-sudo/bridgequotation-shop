@@ -6,11 +6,11 @@
 
 <br>
 
-<button onclick="addToCart()">加入购物车</button>
+<button onclick="addToCart()">Add to Cart</button>
 
 <br><br>
 
-<button onclick="goBack()">返回列表</button>
+<button onclick="goBack()">Back to List</button>
 
 <script>
 const params = new URLSearchParams(window.location.search);
@@ -24,11 +24,11 @@ fetch(`/products/${id}`)
       <img src="${product.image}" width="250">
       <h3>${product.name}</h3>
       <p>${product.description}</p>
-      <p>价格: $${product.price}</p>
+      <p>Price: $${product.price}</p>
       <p>MOQ: ${product.moq}</p>
-      <p>材质: ${product.material}</p>
-      <p>体积: ${product.volume}</p>
-      <p>尺寸: ${product.size}</p>
+      <p>Material: ${product.material}</p>
+      <p>Volume: ${product.volume}</p>
+      <p>Size: ${product.size}</p>
     `;
 
     window.currentProduct = product;
@@ -47,7 +47,7 @@ function addToCart() {
 
   localStorage.setItem("cart", JSON.stringify(cart));
 
-  alert("已加入购物车！");
+  alert("Item added to cart!");
 }
 
 function goBack() {
