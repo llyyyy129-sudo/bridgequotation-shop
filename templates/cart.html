@@ -44,7 +44,15 @@ function renderCart() {
     div.innerHTML = `
       <h3>${item.name}</h3>
       <p>Price: $${item.price}</p>
-      <p>Quantity: ${item.quantity}</p>
+      <p>
+       Quantity:
+      <input 
+       type="number" 
+       value="${item.quantity}" 
+       min="1" 
+       onchange="changeQuantity(${item.id}, this.value)"
+      >
+      </p>
 
       <button onclick="increase(${item.id})">+</button>
 
@@ -152,5 +160,17 @@ function shareCart() {
   navigator.clipboard.writeText(link);
 
   alert("Share link has been copied!");
+}
+
+function changeQuantity(id, value) {
+  const item = cart.find(i => i.id === id);
+
+  item.quantity = parseInt(value);
+
+  if (item.quantity <= 0 || isNaN(item.quantity)) {
+    item.quantity = 1;
+  }
+
+  renderCart();
 }
 </script>
