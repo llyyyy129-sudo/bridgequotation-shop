@@ -5,7 +5,10 @@
 <div id="detail"></div>
 
 <br>
-
+<input id="quantity" type="number" value="1" min="1">
+<label>Quantity:</label>
+<input id="quantity" type="number" value="1" min="1">
+<br><br>
 <button onclick="addToCart()">Add to Cart</button>
 
 <br><br>
@@ -37,17 +40,19 @@ fetch(`/products/${id}`)
 function addToCart() {
   let cart = JSON.parse(localStorage.getItem("cart")) || [];
 
+  const quantity = parseInt(document.getElementById("quantity").value);
+
   const existing = cart.find(item => item.id === currentProduct.id);
 
   if (existing) {
-    existing.quantity += 1;
+    existing.quantity += quantity;
   } else {
-    cart.push({ ...currentProduct, quantity: 1 });
+    cart.push({ ...currentProduct, quantity: quantity });
   }
 
   localStorage.setItem("cart", JSON.stringify(cart));
 
-  alert("Item added to cart!");
+  alert("Added to cart!");
 }
 
 function goBack() {
