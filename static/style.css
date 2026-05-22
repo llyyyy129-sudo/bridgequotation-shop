@@ -103,11 +103,11 @@ input {
 
   background-position: center;
 
-  opacity: 0.18;
+  opacity: 0.45;
 }
 
 .box {
-  background: rgba(255,255,255,0.92);
+  background: rgba(204, 212, 173, 0.92);
 
   padding: 40px;
 
