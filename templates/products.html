@@ -1,6 +1,7 @@
 <link rel="stylesheet" href="/static/style.css">
 
 <h2>Products List</h2>
+<input id="searchInput" placeholder="Search Products name..." oninput="searchProducts()">
 
 <button onclick="goCart()">View Cart</button>
 <button onclick="logout()">
@@ -10,6 +11,8 @@
 <div id="list"></div>
 
 <script>
+let allProducts = [];
+
 const user = localStorage.getItem("user");
 
 if (!user) {
@@ -21,25 +24,8 @@ const container = document.getElementById("list");
 fetch("/products")
   .then(response => response.json())
   .then(products => {
-
-    products.forEach(p => {
-
-      const div = document.createElement("div");
-
-      div.innerHTML = `
-       <img src="${p.image}" width="200">
-        <h3>${p.name}</h3>
-        <p>Price: $${p.price}</p>
-
-        <button onclick="view(${p.id})">
-          View Details
-        </button>
-      `;
-
-      container.appendChild(div);
-
-    });
-
+    allProducts = products;
+    renderProducts(allProducts);
   });
 
 function view(id) {
@@ -57,6 +43,33 @@ function logout() {
   alert("You have been logged out.");
 
   window.location.href = "login.html";
+}
+
+function renderProducts(products) {
+  container.innerHTML = "";
+
+  products.forEach(p => {
+    const div = document.createElement("div");
+
+    div.innerHTML = `
+      <img src="${p.image}" width="200">
+      <h3>${p.name}</h3>
+      <p>价格: $${p.price}</p>
+      <button onclick="view(${p.id})">让我see一see</button>
+    `;
+
+    container.appendChild(div);
+  });
+}
+
+function searchProducts() {
+  const keyword = document.getElementById("searchInput").value.toLowerCase();
+
+  const filtered = allProducts.filter(p =>
+    p.name.toLowerCase().includes(keyword)
+  );
+
+  renderProducts(filtered);
 }
 
 </script>
