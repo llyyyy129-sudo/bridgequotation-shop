@@ -85,13 +85,13 @@ input {
 
   position: absolute;
 
-  top: 30px;
+  top: 60px;
 
   left: 50%;
 
   transform: translateX(-50%);
 
-  width: 500px;
+  width: 900px;
 
   height: 120px;
 
@@ -119,6 +119,7 @@ input {
 
   position: relative;
   z-index: 2;
+  margin-top: 120px;
 
   box-shadow: 0 8px 30px rgba(0,0,0,0.2);
 }
