@@ -10,6 +10,8 @@
   <button onclick="setCategory('Coffee')">Coffee</button>
   <button onclick="setCategory('Storage')">Storage</button>
   <button onclick="setCategory('Bakeware')">Bakeware</button>
+  <button onclick="setCategory('Decoration')">Decoration</button>
+  <button onclick="setCategory('Food')">Food</button>
 </div>
 
 <div class="top-bar">
@@ -30,11 +32,12 @@ let allProducts = [];
 let currentCategory = "All";
 
 const user = localStorage.getItem("user");
-document.getElementById("currentUser").innerText = "Logged in as: " + user;
 
 if (!user) {
   window.location.href = "login.html";
 }
+
+document.getElementById("currentUser").innerText = "Logged in as: " + user;
 
 const container = document.getElementById("list");
 
@@ -68,8 +71,14 @@ function filterProducts() {
   const keyword = document.getElementById("searchInput").value.toLowerCase();
 
   const filtered = allProducts.filter(p => {
-    const matchName = p.name.toLowerCase().includes(keyword);
-    const matchCategory = currentCategory === "All" || p.category === currentCategory;
+    const name = (p.name || "").toLowerCase();
+    const category = (p.category || "").trim().toLowerCase();
+
+    const matchName = name.includes(keyword);
+
+    const matchCategory =
+      currentCategory === "All" ||
+      category === currentCategory.toLowerCase();
 
     return matchName && matchCategory;
   });
@@ -83,6 +92,7 @@ function renderProducts(products) {
   products.forEach(p => {
     const div = document.createElement("div");
     div.className = "product-card";
+
     div.innerHTML = `
       <img src="${p.image}" class="product-image">
       <h3>${p.name}</h3>
