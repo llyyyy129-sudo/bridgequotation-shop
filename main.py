@@ -6,6 +6,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import engine, SessionLocal
 from models import Product, User, Order, Base
 
+from fastapi.responses import StreamingResponse
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import mm
+from io import BytesIO
+from datetime import datetime
+
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -260,3 +267,97 @@ def cart_page():
 @app.get("/share.html")
 def share_page():
     return FileResponse("templates/share.html")
+
+@app.get("/cart/pdf")
+def generate_cart_pdf(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    cart_items = (
+        db.query(CartItem)
+        .filter(CartItem.user_id == user.id)
+        .all()
+    )
+
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+
+    width, height = A4
+
+    # Title
+    pdf.setFont("Helvetica-Bold", 20)
+    pdf.drawString(25 * mm, height - 25 * mm, "Quotation")
+
+    # Company / Website
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(25 * mm, height - 35 * mm, "Bridge Quotation")
+    pdf.drawString(25 * mm, height - 41 * mm, "Website: bridgequotation.com")
+
+    # Customer
+    pdf.drawString(25 * mm, height - 55 * mm, f"Customer: {user.username}")
+    pdf.drawString(25 * mm, height - 61 * mm, f"Date: {datetime.now().strftime('%Y-%m-%d')}")
+
+    # Table Header
+    y = height - 80 * mm
+
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(25 * mm, y, "Product")
+    pdf.drawString(105 * mm, y, "Qty")
+    pdf.drawString(125 * mm, y, "Price")
+    pdf.drawString(155 * mm, y, "Total")
+
+    y -= 8 * mm
+    pdf.line(25 * mm, y, 185 * mm, y)
+    y -= 8 * mm
+
+    grand_total = 0
+
+    pdf.setFont("Helvetica", 10)
+
+    for item in cart_items:
+        product = item.product
+        qty = item.quantity
+        price = product.price
+        total = qty * price
+        grand_total += total
+
+        product_name = product.name[:38]
+
+        pdf.drawString(25 * mm, y, product_name)
+        pdf.drawString(105 * mm, y, str(qty))
+        pdf.drawString(125 * mm, y, f"${price:.2f}")
+        pdf.drawString(155 * mm, y, f"${total:.2f}")
+
+        y -= 8 * mm
+
+        if y < 30 * mm:
+            pdf.showPage()
+            y = height - 30 * mm
+            pdf.setFont("Helvetica", 10)
+
+    # Total
+    y -= 5 * mm
+    pdf.line(120 * mm, y, 185 * mm, y)
+    y -= 8 * mm
+
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(125 * mm, y, "Grand Total:")
+    pdf.drawString(155 * mm, y, f"${grand_total:.2f}")
+
+    # Footer
+    pdf.setFont("Helvetica", 9)
+    pdf.drawString(25 * mm, 20 * mm, "This quotation is generated from bridgequotation.com")
+
+    pdf.save()
+
+    buffer.seek(0)
+
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": "attachment; filename=quotation.pdf"
+        }
+    )
