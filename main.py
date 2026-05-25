@@ -268,87 +268,80 @@ def cart_page():
 def share_page():
     return FileResponse("templates/share.html")
 
-@app.get("/cart/pdf")
-def generate_cart_pdf(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
+@app.post("/cart/pdf")
+async def generate_cart_pdf(data: dict):
 
-    if not user:
-        return RedirectResponse(url="/login", status_code=302)
-
-    cart_items = (
-        db.query(CartItem)
-        .filter(CartItem.user_id == user.id)
-        .all()
-    )
+    items = data.get("items", [])
 
     buffer = BytesIO()
+
     pdf = canvas.Canvas(buffer, pagesize=A4)
 
     width, height = A4
 
-    # Title
-    pdf.setFont("Helvetica-Bold", 20)
-    pdf.drawString(25 * mm, height - 25 * mm, "Quotation")
+    # TITLE
+    pdf.setFont("Helvetica-Bold", 22)
+    pdf.drawString(25 * mm, height - 25 * mm, "QUOTATION")
 
-    # Company / Website
+    # WEBSITE
     pdf.setFont("Helvetica", 10)
-    pdf.drawString(25 * mm, height - 35 * mm, "Bridge Quotation")
-    pdf.drawString(25 * mm, height - 41 * mm, "Website: bridgequotation.com")
+    pdf.drawString(25 * mm, height - 35 * mm, "bridgequotation.com")
 
-    # Customer
-    pdf.drawString(25 * mm, height - 55 * mm, f"Customer: {user.username}")
-    pdf.drawString(25 * mm, height - 61 * mm, f"Date: {datetime.now().strftime('%Y-%m-%d')}")
+    # DATE
+    pdf.drawString(
+        25 * mm,
+        height - 42 * mm,
+        f"Date: {datetime.now().strftime('%Y-%m-%d')}"
+    )
 
-    # Table Header
-    y = height - 80 * mm
+    # TABLE HEADER
+    y = height - 65 * mm
 
-    pdf.setFont("Helvetica-Bold", 10)
+    pdf.setFont("Helvetica-Bold", 11)
+
     pdf.drawString(25 * mm, y, "Product")
-    pdf.drawString(105 * mm, y, "Qty")
+    pdf.drawString(100 * mm, y, "Qty")
     pdf.drawString(125 * mm, y, "Price")
     pdf.drawString(155 * mm, y, "Total")
 
-    y -= 8 * mm
+    y -= 5 * mm
+
     pdf.line(25 * mm, y, 185 * mm, y)
-    y -= 8 * mm
+
+    y -= 10 * mm
 
     grand_total = 0
 
     pdf.setFont("Helvetica", 10)
 
-    for item in cart_items:
-        product = item.product
-        qty = item.quantity
-        price = product.price
+    for item in items:
+
+        name = item["name"]
+        qty = item["quantity"]
+        price = item["price"]
+
         total = qty * price
+
         grand_total += total
 
-        product_name = product.name[:38]
+        pdf.drawString(25 * mm, y, str(name))
+        pdf.drawString(100 * mm, y, str(qty))
+        pdf.drawString(125 * mm, y, f"${price}")
+        pdf.drawString(155 * mm, y, f"${total}")
 
-        pdf.drawString(25 * mm, y, product_name)
-        pdf.drawString(105 * mm, y, str(qty))
-        pdf.drawString(125 * mm, y, f"${price:.2f}")
-        pdf.drawString(155 * mm, y, f"${total:.2f}")
+        y -= 10 * mm
 
-        y -= 8 * mm
-
-        if y < 30 * mm:
-            pdf.showPage()
-            y = height - 30 * mm
-            pdf.setFont("Helvetica", 10)
-
-    # Total
+    # TOTAL
     y -= 5 * mm
+
     pdf.line(120 * mm, y, 185 * mm, y)
-    y -= 8 * mm
+
+    y -= 10 * mm
 
     pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawString(125 * mm, y, "Grand Total:")
-    pdf.drawString(155 * mm, y, f"${grand_total:.2f}")
 
-    # Footer
-    pdf.setFont("Helvetica", 9)
-    pdf.drawString(25 * mm, 20 * mm, "This quotation is generated from bridgequotation.com")
+    pdf.drawString(125 * mm, y, "Grand Total:")
+    pdf.drawString(155 * mm, y, f"${grand_total}")
 
     pdf.save()
 

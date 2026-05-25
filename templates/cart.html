@@ -4,9 +4,7 @@
 
 <button onclick="goProducts()">Keep Shopping</button>
 <button onclick="checkout()">Checkout</button>
-<a href="/cart/pdf">
-  <button>Download PDF Quotation</button>
-</a>
+<button onclick="downloadPDF()"> Download PDF</button>
 
 <br><br>
 
@@ -140,5 +138,31 @@ function shareCart() {
   alert("Share link copied!");
 }
 
+ function downloadPDF() {
+
+    const cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+    const response = await fetch("/cart/pdf", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            items: cart
+        })
+    });
+
+    const blob = await response.blob();
+
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+
+    a.href = url;
+
+    a.download = "quotation.pdf";
+
+    a.click();
+}
 renderCart();
 </script>
