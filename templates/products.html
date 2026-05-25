@@ -3,10 +3,16 @@
 <h2>Products List</h2>
 <input id="searchInput" placeholder="Search Products name..." oninput="searchProducts()">
 
+<div class="top-bar">
+  <div></div>
+
+  <div class="user-box">
+    <span id="currentUser"></span>
+    <button onclick="logout()">Logout</button>
+  </div>
+</div>
+
 <button onclick="goCart()">View Cart</button>
-<button onclick="logout()">
-  Logout
-</button>
 
 <div id="list"></div>
 
@@ -14,6 +20,7 @@
 let allProducts = [];
 
 const user = localStorage.getItem("user");
+document.getElementById("currentUser").innerText = "Logged in as: " + user;
 
 if (!user) {
   window.location.href = "login.html";
