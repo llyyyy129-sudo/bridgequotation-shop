@@ -54,8 +54,8 @@ function renderProducts(products) {
     div.innerHTML = `
       <img src="${p.image}" class="product-image">
       <h3>${p.name}</h3>
-      <p>价格: $${p.price}</p>
-      <button onclick="view(${p.id})">让我see一see</button>
+      <p>Price: $${p.price}</p>
+      <button onclick="view(${p.id})">View Details</button>
     `;
 
     container.appendChild(div);

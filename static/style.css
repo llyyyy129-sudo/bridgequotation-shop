@@ -62,7 +62,8 @@ input {
   display: flex;
   flex-direction: column;
 
-  height: 500px;
+  min-height: 500px;
+
 
   overflow: hidden;
 }
@@ -73,16 +74,14 @@ input {
   width: 100%;
   height: 260px;
 
-  object-fit: contain;
+  object-fit: cover;
   object-position: center;
 
   display: block;
 
-  background: #fff;
-
   border-radius: 10px;
 
-  flex-shrink: 0;
+  background: #fff;
 }
 
 /* 商品标题 */
