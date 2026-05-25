@@ -41,27 +41,39 @@ function renderCart() {
 
     const div = document.createElement("div");
 
-    div.innerHTML = `
+   div.innerHTML = `
+  <div class="cart-item">
+
+    <img src="${item.image}" class="cart-image">
+
+    <div class="cart-info">
+
       <h3>${item.name}</h3>
+
       <p>Price: $${item.price}</p>
+
       <p>
-       Quantity:
-      <input 
-       type="number" 
-       value="${item.quantity}" 
-       min="1" 
-       onchange="changeQuantity(${item.id}, this.value)"
-      >
+        Quantity:
+        <input type="number"
+               value="${item.quantity}"
+               min="1"
+               onchange="updateQuantity(${index}, this.value)">
       </p>
 
-      <button onclick="increase(${item.id})">+</button>
+      <button onclick="increase(${index})">+</button>
 
-      <button onclick="decrease(${item.id})">-</button>
+      <button onclick="decrease(${index})">-</button>
 
-      <button onclick="removeItem(${item.id})">Delete</button>
+      <button onclick="removeItem(${index})">
+        Delete
+      </button>
 
-      <hr>
-    `;
+    </div>
+
+  </div>
+
+  <hr>
+`;
 
     container.appendChild(div);
   });

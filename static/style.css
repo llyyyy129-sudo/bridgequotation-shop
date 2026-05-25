@@ -239,3 +239,26 @@ input {
 .box button:hover {
   background: #1d4ed8;
 }
+
+.cart-item {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+.cart-image {
+  width: 180px;
+  height: 180px;
+
+  object-fit: cover;
+
+  border-radius: 12px;
+
+  background: white;
+
+  flex-shrink: 0;
+}
+
+.cart-info {
+  flex: 1;
+}
