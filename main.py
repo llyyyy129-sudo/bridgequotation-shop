@@ -77,7 +77,7 @@ def get_product(product_id: int):
             "material": product.material,
             "volume": product.volume,
             "size": product.size,
-            "category": p.category
+            "category": product.category
         }
 
     return {"error": "Product not found"}
