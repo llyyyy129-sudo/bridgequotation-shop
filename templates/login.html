@@ -39,7 +39,7 @@
 
       const username = document.getElementById("username").value;
       const password = document.getElementById("password").value;
-
+      const sharedCart = localStorage.getItem("sharedCart");
       fetch("/login", {
 
         method: "POST",
@@ -65,7 +65,12 @@
 
           localStorage.setItem("user", username);
 
-          window.location.href = "products.html";
+          if (sharedCart) {
+        localStorage.setItem("cart", sharedCart);
+        localStorage.removeItem("sharedCart");
+        window.location.href = "cart.html"; } 
+        else 
+        {window.location.href = "products.html";}
         }
 
       });
