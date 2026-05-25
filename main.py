@@ -48,7 +48,8 @@ def get_products():
             "name": p.name,
             "price": p.price,
             "description": p.description,
-            "image": p.image
+            "image": p.image,
+            "category": p.category
         })
 
     db.close()
@@ -75,7 +76,8 @@ def get_product(product_id: int):
             "moq": product.moq,
             "material": product.material,
             "volume": product.volume,
-            "size": product.size
+            "size": product.size,
+            "category": p.category
         }
 
     return {"error": "Product not found"}

@@ -1,7 +1,16 @@
 <link rel="stylesheet" href="/static/style.css">
 
 <h2>Products List</h2>
-<input id="searchInput" placeholder="Search Products name..." oninput="searchProducts()">
+
+<input id="searchInput" placeholder="Search Products name..." oninput="filterProducts()">
+
+<div class="category-buttons">
+  <button onclick="setCategory('All')">All</button>
+  <button onclick="setCategory('Electronics')">Electronics</button>
+  <button onclick="setCategory('Coffee')">Coffee</button>
+  <button onclick="setCategory('Storage')">Storage</button>
+  <button onclick="setCategory('Bakeware')">Bakeware</button>
+</div>
 
 <div class="top-bar">
   <div></div>
@@ -18,6 +27,7 @@
 
 <script>
 let allProducts = [];
+let currentCategory = "All";
 
 const user = localStorage.getItem("user");
 document.getElementById("currentUser").innerText = "Logged in as: " + user;
@@ -32,7 +42,7 @@ fetch("/products")
   .then(response => response.json())
   .then(products => {
     allProducts = products;
-    renderProducts(allProducts);
+    filterProducts();
   });
 
 function view(id) {
@@ -44,12 +54,27 @@ function goCart() {
 }
 
 function logout() {
-
   localStorage.removeItem("user");
-
   alert("You have been logged out.");
-
   window.location.href = "login.html";
+}
+
+function setCategory(category) {
+  currentCategory = category;
+  filterProducts();
+}
+
+function filterProducts() {
+  const keyword = document.getElementById("searchInput").value.toLowerCase();
+
+  const filtered = allProducts.filter(p => {
+    const matchName = p.name.toLowerCase().includes(keyword);
+    const matchCategory = currentCategory === "All" || p.category === currentCategory;
+
+    return matchName && matchCategory;
+  });
+
+  renderProducts(filtered);
 }
 
 function renderProducts(products) {
@@ -68,15 +93,4 @@ function renderProducts(products) {
     container.appendChild(div);
   });
 }
-
-function searchProducts() {
-  const keyword = document.getElementById("searchInput").value.toLowerCase();
-
-  const filtered = allProducts.filter(p =>
-    p.name.toLowerCase().includes(keyword)
-  );
-
-  renderProducts(filtered);
-}
-
 </script>

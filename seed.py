@@ -13,7 +13,7 @@ def seed_products():
     try:
 
         df = pd.read_excel("Products.xlsx")
-        df.columns = df.columns.str.strip()
+        df.columns = df.columns.str.strip().str.lower()
         print(df.columns.tolist())
         for _, row in df.iterrows():
 
@@ -31,6 +31,7 @@ def seed_products():
                 existing.material = row["material"]
                 existing.volume = row["volume"]
                 existing.size = row["size"]
+                existing.category = row["category"]
 
             else:
 
@@ -43,7 +44,8 @@ def seed_products():
                     moq=row["moq"],
                     material=row["material"],
                     volume=row["volume"],
-                    size=row["size"]
+                    size=row["size"],
+                    category=row["category"]
                 )
 
                 db.add(product)

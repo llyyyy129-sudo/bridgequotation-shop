@@ -13,6 +13,7 @@ class Product(Base):
     material = Column(String)
     volume = Column(String)
     size = Column(String)
+category = Column(String)
 
 class User(Base):
     __tablename__ = "users"
