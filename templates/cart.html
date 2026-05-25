@@ -138,7 +138,7 @@ function shareCart() {
   alert("Share link copied!");
 }
 
- function downloadPDF() {
+ async function downloadPDF() {
 
     const cart = JSON.parse(localStorage.getItem("cart")) || [];
 
