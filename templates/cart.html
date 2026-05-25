@@ -1,188 +1,141 @@
 <link rel="stylesheet" href="/static/style.css">
+
 <h2>Shopping Cart</h2>
+
+<button onclick="goProducts()">Keep Shopping</button>
+<button onclick="checkout()">Checkout</button>
+
+<br><br>
+
+<button onclick="shareCart()">Generate Share Link</button>
 
 <div id="cart"></div>
 
 <h3 id="total"></h3>
 
-<button onclick="goBack()">Keep Shopping</button>
-<button onclick="checkout()">Checkout</button>
-<br><br>
-
-<button onclick="shareCart()">
-  Generate Share Link
-</button>
-
 <script>
 let cart = JSON.parse(localStorage.getItem("cart")) || [];
 
-const container = document.getElementById("cart");
+const cartDiv = document.getElementById("cart");
+const totalDiv = document.getElementById("total");
 
 function renderCart() {
-
-  container.innerHTML = "";
+  cartDiv.innerHTML = "";
 
   let total = 0;
 
-  if (cart.length === 0) {
-
-    container.innerHTML = "<p>Your cart is empty! Start shopping~</p>";
-
-    document.getElementById("total").innerText = "";
-
-    localStorage.removeItem("cart");
-
-    return;
-  }
-
-  cart.forEach(item => {
-
-    total += item.price * item.quantity;
+  cart.forEach((item, index) => {
+    const quantity = item.quantity || 1;
+    total += item.price * quantity;
 
     const div = document.createElement("div");
 
-   div.innerHTML = `
-  <div class="cart-item">
+    div.innerHTML = `
+      <div class="cart-item">
 
-    <img src="${item.image}" class="cart-image">
+        <img src="${item.image}" class="cart-image">
 
-    <div class="cart-info">
+        <div class="cart-info">
+          <h3>${item.name}</h3>
 
-      <h3>${item.name}</h3>
+          <p>Price: $${item.price}</p>
 
-      <p>Price: $${item.price}</p>
+          <p>
+            Quantity:
+            <input 
+              type="number" 
+              value="${quantity}" 
+              min="1"
+              onchange="updateQuantity(${index}, this.value)"
+            >
+          </p>
 
-      <p>
-        Quantity:
-        <input type="number"
-               value="${item.quantity}"
-               min="1"
-               onchange="updateQuantity(${index}, this.value)">
-      </p>
+          <button onclick="increase(${index})">+</button>
+          <button onclick="decrease(${index})">-</button>
+          <button onclick="removeItem(${index})">Delete</button>
+        </div>
 
-      <button onclick="increase(${index})">+</button>
+      </div>
+    `;
 
-      <button onclick="decrease(${index})">-</button>
-
-      <button onclick="removeItem(${index})">
-        Delete
-      </button>
-
-    </div>
-
-  </div>
-
-  <hr>
-`;
-
-    container.appendChild(div);
+    cartDiv.appendChild(div);
   });
 
-  document.getElementById("total").innerText =
-    "Total: $" + total;
+  totalDiv.innerText = "Total: $" + total;
 
   localStorage.setItem("cart", JSON.stringify(cart));
 }
 
-function increase(id) {
-
-  const item = cart.find(i => i.id === id);
-
-  item.quantity++;
-
+function increase(index) {
+  cart[index].quantity = (cart[index].quantity || 1) + 1;
   renderCart();
 }
 
-function decrease(id) {
+function decrease(index) {
+  cart[index].quantity = (cart[index].quantity || 1) - 1;
 
-  const item = cart.find(i => i.id === id);
-
-  item.quantity--;
-
-  if (item.quantity <= 0) {
-
-    cart = cart.filter(i => i.id !== id);
+  if (cart[index].quantity <= 0) {
+    cart.splice(index, 1);
   }
 
   renderCart();
 }
 
-function removeItem(id) {
+function updateQuantity(index, value) {
+  let quantity = parseInt(value);
 
-  cart = cart.filter(i => i.id !== id);
+  if (isNaN(quantity) || quantity < 1) {
+    quantity = 1;
+  }
+
+  cart[index].quantity = quantity;
 
   renderCart();
 }
 
-function goBack() {
+function removeItem(index) {
+  cart.splice(index, 1);
+  renderCart();
+}
 
+function goProducts() {
   window.location.href = "products.html";
 }
 
-renderCart();
-
 function checkout() {
-
   const user = localStorage.getItem("user");
 
   fetch("/create-order", {
-
     method: "POST",
-
     headers: {
       "Content-Type": "application/json"
     },
-
     body: JSON.stringify({
       username: user,
-      items: JSON.stringify(cart),
-      total: cart.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0
-      )
+      items: cart,
+      total: cart.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0)
     })
-
   })
-
   .then(response => response.json())
-
   .then(data => {
-
     alert(data.message);
 
-    localStorage.removeItem("cart");
-
-    location.reload();
-
+    if (data.success) {
+      localStorage.removeItem("cart");
+      window.location.href = "products.html";
+    }
   });
-
 }
 
 function shareCart() {
+  const encoded = encodeURIComponent(JSON.stringify(cart));
 
-  const cart = localStorage.getItem("cart");
-
-  const encoded = encodeURIComponent(cart);
-
-  const link =
-    window.location.origin +
-    "/share.html?cart=" +
-    encoded;
+  const link = window.location.origin + "/share.html?cart=" + encoded;
 
   navigator.clipboard.writeText(link);
 
-  alert("Share link has been copied!");
+  alert("Share link copied!");
 }
 
-function changeQuantity(id, value) {
-  const item = cart.find(i => i.id === id);
-
-  item.quantity = parseInt(value);
-
-  if (item.quantity <= 0 || isNaN(item.quantity)) {
-    item.quantity = 1;
-  }
-
-  renderCart();
-}
+renderCart();
 </script>
