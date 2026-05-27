@@ -320,3 +320,15 @@ input {
   border-radius: 999px;
   font-weight: 600;
 }
+
+.quotation-info {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 20px auto 35px auto;
+  flex-wrap: wrap;
+}
+
+.quotation-info input {
+  width: 280px;
+}

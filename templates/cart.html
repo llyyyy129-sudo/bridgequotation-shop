@@ -62,7 +62,16 @@ function renderCart() {
 
         <p>Price: $${item.price}</p>
 
-        <p>Quantity: ${item.quantity}</p>
+        <p>
+        Quantity:
+        <input
+        type="number"
+        min="1"
+        value="${item.quantity}"
+        onchange="updateQuantity(${index}, this.value)"
+        style="width:80px;"
+       >
+       </p>
 
         <p>Total: $${item.price * item.quantity}</p>
 
@@ -94,6 +103,22 @@ function clearCart() {
   localStorage.removeItem("cart");
 
   cart = [];
+
+  renderCart();
+}
+
+function updateQuantity(index, value) {
+  const quantity = parseInt(value);
+
+  if (quantity <= 0 || isNaN(quantity)) {
+    alert("Quantity must be at least 1");
+    renderCart();
+    return;
+  }
+
+  cart[index].quantity = quantity;
+
+  localStorage.setItem("cart", JSON.stringify(cart));
 
   renderCart();
 }
