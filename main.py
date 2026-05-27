@@ -261,7 +261,19 @@ async def generate_cart_pdf(data: dict):
 
     elements.append(title)
     elements.append(Spacer(1, 20))
+    
+    quote_no = Paragraph(
+       f"""
+       <font size=11>
+       <b>Quotation No:</b> BQ-{datetime.now().strftime('%Y%m%d%H%M')}<br/>
+       <b>Valid Until:</b> 30 days
+       </font>
+       """,
+       styles["Normal"]
+    )
 
+    elements.append(quote_no)
+    elements.append(Spacer(1, 12))
     # WEBSITE
     website = Paragraph(
         f"""
