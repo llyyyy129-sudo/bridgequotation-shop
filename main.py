@@ -194,6 +194,10 @@ async def generate_cart_pdf(data: dict):
 
     items = data.get("items", [])
 
+    customer_name = data.get("customerName", "")
+    customer_company = data.get("customerCompany", "")
+    customer_email = data.get("customerEmail", "")
+
     buffer = BytesIO()
 
     doc = SimpleDocTemplate(
@@ -239,6 +243,20 @@ async def generate_cart_pdf(data: dict):
     )
 
     elements.append(quote_info)
+    elements.append(Spacer(1, 14))
+
+    customer_info = Paragraph(
+        f"""
+        <font size=11>
+        <b>Customer:</b> {customer_name}<br/>
+        <b>Company:</b> {customer_company}<br/>
+        <b>Email:</b> {customer_email}
+        </font>
+        """,
+        styles["Normal"]
+    )
+
+    elements.append(customer_info)
     elements.append(Spacer(1, 18))
 
     table_data = [
