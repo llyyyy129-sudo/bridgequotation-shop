@@ -332,3 +332,11 @@ input {
 .quotation-info input {
   width: 280px;
 }
+
+.cart-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 30px auto;
+}
