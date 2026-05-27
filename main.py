@@ -1,25 +1,22 @@
-from fastapi import FastAPI, Request, Form, Depends
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 
 from database import engine, SessionLocal
 from models import Product, User, Order, Base
 
-from fastapi.responses import StreamingResponse
 from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.lib.units import mm
-from reportlab.platypus import Image
+
 from io import BytesIO
 from datetime import datetime
 
 app = FastAPI()
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 Base.metadata.create_all(bind=engine)
-
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,10 +26,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# =========================
+# HOME
+# =========================
 
 @app.get("/")
 def root():
     return FileResponse("templates/login.html")
+
+# =========================
+# PRODUCTS API
+# =========================
 
 @app.get("/products")
 def get_products():
@@ -83,15 +87,26 @@ def get_product(product_id: int):
 
     return {"error": "Product not found"}
 
+# =========================
+# REGISTER
+# =========================
+
 @app.post("/register")
 def register(user: dict):
+
     db = SessionLocal()
 
-    existing = db.query(User).filter(User.username == user["username"]).first()
+    existing = db.query(User).filter(
+        User.username == user["username"]
+    ).first()
 
     if existing:
         db.close()
-        return {"success": False, "message": "Username already exists!"}
+
+        return {
+            "success": False,
+            "message": "Username already exists!"
+        }
 
     new_user = User(
         username=user["username"],
@@ -99,14 +114,23 @@ def register(user: dict):
     )
 
     db.add(new_user)
+
     db.commit()
+
     db.close()
 
-    return {"success": True, "message": "Registration successful!"}
+    return {
+        "success": True,
+        "message": "Registration successful!"
+    }
 
+# =========================
+# LOGIN
+# =========================
 
 @app.post("/login")
 def login(user: dict):
+
     db = SessionLocal()
 
     existing = db.query(User).filter(
@@ -117,9 +141,19 @@ def login(user: dict):
     db.close()
 
     if existing:
-        return {"success": True, "message": "Login successful!"}
+        return {
+            "success": True,
+            "message": "Login successful!"
+        }
 
-    return {"success": False, "message": "Invalid username or password"}
+    return {
+        "success": False,
+        "message": "Invalid username or password"
+    }
+
+# =========================
+# CREATE ORDER
+# =========================
 
 @app.post("/create-order")
 def create_order(data: dict):
@@ -142,6 +176,11 @@ def create_order(data: dict):
         "success": True,
         "message": "Order created successfully!"
     }
+
+# =========================
+# HTML PAGES
+# =========================
+
 @app.get("/login.html")
 def login_page():
     return FileResponse("templates/login.html")
@@ -165,6 +204,10 @@ def cart_page():
 @app.get("/share.html")
 def share_page():
     return FileResponse("templates/share.html")
+
+# =========================
+# PDF QUOTATION
+# =========================
 
 @app.post("/cart/pdf")
 async def generate_cart_pdf(data: dict):
@@ -197,6 +240,18 @@ async def generate_cart_pdf(data: dict):
     elements = []
 
     styles = getSampleStyleSheet()
+
+    # LOGO
+    logo = Image(
+        "static/image/bg2.jpg",
+        width=420,
+        height=70
+    )
+
+    logo.hAlign = "CENTER"
+
+    elements.append(logo)
+    elements.append(Spacer(1, 20))
 
     # TITLE
     title = Paragraph(
@@ -245,6 +300,7 @@ async def generate_cart_pdf(data: dict):
                 width=60,
                 height=60
             )
+
         except:
             product_image = "No Image"
 
@@ -314,14 +370,6 @@ async def generate_cart_pdf(data: dict):
     doc.build(elements)
 
     buffer.seek(0)
-
-    return StreamingResponse(
-        buffer,
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": "attachment; filename=quotation.pdf"
-        }
-    )
 
     return StreamingResponse(
         buffer,
