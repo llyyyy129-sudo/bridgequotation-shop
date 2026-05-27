@@ -1,8 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 
 from database import engine, SessionLocal
 from models import Product, User, Order, Base
@@ -26,23 +25,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# =========================
-# HOME
-# =========================
 
 @app.get("/")
 def root():
     return FileResponse("templates/login.html")
 
-# =========================
-# PRODUCTS API
-# =========================
 
 @app.get("/products")
 def get_products():
-
     db = SessionLocal()
-
     products = db.query(Product).all()
 
     result = []
@@ -58,17 +49,13 @@ def get_products():
         })
 
     db.close()
-
     return result
 
 
 @app.get("/products/{product_id}")
 def get_product(product_id: int):
-
     db = SessionLocal()
-
     product = db.query(Product).filter(Product.id == product_id).first()
-
     db.close()
 
     if product:
@@ -87,13 +74,9 @@ def get_product(product_id: int):
 
     return {"error": "Product not found"}
 
-# =========================
-# REGISTER
-# =========================
 
 @app.post("/register")
 def register(user: dict):
-
     db = SessionLocal()
 
     existing = db.query(User).filter(
@@ -102,7 +85,6 @@ def register(user: dict):
 
     if existing:
         db.close()
-
         return {
             "success": False,
             "message": "Username already exists!"
@@ -114,9 +96,7 @@ def register(user: dict):
     )
 
     db.add(new_user)
-
     db.commit()
-
     db.close()
 
     return {
@@ -124,13 +104,9 @@ def register(user: dict):
         "message": "Registration successful!"
     }
 
-# =========================
-# LOGIN
-# =========================
 
 @app.post("/login")
 def login(user: dict):
-
     db = SessionLocal()
 
     existing = db.query(User).filter(
@@ -151,13 +127,9 @@ def login(user: dict):
         "message": "Invalid username or password"
     }
 
-# =========================
-# CREATE ORDER
-# =========================
 
 @app.post("/create-order")
 def create_order(data: dict):
-
     db = SessionLocal()
 
     order = Order(
@@ -167,9 +139,7 @@ def create_order(data: dict):
     )
 
     db.add(order)
-
     db.commit()
-
     db.close()
 
     return {
@@ -177,37 +147,36 @@ def create_order(data: dict):
         "message": "Order created successfully!"
     }
 
-# =========================
-# HTML PAGES
-# =========================
 
 @app.get("/login.html")
 def login_page():
     return FileResponse("templates/login.html")
 
+
 @app.get("/register.html")
 def register_page():
     return FileResponse("templates/register.html")
+
 
 @app.get("/products.html")
 def products_page():
     return FileResponse("templates/products.html")
 
+
 @app.get("/product.html")
 def product_page():
     return FileResponse("templates/product.html")
+
 
 @app.get("/cart.html")
 def cart_page():
     return FileResponse("templates/cart.html")
 
+
 @app.get("/share.html")
 def share_page():
     return FileResponse("templates/share.html")
 
-# =========================
-# PDF QUOTATION
-# =========================
 
 @app.post("/cart/pdf")
 async def generate_cart_pdf(data: dict):
@@ -220,7 +189,6 @@ async def generate_cart_pdf(data: dict):
         Spacer,
         Image
     )
-
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet
 
@@ -231,77 +199,58 @@ async def generate_cart_pdf(data: dict):
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=30,
-        leftMargin=30,
-        topMargin=30,
-        bottomMargin=30
+        rightMargin=24,
+        leftMargin=24,
+        topMargin=24,
+        bottomMargin=24
     )
 
     elements = []
-
     styles = getSampleStyleSheet()
 
-    # LOGO
     logo = Image(
         "static/image/bg2.jpg",
         width=420,
         height=70
     )
-
     logo.hAlign = "CENTER"
 
     elements.append(logo)
-    elements.append(Spacer(1, 20))
+    elements.append(Spacer(1, 18))
 
-    # TITLE
     title = Paragraph(
         "<font size=24><b>QUOTATION</b></font>",
         styles["Title"]
     )
 
     elements.append(title)
-    elements.append(Spacer(1, 20))
-    
-    quote_no = Paragraph(
-       f"""
-       <font size=11>
-       <b>Quotation No:</b> BQ-{datetime.now().strftime('%Y%m%d%H%M')}<br/>
-       <b>Valid Until:</b> 30 days
-       </font>
-       """,
-       styles["Normal"]
-    )
+    elements.append(Spacer(1, 16))
 
-    elements.append(quote_no)
-    elements.append(Spacer(1, 12))
-    # WEBSITE
-    website = Paragraph(
+    quote_info = Paragraph(
         f"""
-        <font size=12>
-        bridgequotation.com<br/>
-        Date: {datetime.now().strftime('%Y-%m-%d')}
+        <font size=11>
+        <b>Quotation No:</b> BQ-{datetime.now().strftime('%Y%m%d%H%M')}<br/>
+        <b>Website:</b> bridgequotation.com<br/>
+        <b>Date:</b> {datetime.now().strftime('%Y-%m-%d')}<br/>
+        <b>Valid Until:</b> 30 days
         </font>
         """,
         styles["Normal"]
     )
 
-    elements.append(website)
-    elements.append(Spacer(1, 20))
+    elements.append(quote_info)
+    elements.append(Spacer(1, 18))
 
-    # TABLE
     table_data = [
-        ["Image", "Product", "Qty", "Price", "Total"]
+        ["Image", "Product", "MOQ", "Material", "Size", "Qty", "Price", "Total"]
     ]
 
     grand_total = 0
 
     for item in items:
-
         qty = item["quantity"]
         price = item["price"]
-
         total = qty * price
-
         grand_total += total
 
         image_path = "." + item["image"]
@@ -309,23 +258,27 @@ async def generate_cart_pdf(data: dict):
         try:
             product_image = Image(
                 image_path,
-                width=60,
-                height=60
+                width=55,
+                height=55
             )
-
         except:
             product_image = "No Image"
 
         table_data.append([
             product_image,
             item["name"],
+            item.get("moq", ""),
+            item.get("material", ""),
+            item.get("size", ""),
             str(qty),
             f"${price}",
             f"${total}"
         ])
 
-    # TOTAL ROW
     table_data.append([
+        "",
+        "",
+        "",
         "",
         "",
         "",
@@ -335,38 +288,32 @@ async def generate_cart_pdf(data: dict):
 
     table = Table(
         table_data,
-        colWidths=[80, 180, 60, 80, 80]
+        colWidths=[65, 120, 50, 75, 65, 45, 65, 75]
     )
 
     table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2563eb")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
 
-        ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#2563eb")),
-        ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
 
-        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
-        ("FONTSIZE", (0,0), (-1,-1), 11),
+        ("GRID", (0, 0), (-1, -1), 1, colors.grey),
 
-        ("GRID", (0,0), (-1,-1), 1, colors.grey),
+        ("BACKGROUND", (0, 1), (-1, -2), colors.whitesmoke),
+        ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#dbeafe")),
 
-        ("BACKGROUND", (0,1), (-1,-2), colors.whitesmoke),
+        ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
 
-        ("BACKGROUND", (0,-1), (-1,-1), colors.HexColor("#dbeafe")),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 10),
 
-        ("FONTNAME", (0,-1), (-1,-1), "Helvetica-Bold"),
-
-        ("BOTTOMPADDING", (0,0), (-1,0), 12),
-
-        ("ALIGN", (2,1), (-1,-1), "CENTER"),
-
-        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-
+        ("ALIGN", (2, 1), (-1, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
 
     elements.append(table)
+    elements.append(Spacer(1, 28))
 
-    elements.append(Spacer(1, 30))
-
-    # FOOTER
     footer = Paragraph(
         """
         <font size=10 color='gray'>
