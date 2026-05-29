@@ -371,3 +371,18 @@ def debug_db():
         "database": db_type,
         "url_start": DATABASE_URL[:20]
     }
+
+@app.get("/debug/users")
+def debug_users():
+
+    db = SessionLocal()
+
+    users = db.query(User).all()
+
+    return [
+        {
+            "id": u.id,
+            "username": u.username
+        }
+        for u in users
+    ]
