@@ -16,6 +16,11 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 Base.metadata.create_all(bind=engine)
+try:
+    from seed import seed_products
+    seed_products()
+except Exception as e:
+    print("Seed products skipped:", e)
 
 app.add_middleware(
     CORSMiddleware,
@@ -374,10 +379,14 @@ def debug_users():
 
     users = db.query(User).all()
 
-    return [
+    result = [
         {
             "id": u.id,
             "username": u.username
         }
         for u in users
     ]
+
+    db.close()
+
+    return result
