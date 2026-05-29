@@ -5,9 +5,12 @@
 <div id="detail"></div>
 
 <br>
+
 <label>Quantity:</label>
 <input id="quantity" type="number" value="1" min="1">
+
 <br><br>
+
 <button onclick="addToCart()">Add to Cart</button>
 
 <br><br>
@@ -24,34 +27,146 @@ fetch(`/products/${id}`)
 
     document.getElementById("detail").innerHTML = `
       <img src="${product.image}" width="250">
+
       <h3>${product.name}</h3>
+
       <p>${product.description}</p>
-      <p>Price: $${product.price}</p>
+
+      <h4>Price Breaks</h4>
+
+      <table border="1" cellpadding="8" cellspacing="0">
+        <tr>
+          <th>MOQ</th>
+          <th>Unit Price</th>
+        </tr>
+
+        <tr>
+          <td>500+</td>
+          <td>$${product.price_500}</td>
+        </tr>
+
+        <tr>
+          <td>1000+</td>
+          <td>$${product.price_1000}</td>
+        </tr>
+
+        <tr>
+          <td>3000+</td>
+          <td>$${product.price_3000}</td>
+        </tr>
+
+        <tr>
+          <td>10000+</td>
+          <td>$${product.price_10000}</td>
+        </tr>
+
+        <tr>
+          <td>50000+</td>
+          <td>$${product.price_50000}</td>
+        </tr>
+      </table>
+
+      <br>
+
+      <p id="livePrice"></p>
+
       <p>MOQ: ${product.moq}</p>
       <p>Material: ${product.material}</p>
       <p>Volume: ${product.volume}</p>
       <p>Size: ${product.size}</p>
+      <p>Category: ${product.category}</p>
     `;
 
     window.currentProduct = product;
+
+    document
+      .getElementById("quantity")
+      .addEventListener("input", updatePrice);
+
+    updatePrice();
   });
 
-function addToCart() {
-  let cart = JSON.parse(localStorage.getItem("cart")) || [];
+function getTierPrice(quantity, product) {
 
-  const quantity = parseInt(document.getElementById("quantity").value);
+  let unitPrice = product.price;
 
-  const existing = cart.find(item => item.id === currentProduct.id);
-
-  if (existing) {
-    existing.quantity += quantity;
-  } else {
-    cart.push({ ...currentProduct, quantity: quantity });
+  if (quantity >= 50000) {
+    unitPrice = product.price_50000;
+  }
+  else if (quantity >= 10000) {
+    unitPrice = product.price_10000;
+  }
+  else if (quantity >= 3000) {
+    unitPrice = product.price_3000;
+  }
+  else if (quantity >= 1000) {
+    unitPrice = product.price_1000;
+  }
+  else if (quantity >= 500) {
+    unitPrice = product.price_500;
   }
 
-  localStorage.setItem("cart", JSON.stringify(cart));
+  return unitPrice;
+}
 
-  alert("Added to cart!");
+function updatePrice() {
+
+  const quantity = parseInt(
+    document.getElementById("quantity").value
+  ) || 0;
+
+  const unitPrice = getTierPrice(
+    quantity,
+    currentProduct
+  );
+
+  document.getElementById("livePrice").innerHTML = `
+    <b>Current Unit Price:</b> $${unitPrice}
+    <br>
+    <b>Total:</b> $${(quantity * unitPrice).toFixed(2)}
+  `;
+}
+
+function addToCart() {
+
+  let cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+  const quantity = parseInt(
+    document.getElementById("quantity").value
+  );
+
+  const unitPrice = getTierPrice(
+    quantity,
+    currentProduct
+  );
+
+  const existing = cart.find(
+    item => item.id === currentProduct.id
+  );
+
+  if (existing) {
+
+    existing.quantity += quantity;
+    existing.price = unitPrice;
+
+  } else {
+
+    cart.push({
+      ...currentProduct,
+      quantity: quantity,
+      price: unitPrice
+    });
+
+  }
+
+  localStorage.setItem(
+    "cart",
+    JSON.stringify(cart)
+  );
+
+  alert(
+    `Added to cart!\nUnit Price: $${unitPrice}`
+  );
 }
 
 function goBack() {

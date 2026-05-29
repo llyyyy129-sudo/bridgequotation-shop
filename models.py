@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, Float
 from database import Base
 
 class Product(Base):
@@ -14,6 +14,11 @@ class Product(Base):
     volume = Column(String)
     size = Column(String)
     category = Column(String)
+    price_500 = Column(Float)
+    price_1000 = Column(Float)
+    price_3000 = Column(Float)
+    price_10000 = Column(Float)
+    price_50000 = Column(Float)
 
 class User(Base):
     __tablename__ = "users"

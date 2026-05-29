@@ -45,6 +45,11 @@ def get_products():
             "price": p.price,
             "description": p.description,
             "image": p.image,
+            "price_500": p.price_500,
+            "price_1000": p.price_1000,
+            "price_3000": p.price_3000,
+            "price_10000": p.price_10000,
+            "price_50000": p.price_50000,
             "category": p.category
         })
 
@@ -69,6 +74,11 @@ def get_product(product_id: int):
             "material": product.material,
             "volume": product.volume,
             "size": product.size,
+            "price_500": product.price_500,
+            "price_1000": product.price_1000,
+            "price_3000": product.price_3000,
+            "price_10000": product.price_10000,
+            "price_50000": product.price_50000,
             "category": product.category
         }
 
@@ -356,21 +366,6 @@ async def generate_cart_pdf(data: dict):
         }
     )
 
-@app.get("/debug/db")
-def debug_db():
-    from database import DATABASE_URL
-
-    if DATABASE_URL.startswith("postgresql"):
-        db_type = "PostgreSQL"
-    elif DATABASE_URL.startswith("sqlite"):
-        db_type = "SQLite"
-    else:
-        db_type = "Unknown"
-
-    return {
-        "database": db_type,
-        "url_start": DATABASE_URL[:20]
-    }
 
 @app.get("/debug/users")
 def debug_users():

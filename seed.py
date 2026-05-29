@@ -32,6 +32,11 @@ def seed_products():
                 existing.volume = row["volume"]
                 existing.size = row["size"]
                 existing.category = row["category"]
+                existing.price_500 = row["price_500"]
+                existing.price_1000 = row["price_1000"]
+                existing.price_3000 = row["price_3000"]
+                existing.price_10000 = row["price_10000"]
+                existing.price_50000 = row["price_50000"]   
 
             else:
 
@@ -45,7 +50,12 @@ def seed_products():
                     material=row["material"],
                     volume=row["volume"],
                     size=row["size"],
-                    category=row["category"]
+                    category=row["category"],
+                    price_500=row["price_500"],
+                    price_1000=row["price_1000"],
+                    price_3000=row["price_3000"],
+                    price_10000=row["price_10000"],
+                    price_50000=row["price_50000"]
                 )
 
                 db.add(product)
