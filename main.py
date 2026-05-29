@@ -355,3 +355,19 @@ async def generate_cart_pdf(data: dict):
             "Content-Disposition": "attachment; filename=quotation.pdf"
         }
     )
+
+@app.get("/debug/db")
+def debug_db():
+    from database import DATABASE_URL
+
+    if DATABASE_URL.startswith("postgresql"):
+        db_type = "PostgreSQL"
+    elif DATABASE_URL.startswith("sqlite"):
+        db_type = "SQLite"
+    else:
+        db_type = "Unknown"
+
+    return {
+        "database": db_type,
+        "url_start": DATABASE_URL[:20]
+    }
