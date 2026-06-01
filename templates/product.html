@@ -21,6 +21,13 @@
 const params = new URLSearchParams(window.location.search);
 const id = params.get("id");
 
+function money(value) {
+  return Number(value).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
 fetch(`/products/${id}`)
   .then(response => response.json())
   .then(product => {
@@ -39,33 +46,33 @@ fetch(`/products/${id}`)
 
       <table border="1" cellpadding="8" cellspacing="0">
         <tr>
-          <th>MOQ</th>
+          <th>Qty Break</th>
           <th>Unit Price</th>
         </tr>
 
         <tr>
-          <td>500+</td>
-          <td>$${product.price_500}</td>
+          <td>500+ pcs</td>
+          <td>$${money(product.price_500)}</td>
         </tr>
 
         <tr>
-          <td>1000+</td>
-          <td>$${product.price_1000}</td>
+          <td>1,000+ pcs</td>
+          <td>$${money(product.price_1000)}</td>
         </tr>
 
         <tr>
-          <td>3000+</td>
-          <td>$${product.price_3000}</td>
+          <td>3,000+ pcs</td>
+          <td>$${money(product.price_3000)}</td>
         </tr>
 
         <tr>
-          <td>10000+</td>
-          <td>$${product.price_10000}</td>
+          <td>10,000+ pcs</td>
+          <td>$${money(product.price_10000)}</td>
         </tr>
 
         <tr>
-          <td>50000+</td>
-          <td>$${product.price_50000}</td>
+          <td>50,000+ pcs</td>
+          <td>$${money(product.price_50000)}</td>
         </tr>
       </table>
 
@@ -73,7 +80,7 @@ fetch(`/products/${id}`)
 
       <p id="livePrice"></p>
 
-      <p>MOQ: ${product.moq} pcs</p>
+      <p>MOQ: ${Number(product.moq).toLocaleString()} pcs</p>
       <p>Material: ${product.material}</p>
       <p>Volume: ${product.volume}</p>
       <p>Size: ${product.size}</p>
@@ -107,6 +114,15 @@ function getTierPrice(quantity, product) {
   return Number(unitPrice);
 }
 
+function getTierLabel(quantity) {
+  if (quantity >= 50000) return "50,000+ pcs";
+  if (quantity >= 10000) return "10,000+ pcs";
+  if (quantity >= 3000) return "3,000+ pcs";
+  if (quantity >= 1000) return "1,000+ pcs";
+  if (quantity >= 500) return "500+ pcs";
+  return "MOQ";
+}
+
 function updatePrice() {
   const quantityInput = document.getElementById("quantity");
 
@@ -125,11 +141,14 @@ function updatePrice() {
   }
 
   const unitPrice = getTierPrice(quantity, currentProduct);
+  const total = quantity * unitPrice;
 
   document.getElementById("livePrice").innerHTML = `
-    <b>Current Unit Price:</b> $${unitPrice.toFixed(2)}
+    <b>Selected Tier:</b> ${getTierLabel(quantity)}
     <br>
-    <b>Total:</b> $${(quantity * unitPrice).toFixed(2)}
+    <b>Unit Price:</b> $${money(unitPrice)}
+    <br>
+    <b>Amount:</b> $${money(total)}
   `;
 }
 
@@ -169,7 +188,7 @@ function addToCart() {
 
   localStorage.setItem("cart", JSON.stringify(cart));
 
-  alert(`Added to cart!\nUnit Price: $${unitPrice.toFixed(2)}`);
+  alert(`Added to cart!\nUnit Price: $${money(unitPrice)}`);
 }
 
 function goBack() {

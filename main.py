@@ -275,8 +275,65 @@ async def generate_cart_pdf(data: dict):
     elements.append(Spacer(1, 18))
 
     table_data = [
-        ["Image", "Product", "MOQ", "Material", "Size", "Qty", "Price", "Total"]
+    [
+        "Image",
+        "Product",
+        "MOQ",
+        "Material",
+        "Size",
+        "Qty",
+        "Unit Price",
+        "Amount"
     ]
+]
+
+def money(value):
+    return "${:,.2f}".format(float(value))
+
+grand_total = 0
+
+for item in items:
+
+    qty = item["quantity"]
+    price = item["price"]
+
+    total = qty * price
+
+    grand_total += total
+
+    image_path = "." + item["image"]
+
+    try:
+        product_image = Image(
+            image_path,
+            width=55,
+            height=55
+        )
+
+    except:
+        product_image = "No Image"
+
+    table_data.append([
+        product_image,
+        item["name"],
+        item.get("moq", ""),
+        item.get("material", ""),
+        item.get("size", ""),
+        f"{qty:,}",
+        money(price),
+        money(total)
+    ])
+
+    table_data.append([
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Grand Total",
+    money(grand_total)
+    ])
 
     grand_total = 0
 
