@@ -7,13 +7,7 @@
 <br>
 
 <label>Quantity:</label>
-<input
-id="quantity"
-type="number"
-value="${product.moq}"
-min="${product.moq}"
-oninput="updatePrice()"
->
+<input id="quantity" type="number" value="1" min="1" onchange="updatePrice()">
 
 <br><br>
 
@@ -30,6 +24,9 @@ const id = params.get("id");
 fetch(`/products/${id}`)
   .then(response => response.json())
   .then(product => {
+
+    document.getElementById("quantity").value = product.moq;
+    document.getElementById("quantity").min = product.moq;
 
     document.getElementById("detail").innerHTML = `
       <img src="${product.image}" width="250">
@@ -76,7 +73,7 @@ fetch(`/products/${id}`)
 
       <p id="livePrice"></p>
 
-      <p>MOQ: ${product.moq}</p>
+      <p>MOQ: ${product.moq} pcs</p>
       <p>Material: ${product.material}</p>
       <p>Volume: ${product.volume}</p>
       <p>Size: ${product.size}</p>
@@ -85,16 +82,11 @@ fetch(`/products/${id}`)
 
     window.currentProduct = product;
 
-    document
-      .getElementById("quantity")
-      .addEventListener("input", updatePrice);
-
     updatePrice();
   });
 
 function getTierPrice(quantity, product) {
-
-  let currentPrice = product.price_500 || product.price;
+  let unitPrice = product.price_500 || product.price;
 
   if (quantity >= 50000) {
     unitPrice = product.price_50000;
@@ -112,68 +104,72 @@ function getTierPrice(quantity, product) {
     unitPrice = product.price_500;
   }
 
-  return unitPrice;
+  return Number(unitPrice);
 }
 
 function updatePrice() {
+  const quantityInput = document.getElementById("quantity");
 
-  let quantityInput = document.getElementById("quantity");
-  let quantity = parseInt(quantityInput.value) || currentProduct.moq;
+  let quantity = parseInt(quantityInput.value);
+
+  if (isNaN(quantity)) {
+    return;
+  }
 
   if (quantity < currentProduct.moq) {
-    quantity = currentProduct.moq;
+    alert(`Minimum Order Quantity is ${currentProduct.moq} pcs`);
+
     quantityInput.value = currentProduct.moq;
+
+    quantity = currentProduct.moq;
   }
 
   const unitPrice = getTierPrice(quantity, currentProduct);
 
   document.getElementById("livePrice").innerHTML = `
-    <b>Current Unit Price:</b> $${unitPrice}
+    <b>Current Unit Price:</b> $${unitPrice.toFixed(2)}
     <br>
     <b>Total:</b> $${(quantity * unitPrice).toFixed(2)}
   `;
 }
 
 function addToCart() {
-
   let cart = JSON.parse(localStorage.getItem("cart")) || [];
 
-  const quantity = parseInt(
-    document.getElementById("quantity").value
-  );
+  const quantityInput = document.getElementById("quantity");
 
-  const unitPrice = getTierPrice(
-    quantity,
-    currentProduct
-  );
+  let quantity = parseInt(quantityInput.value);
+
+  if (isNaN(quantity) || quantity < currentProduct.moq) {
+    alert(`Minimum Order Quantity is ${currentProduct.moq} pcs`);
+
+    quantityInput.value = currentProduct.moq;
+
+    updatePrice();
+
+    return;
+  }
+
+  const unitPrice = getTierPrice(quantity, currentProduct);
 
   const existing = cart.find(
     item => item.id === currentProduct.id
   );
 
   if (existing) {
-
     existing.quantity += quantity;
-    existing.price = unitPrice;
-
+    existing.price = getTierPrice(existing.quantity, currentProduct);
   } else {
-
     cart.push({
       ...currentProduct,
       quantity: quantity,
       price: unitPrice
     });
-
   }
 
-  localStorage.setItem(
-    "cart",
-    JSON.stringify(cart)
-  );
+  localStorage.setItem("cart", JSON.stringify(cart));
 
-  alert(
-    `Added to cart!\nUnit Price: $${unitPrice}`
-  );
+  alert(`Added to cart!\nUnit Price: $${unitPrice.toFixed(2)}`);
 }
 
 function goBack() {
