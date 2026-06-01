@@ -10,9 +10,18 @@
 
 <script>
 const params = new URLSearchParams(window.location.search);
+
 const cartData = params.get("cart");
 
-const sharedCart = JSON.parse(decodeURIComponent(cartData));
+if(!cartData){
+    document.getElementById("cart").innerHTML =
+        "<h3>Invalid Share Link</h3>";
+    throw new Error("No cart data");
+}
+
+const sharedCart = JSON.parse(
+    decodeURIComponent(cartData)
+);
 
 const cartDiv = document.getElementById("cart");
 

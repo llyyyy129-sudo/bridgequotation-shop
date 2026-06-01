@@ -14,8 +14,13 @@
 
 <div class="cart-buttons">
   <button onclick="downloadPDF()">Download PDF Quotation</button>
+
   <button onclick="checkout()">Create Order</button>
+
+  <button onclick="shareCart()">Share Cart Link</button>
+
   <button onclick="clearCart()">Clear Cart</button>
+
   <button onclick="goBack()">Continue Shopping</button>
 </div>
 
@@ -203,5 +208,28 @@ async function downloadPDF() {
   a.click();
 }
 
+function shareCart() {
+
+    if(cart.length === 0){
+        alert("Cart is empty");
+        return;
+    }
+
+    const cartString = encodeURIComponent(
+        JSON.stringify(cart)
+    );
+
+    const shareLink =
+        window.location.origin +
+        "/share.html?cart=" +
+        cartString;
+
+    navigator.clipboard.writeText(shareLink);
+
+    alert(
+        "Share link copied!\n\n" +
+        shareLink
+    );
+}
 renderCart();
 </script>
