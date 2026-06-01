@@ -119,15 +119,16 @@ function renderCart() {
 }
 
 function updateQuantity(index, value) {
-  const quantity = parseInt(value);
-
-  if(quantity < item.moq){
-    alert(`Minimum Order Quantity is ${item.moq}`);
-    renderCart();
-    return;
-  }
 
   const item = cart[index];
+
+  let quantity = parseInt(value);
+
+  if (quantity < item.moq || isNaN(quantity)) {
+    alert(`Minimum Order Quantity is ${item.moq}`);
+    quantity = item.moq;
+  }
+
   const newPrice = getTierPrice(quantity, item);
 
   cart[index].quantity = quantity;

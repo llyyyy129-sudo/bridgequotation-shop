@@ -117,14 +117,15 @@ function getTierPrice(quantity, product) {
 
 function updatePrice() {
 
-  const quantity = parseInt(
-    document.getElementById("quantity").value
-  ) || 0;
+  let quantityInput = document.getElementById("quantity");
+  let quantity = parseInt(quantityInput.value) || currentProduct.moq;
 
-  const unitPrice = getTierPrice(
-    quantity,
-    currentProduct
-  );
+  if (quantity < currentProduct.moq) {
+    quantity = currentProduct.moq;
+    quantityInput.value = currentProduct.moq;
+  }
+
+  const unitPrice = getTierPrice(quantity, currentProduct);
 
   document.getElementById("livePrice").innerHTML = `
     <b>Current Unit Price:</b> $${unitPrice}
