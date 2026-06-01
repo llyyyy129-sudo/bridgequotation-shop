@@ -97,7 +97,7 @@ function renderCart() {
           <b>Quantity:</b>
           <input
             type="number"
-            min="1"
+            min="${item.moq}"
             value="${item.quantity}"
             onchange="updateQuantity(${index}, this.value)"
             style="width:100px;"
@@ -121,8 +121,8 @@ function renderCart() {
 function updateQuantity(index, value) {
   const quantity = parseInt(value);
 
-  if (quantity <= 0 || isNaN(quantity)) {
-    alert("Quantity must be at least 1");
+  if(quantity < item.moq){
+    alert(`Minimum Order Quantity is ${item.moq}`);
     renderCart();
     return;
   }

@@ -7,7 +7,13 @@
 <br>
 
 <label>Quantity:</label>
-<input id="quantity" type="number" value="1" min="1">
+<input
+id="quantity"
+type="number"
+value="${product.moq}"
+min="${product.moq}"
+oninput="updatePrice()"
+>
 
 <br><br>
 
@@ -88,7 +94,7 @@ fetch(`/products/${id}`)
 
 function getTierPrice(quantity, product) {
 
-  let unitPrice = product.price;
+  let currentPrice = product.price_500 || product.price;
 
   if (quantity >= 50000) {
     unitPrice = product.price_50000;
