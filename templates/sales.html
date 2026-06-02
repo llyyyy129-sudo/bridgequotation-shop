@@ -41,6 +41,18 @@ async function confirmOrder(orderId) {
   loadOrders();
 }
 
+async function rejectOrder(orderId) {
+  const response = await fetch("/sales/orders/" + orderId + "/reject", {
+    method: "POST"
+  });
+
+  const result = await response.json();
+
+  alert(result.message);
+
+  loadOrders();
+}
+
 async function loadOrders() {
   const response = await fetch("/sales/orders/" + user);
   const orders = await response.json();
@@ -73,6 +85,11 @@ async function loadOrders() {
           <button onclick="confirmOrder(${order.id})">
              Confirm Order
           </button>
+
+          <button onclick="rejectOrder(${order.id})">
+             Reject Order
+          </button>
+
           <hr>
     `;
 
