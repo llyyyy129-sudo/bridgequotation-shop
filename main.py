@@ -520,3 +520,25 @@ def confirm_order(order_id: int):
         "success": True,
         "message": "Order confirmed successfully!"
     }
+
+@app.get("/customer/orders/{username}")
+def get_customer_orders(username: str):
+
+    db = SessionLocal()
+
+    orders = db.query(Order).filter(
+        Order.username == username
+    ).all()
+
+    result = []
+
+    for order in orders:
+        result.append({
+            "id": order.id,
+            "status": order.status,
+            "total": order.total
+        })
+
+    db.close()
+
+    return result
