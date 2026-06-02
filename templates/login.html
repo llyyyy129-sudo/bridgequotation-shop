@@ -21,83 +21,60 @@
 
     <br><br>
 
-    <button onclick="login()">
-      Login
-    </button>
+    <button onclick="login()">Login</button>
 
     <br><br>
 
-    <button onclick="goRegister()">
-      Go to Register
-    </button>
+    <button onclick="goRegister()">Go to Register</button>
 
   </div>
 
   <script>
-
     function login() {
-
       const username = document.getElementById("username").value;
       const password = document.getElementById("password").value;
       const sharedCart = localStorage.getItem("sharedCart");
 
       fetch("/login", {
-
         method: "POST",
-
         headers: {
           "Content-Type": "application/json"
         },
-
         body: JSON.stringify({
           username: username,
           password: password
         })
-
       })
-
       .then(response => response.json())
-
       .then(data => {
-
         alert(data.message);
 
         if (data.success) {
-
           localStorage.setItem("user", data.username);
           localStorage.setItem("role", data.role);
 
           if (sharedCart) {
-
             localStorage.setItem("cart", sharedCart);
             localStorage.removeItem("sharedCart");
-
             window.location.href = "cart.html";
-
           } else {
-
             if (data.role === "sales") {
-
               window.location.href = "sales.html";
-
             } else {
-
               window.location.href = "products.html";
-
             }
-
           }
-
         }
-
+      })
+      .catch(error => {
+        console.error("Login error:", error);
+        alert("Login failed. Please check server logs.");
       });
-
     }
 
     function goRegister() {
       window.location.href = "register.html";
     }
-
   </script>
 
 </body>
