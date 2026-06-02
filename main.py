@@ -16,6 +16,35 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 Base.metadata.create_all(bind=engine)
+from sqlalchemy import text
+
+try:
+    with engine.connect() as conn:
+
+        conn.execute(text("""
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS role VARCHAR DEFAULT 'customer';
+        """))
+
+        conn.execute(text("""
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS assigned_sales VARCHAR DEFAULT 'sales1';
+        """))
+
+        conn.execute(text("""
+        ALTER TABLE orders
+        ADD COLUMN IF NOT EXISTS sales_username VARCHAR DEFAULT 'sales1';
+        """))
+
+        conn.execute(text("""
+        ALTER TABLE orders
+        ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'Pending';
+        """))
+
+        conn.commit()
+
+except Exception as e:
+    print("Migration skipped:", e)
 try:
     from seed import seed_products
     seed_products()
