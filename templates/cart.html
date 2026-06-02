@@ -266,12 +266,22 @@ async function loadMyOrders() {
   orders.forEach(order => {
 
     let statusColor = "#ff9800";
+    let statusText = "⏳ Pending";
 
-      if (order.status === "Confirmed") {
-       statusColor = "#4caf50";}
+    if (order.status === "Confirmed") {
+      statusColor = "#4caf50";
+      statusText = "✅ Confirmed";
+    }
 
-      if (order.status === "Rejected") {
-      statusColor = "#f44336";}
+    if (order.status === "Rejected") {
+      statusColor = "#f44336";
+      statusText = "❌ Rejected";
+    }
+
+    if (order.status === "Pending") {
+      statusColor = "#ff9800";
+      statusText = "⏳ Pending";
+    }
 
     container.innerHTML += `
       <div class="order-status-card">
@@ -285,24 +295,14 @@ async function loadMyOrders() {
 
         <br>
 
-        let statusText = order.status;
+        Status:
+        <span style="
+          color:${statusColor};
+          font-weight:bold;
+        ">
+          ${statusText}
+        </span>
 
-       if(order.status === "Confirmed"){
-        statusText = "✅ Confirmed";}
-
-      if(order.status === "Pending"){
-        statusText = "⏳ Pending";}
-
-      if(order.status === "Rejected"){
-        statusText = "❌ Rejected";}
-      
-      Status:
-       <span style="
-        color:${statusColor};
-        font-weight:bold;
-       ">
-         ${statusText}
-       </span>
       </div>
     `;
   });
