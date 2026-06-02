@@ -494,3 +494,29 @@ def get_sales_orders(sales_username: str):
     db.close()
 
     return result
+
+@app.post("/sales/orders/{order_id}/confirm")
+def confirm_order(order_id: int):
+
+    db = SessionLocal()
+
+    order = db.query(Order).filter(
+        Order.id == order_id
+    ).first()
+
+    if not order:
+        db.close()
+        return {
+            "success": False,
+            "message": "Order not found"
+        }
+
+    order.status = "Confirmed"
+
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Order confirmed successfully!"
+    }
