@@ -267,9 +267,11 @@ async function loadMyOrders() {
 
     let statusColor = "#ff9800";
 
-    if (order.status === "Confirmed") {
-      statusColor = "#4caf50";
-    }
+      if (order.status === "Confirmed") {
+       statusColor = "#4caf50";}
+
+      if (order.status === "Rejected") {
+      statusColor = "#f44336";}
 
     container.innerHTML += `
       <div class="order-status-card">
