@@ -29,6 +29,18 @@ if (role !== "sales") {
 document.getElementById("currentUser").innerText =
   "Logged in as Sales: " + user;
 
+async function confirmOrder(orderId) {
+  const response = await fetch("/sales/orders/" + orderId + "/confirm", {
+    method: "POST"
+  });
+
+  const result = await response.json();
+
+  alert(result.message);
+
+  loadOrders();
+}
+
 async function loadOrders() {
   const response = await fetch("/sales/orders/" + user);
   const orders = await response.json();
@@ -57,6 +69,10 @@ async function loadOrders() {
           <p><b>Customer:</b> ${order.customer}</p>
           <p><b>Status:</b> ${order.status}</p>
           <p><b>Total:</b> $${Number(order.total).toFixed(2)}</p>
+
+          <button onclick="confirmOrder(${order.id})">
+             Confirm Order
+          </button>
           <hr>
     `;
 
