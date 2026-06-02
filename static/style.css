@@ -340,3 +340,18 @@ input {
   flex-wrap: wrap;
   margin: 30px auto;
 }
+
+.customer-orders {
+  background: white;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+}
+
+.order-status-card {
+  padding: 12px;
+  margin-top: 10px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #fafafa;
+}
