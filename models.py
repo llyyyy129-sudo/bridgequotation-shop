@@ -27,11 +27,16 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     password = Column(String)
 
+    role = Column(String, default="customer")
+    assigned_sales = Column(String, default="sales1")
+
 
 class Order(Base):
     __tablename__ = "orders"
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String)
+    sales_username = Column(String)
     items = Column(String)
-    total = Column(Integer)
+    total = Column(Float)
+    status = Column(String, default="Pending")

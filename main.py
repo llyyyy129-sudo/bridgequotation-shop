@@ -107,7 +107,9 @@ def register(user: dict):
 
     new_user = User(
         username=user["username"],
-        password=user["password"]
+        password=user["password"],
+        role="customer",
+        assigned_sales="sales1"
     )
 
     db.add(new_user)
@@ -134,7 +136,9 @@ def login(user: dict):
     if existing:
         return {
             "success": True,
-            "message": "Login successful!"
+            "message": "Login successful!",
+            "username": existing.username,
+            "role": existing.role
         }
 
     return {
