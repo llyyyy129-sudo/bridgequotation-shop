@@ -138,7 +138,7 @@ def register(user: dict):
         username=user["username"],
         password=user["password"],
         role="customer",
-        assigned_sales="sales1"
+        assigned_sales="BILL"
     )
 
     db.add(new_user)
@@ -180,10 +180,21 @@ def login(user: dict):
 def create_order(data: dict):
     db = SessionLocal()
 
+    user = db.query(User).filter(
+        User.username == data["username"]
+    ).first()
+
+    sales_username = "BILL"
+
+    if user and user.assigned_sales:
+        sales_username = user.assigned_sales
+
     order = Order(
         username=data["username"],
+        sales_username=sales_username,
         items=str(data["items"]),
-        total=data["total"]
+        total=data["total"],
+        status="Pending"
     )
 
     db.add(order)
@@ -463,3 +474,28 @@ def make_sales(username: str):
         "success": True,
         "message": f"{username} is now a sales user"
     }
+
+@app.get("/sales/orders/{sales_username}")
+def get_sales_orders(sales_username: str):
+
+    db = SessionLocal()
+
+    orders = db.query(Order).filter(
+        Order.sales_username == sales_username
+    ).all()
+
+    result = []
+
+    for order in orders:
+
+        result.append({
+            "id": order.id,
+            "customer": order.username,
+            "total": order.total,
+            "status": order.status,
+            "items": order.items
+        })
+
+    db.close()
+
+    return result
