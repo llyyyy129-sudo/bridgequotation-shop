@@ -437,3 +437,29 @@ def debug_users():
     db.close()
 
     return result
+
+@app.get("/debug/make-sales/{username}")
+def make_sales(username: str):
+    db = SessionLocal()
+
+    user = db.query(User).filter(
+        User.username == username
+    ).first()
+
+    if not user:
+        db.close()
+        return {
+            "success": False,
+            "message": "User not found"
+        }
+
+    user.role = "sales"
+    user.assigned_sales = ""
+
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": f"{username} is now a sales user"
+    }
