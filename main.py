@@ -227,6 +227,10 @@ def cart_page():
 def share_page():
     return FileResponse("templates/share.html")
 
+@app.get("/sales.html")
+def sales_page():
+    return FileResponse("templates/sales.html")
+
 
 @app.post("/cart/pdf")
 async def generate_cart_pdf(data: dict):

@@ -1,0 +1,96 @@
+<link rel="stylesheet" href="/static/style.css">
+
+<h2>Sales Dashboard</h2>
+
+<div class="top-bar">
+  <div></div>
+
+  <div class="user-box">
+    <span id="currentUser"></span>
+    <button onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<div id="orders"></div>
+
+<script>
+const user = localStorage.getItem("user");
+const role = localStorage.getItem("role");
+
+if (!user) {
+  window.location.href = "login.html";
+}
+
+if (role !== "sales") {
+  alert("Only sales users can access this page.");
+  window.location.href = "products.html";
+}
+
+document.getElementById("currentUser").innerText =
+  "Logged in as Sales: " + user;
+
+async function loadOrders() {
+  const response = await fetch("/sales/orders/" + user);
+  const orders = await response.json();
+
+  const container = document.getElementById("orders");
+  container.innerHTML = "";
+
+  if (orders.length === 0) {
+    container.innerHTML = "<h3>No customer carts yet.</h3>";
+    return;
+  }
+
+  orders.forEach(order => {
+    let items = [];
+
+    try {
+      items = JSON.parse(order.items.replace(/'/g, '"'));
+    } catch (error) {
+      console.log("Items parse error:", error);
+    }
+
+    let html = `
+      <div class="cart-item">
+        <div class="cart-info">
+          <h3>Order #${order.id}</h3>
+          <p><b>Customer:</b> ${order.customer}</p>
+          <p><b>Status:</b> ${order.status}</p>
+          <p><b>Total:</b> $${Number(order.total).toFixed(2)}</p>
+          <hr>
+    `;
+
+    items.forEach(item => {
+      html += `
+        <div style="margin-bottom:20px;">
+          <img src="${item.image}" width="120">
+          <h4>${item.name}</h4>
+          <p>Category: ${item.category || ""}</p>
+          <p>MOQ: ${item.moq || ""}</p>
+          <p>Material: ${item.material || ""}</p>
+          <p>Size: ${item.size || ""}</p>
+          <p>Quantity: ${item.quantity}</p>
+          <p>Unit Price: $${item.price}</p>
+          <p>Line Total: $${item.price * item.quantity}</p>
+        </div>
+        <hr>
+      `;
+    });
+
+    html += `
+        </div>
+      </div>
+    `;
+
+    container.innerHTML += html;
+  });
+}
+
+function logout() {
+  localStorage.removeItem("user");
+  localStorage.removeItem("role");
+  window.location.href = "login.html";
+}
+
+loadOrders();
+</script>
