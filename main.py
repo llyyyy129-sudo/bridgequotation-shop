@@ -180,18 +180,9 @@ def login(user: dict):
 def create_order(data: dict):
     db = SessionLocal()
 
-    user = db.query(User).filter(
-        User.username == data["username"]
-    ).first()
-
-    sales_username = "BILL"
-
-    if user and user.assigned_sales:
-        sales_username = user.assigned_sales
-
     order = Order(
         username=data["username"],
-        sales_username=sales_username,
+        sales_username="BILL",
         items=str(data["items"]),
         total=data["total"],
         status="Pending"
