@@ -285,14 +285,24 @@ async function loadMyOrders() {
 
         <br>
 
-        Status:
-        <span style="
-          color:${statusColor};
-          font-weight:bold;
-        ">
-          ${order.status}
-        </span>
+        let statusText = order.status;
 
+       if(order.status === "Confirmed"){
+        statusText = "✅ Confirmed";}
+
+      if(order.status === "Pending"){
+        statusText = "⏳ Pending";}
+
+      if(order.status === "Rejected"){
+        statusText = "❌ Rejected";}
+      
+      Status:
+       <span style="
+        color:${statusColor};
+        font-weight:bold;
+       ">
+         ${statusText}
+       </span>
       </div>
     `;
   });
