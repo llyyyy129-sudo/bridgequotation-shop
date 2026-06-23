@@ -1,129 +1,524 @@
-<link rel="stylesheet" href="/static/style.css">
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sales Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
 
-<h2>Sales Dashboard</h2>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f6fa;
+            margin: 0;
+            padding: 35px;
+            color: #222;
+        }
 
-<div class="top-bar">
-  <div></div>
+        .sales-page {
+            max-width: 1050px;
+            margin: 0 auto;
+        }
 
-  <div class="user-box">
-    <span id="currentUser"></span>
-    <button onclick="logout()">Logout</button>
-  </div>
+        .top-bar {
+            background: white;
+            border-radius: 14px;
+            padding: 22px 28px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+        }
+
+        .top-bar h1 {
+            margin: 0;
+            color: #1f3c88;
+            font-size: 30px;
+        }
+
+        .sales-info {
+            margin-top: 8px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .logout-btn {
+            background: #1f3c88;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 18px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .order-section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px 28px;
+            margin-bottom: 26px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+
+        .section-title {
+            font-size: 24px;
+            margin: 0 0 18px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-line {
+            border: none;
+            border-top: 1px solid #ddd;
+            margin: 16px 0 18px 0;
+        }
+
+        .order-list {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .order-box {
+            border: 1px solid #e2e5ec;
+            border-radius: 12px;
+            padding: 18px 20px;
+            background: #fafbff;
+        }
+
+        .order-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .order-info {
+            line-height: 1.8;
+            font-size: 15px;
+        }
+
+        .button-row {
+            margin-top: 14px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .confirm-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 18px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .reject-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 18px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .status-text {
+            margin-top: 12px;
+            font-weight: bold;
+        }
+
+        .confirmed-text {
+            color: #4caf50;
+        }
+
+        .rejected-text {
+            color: #f44336;
+        }
+
+        .empty-message {
+            color: #777;
+            background: #f8f9fc;
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        details {
+            margin-top: 12px;
+            background: white;
+            border-radius: 8px;
+            padding: 10px 12px;
+            border: 1px solid #e5e7ef;
+        }
+
+        summary {
+            cursor: pointer;
+            font-weight: bold;
+            color: #1f3c88;
+        }
+
+        .cart-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .cart-item:last-child {
+            border-bottom: none;
+        }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.82);
+            color: white;
+            padding: 16px 26px;
+            border-radius: 12px;
+            font-size: 16px;
+            display: none;
+            z-index: 9999;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="sales-page">
+
+    <div class="top-bar">
+        <div>
+            <h1>Sales Dashboard</h1>
+            <div class="sales-info">
+                Current Sales: <b id="salesName"></b>
+            </div>
+        </div>
+
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+
+    <div class="order-section">
+        <h2 class="section-title" id="pendingTitle">
+            🟠 Pending Orders (0)
+        </h2>
+
+        <hr class="section-line">
+
+        <div id="pendingOrders" class="order-list"></div>
+    </div>
+
+
+    <div class="order-section">
+        <h2 class="section-title" id="confirmedTitle">
+            🟢 Confirmed Orders (0)
+        </h2>
+
+        <hr class="section-line">
+
+        <div id="confirmedOrders" class="order-list"></div>
+    </div>
+
+
+    <div class="order-section">
+        <h2 class="section-title" id="rejectedTitle">
+            🔴 Rejected Orders (0)
+        </h2>
+
+        <hr class="section-line">
+
+        <div id="rejectedOrders" class="order-list"></div>
+    </div>
+
 </div>
 
-<div id="orders"></div>
+<div id="toast" class="toast"></div>
+
 
 <script>
-const user = localStorage.getItem("user");
+const salesUsername = localStorage.getItem("user");
 const role = localStorage.getItem("role");
 
-if (!user) {
-  window.location.href = "login.html";
+document.getElementById("salesName").innerText = salesUsername || "Unknown";
+
+if (!salesUsername) {
+    alert("Please login first.");
+    window.location.href = "/";
 }
 
 if (role !== "sales") {
-  alert("Only sales users can access this page.");
-  window.location.href = "products.html";
+    alert("Only sales users can access this page.");
+    window.location.href = "/";
 }
 
-document.getElementById("currentUser").innerText =
-  "Logged in as Sales: " + user;
 
-async function confirmOrder(orderId) {
-  const response = await fetch("/sales/orders/" + orderId + "/confirm", {
-    method: "POST"
-  });
+async function loadSalesOrders() {
+    const response = await fetch(
+        "/sales/orders/" + encodeURIComponent(salesUsername)
+    );
 
-  const result = await response.json();
+    const orders = await response.json();
 
-  alert(result.message);
+    const pendingOrders = orders.filter(order => order.status === "Pending");
+    const confirmedOrders = orders.filter(order => order.status === "Confirmed");
+    const rejectedOrders = orders.filter(order => order.status === "Rejected");
 
-  loadOrders();
+    pendingOrders.sort((a, b) => b.id - a.id);
+    confirmedOrders.sort((a, b) => b.id - a.id);
+    rejectedOrders.sort((a, b) => b.id - a.id);
+
+    document.getElementById("pendingTitle").innerText =
+        "🟠 Pending Orders (" + pendingOrders.length + ")";
+
+    document.getElementById("confirmedTitle").innerText =
+        "🟢 Confirmed Orders (" + confirmedOrders.length + ")";
+
+    document.getElementById("rejectedTitle").innerText =
+        "🔴 Rejected Orders (" + rejectedOrders.length + ")";
+
+    renderPendingOrders(pendingOrders);
+    renderConfirmedOrders(confirmedOrders);
+    renderRejectedOrders(rejectedOrders);
 }
 
-async function rejectOrder(orderId) {
-  const response = await fetch("/sales/orders/" + orderId + "/reject", {
-    method: "POST"
-  });
 
-  const result = await response.json();
+function renderPendingOrders(orders) {
+    const container = document.getElementById("pendingOrders");
+    container.innerHTML = "";
 
-  alert(result.message);
+    if (orders.length === 0) {
+        container.innerHTML = `
+            <div class="empty-message">
+                No pending orders.
+            </div>
+        `;
+        return;
+    }
 
-  loadOrders();
+    orders.forEach(order => {
+        container.innerHTML += `
+            <div class="order-box">
+                <div class="order-title">
+                    Order #${order.id}
+                </div>
+
+                <div class="order-info">
+                    Customer: <b>${order.username || ""}</b><br>
+                    Total: <b>$${Number(order.total || 0).toFixed(2)}</b>
+                </div>
+
+                ${renderCartDetails(order.items)}
+
+                <div class="button-row">
+                    <button class="confirm-btn" onclick="confirmOrder(${order.id})">
+                        Confirm
+                    </button>
+
+                    <button class="reject-btn" onclick="rejectOrder(${order.id})">
+                        Reject
+                    </button>
+                </div>
+            </div>
+        `;
+    });
 }
 
-async function loadOrders() {
-  const response = await fetch("/sales/orders/" + user);
-  const orders = await response.json();
 
-  const container = document.getElementById("orders");
-  container.innerHTML = "";
+function renderConfirmedOrders(orders) {
+    const container = document.getElementById("confirmedOrders");
+    container.innerHTML = "";
 
-  if (orders.length === 0) {
-    container.innerHTML = "<h3>No customer carts yet.</h3>";
-    return;
-  }
+    if (orders.length === 0) {
+        container.innerHTML = `
+            <div class="empty-message">
+                No confirmed orders.
+            </div>
+        `;
+        return;
+    }
 
-  orders.forEach(order => {
-    let items = [];
+    orders.forEach(order => {
+        container.innerHTML += `
+            <div class="order-box">
+                <div class="order-title">
+                    Order #${order.id}
+                </div>
 
-    try {
-      items = JSON.parse(order.items.replace(/'/g, '"'));
-    } catch (error) {
-      console.log("Items parse error:", error);
+                <div class="order-info">
+                    Customer: <b>${order.username || ""}</b><br>
+                    Total: <b>$${Number(order.total || 0).toFixed(2)}</b>
+                </div>
+
+                ${renderCartDetails(order.items)}
+
+                <div class="status-text confirmed-text">
+                    Status: Confirmed
+                </div>
+            </div>
+        `;
+    });
+}
+
+
+function renderRejectedOrders(orders) {
+    const container = document.getElementById("rejectedOrders");
+    container.innerHTML = "";
+
+    if (orders.length === 0) {
+        container.innerHTML = `
+            <div class="empty-message">
+                No rejected orders.
+            </div>
+        `;
+        return;
+    }
+
+    orders.forEach(order => {
+        container.innerHTML += `
+            <div class="order-box">
+                <div class="order-title">
+                    Order #${order.id}
+                </div>
+
+                <div class="order-info">
+                    Customer: <b>${order.username || ""}</b><br>
+                    Total: <b>$${Number(order.total || 0).toFixed(2)}</b>
+                </div>
+
+                ${renderCartDetails(order.items)}
+
+                <div class="status-text rejected-text">
+                    Status: Rejected
+                </div>
+            </div>
+        `;
+    });
+}
+
+
+function renderCartDetails(rawItems) {
+    const items = parseItems(rawItems);
+
+    if (!items || items.length === 0) {
+        return `
+            <details>
+                <summary>Cart Items</summary>
+                <div class="cart-item">No item details.</div>
+            </details>
+        `;
     }
 
     let html = `
-      <div class="cart-item">
-        <div class="cart-info">
-          <h3>Order #${order.id}</h3>
-          <p><b>Customer:</b> ${order.customer}</p>
-          <p><b>Status:</b> ${order.status}</p>
-          <p><b>Total:</b> $${Number(order.total).toFixed(2)}</p>
-
-          <button onclick="confirmOrder(${order.id})">
-             Confirm Order
-          </button>
-
-          <button onclick="rejectOrder(${order.id})">
-             Reject Order
-          </button>
-
-          <hr>
+        <details>
+            <summary>Cart Items</summary>
     `;
 
     items.forEach(item => {
-      html += `
-        <div style="margin-bottom:20px;">
-          <img src="${item.image}" width="120">
-          <h4>${item.name}</h4>
-          <p>Category: ${item.category || ""}</p>
-          <p>MOQ: ${item.moq || ""}</p>
-          <p>Material: ${item.material || ""}</p>
-          <p>Size: ${item.size || ""}</p>
-          <p>Quantity: ${item.quantity}</p>
-          <p>Unit Price: $${item.price}</p>
-          <p>Line Total: $${item.price * item.quantity}</p>
-        </div>
-        <hr>
-      `;
+        const name =
+            item.name ||
+            item.product_name ||
+            item.description ||
+            "Product";
+
+        const qty =
+            item.quantity ||
+            item.qty ||
+            1;
+
+        const price =
+            Number(item.price || item.unit_price || 0);
+
+        html += `
+            <div class="cart-item">
+                <b>${name}</b><br>
+                Quantity: ${qty}<br>
+                Price: $${price.toFixed(2)}
+            </div>
+        `;
     });
 
-    html += `
-        </div>
-      </div>
-    `;
+    html += `</details>`;
 
-    container.innerHTML += html;
-  });
+    return html;
 }
+
+
+function parseItems(rawItems) {
+    if (!rawItems) return [];
+
+    if (Array.isArray(rawItems)) {
+        return rawItems;
+    }
+
+    if (typeof rawItems === "string") {
+        try {
+            return JSON.parse(rawItems);
+        } catch (error) {
+            return [];
+        }
+    }
+
+    return [];
+}
+
+
+async function confirmOrder(orderId) {
+    const ok = confirm("Confirm Order #" + orderId + "?");
+
+    if (!ok) return;
+
+    await fetch(
+        "/sales/orders/" + orderId + "/confirm",
+        {
+            method: "POST"
+        }
+    );
+
+    showToast("Order #" + orderId + " confirmed.");
+    loadSalesOrders();
+}
+
+
+async function rejectOrder(orderId) {
+    const ok = confirm("Reject Order #" + orderId + "?");
+
+    if (!ok) return;
+
+    await fetch(
+        "/sales/orders/" + orderId + "/reject",
+        {
+            method: "POST"
+        }
+    );
+
+    showToast("Order #" + orderId + " rejected.");
+    loadSalesOrders();
+}
+
+
+function showToast(message) {
+    const toast = document.getElementById("toast");
+
+    toast.innerText = message;
+    toast.style.display = "block";
+
+    setTimeout(() => {
+        toast.style.display = "none";
+    }, 1500);
+}
+
 
 function logout() {
-  localStorage.removeItem("user");
-  localStorage.removeItem("role");
-  window.location.href = "login.html";
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+    window.location.href = "/";
 }
 
-loadOrders();
+
+loadSalesOrders();
 </script>
+
+</body>
+</html>
