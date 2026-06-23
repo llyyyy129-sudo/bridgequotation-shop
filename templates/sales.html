@@ -51,26 +51,54 @@
             font-weight: bold;
         }
 
-        .order-section {
+        details.order-section {
             background: white;
             border-radius: 16px;
-            padding: 24px 28px;
-            margin-bottom: 26px;
+            padding: 0;
+            margin-bottom: 18px;
             box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            overflow: hidden;
         }
 
-        .section-title {
+        details.order-section summary {
+            list-style: none;
+            cursor: pointer;
             font-size: 24px;
-            margin: 0 0 18px 0;
+            font-weight: bold;
+            padding: 24px 28px;
             display: flex;
             align-items: center;
-            gap: 8px;
+            justify-content: space-between;
+        }
+
+        details.order-section summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .summary-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .summary-arrow {
+            font-size: 18px;
+            color: #666;
+            transition: transform 0.2s ease;
+        }
+
+        details[open] .summary-arrow {
+            transform: rotate(90deg);
+        }
+
+        .section-content {
+            padding: 0 28px 24px 28px;
         }
 
         .section-line {
             border: none;
             border-top: 1px solid #ddd;
-            margin: 16px 0 18px 0;
+            margin: 0 0 18px 0;
         }
 
         .order-list {
@@ -143,7 +171,7 @@
             padding: 16px;
         }
 
-        details {
+        details.cart-details {
             margin-top: 12px;
             background: white;
             border-radius: 8px;
@@ -151,10 +179,13 @@
             border: 1px solid #e5e7ef;
         }
 
-        summary {
+        details.cart-details summary {
             cursor: pointer;
             font-weight: bold;
             color: #1f3c88;
+            font-size: 15px;
+            padding: 0;
+            display: block;
         }
 
         .cart-item {
@@ -200,37 +231,49 @@
     </div>
 
 
-    <div class="order-section">
-        <h2 class="section-title" id="pendingTitle">
-            🟠 Pending Orders (0)
-        </h2>
+    <details class="order-section">
+        <summary>
+            <span class="summary-left" id="pendingTitle">
+                🟠 Pending Orders (0)
+            </span>
+            <span class="summary-arrow">▶</span>
+        </summary>
 
-        <hr class="section-line">
-
-        <div id="pendingOrders" class="order-list"></div>
-    </div>
-
-
-    <div class="order-section">
-        <h2 class="section-title" id="confirmedTitle">
-            🟢 Confirmed Orders (0)
-        </h2>
-
-        <hr class="section-line">
-
-        <div id="confirmedOrders" class="order-list"></div>
-    </div>
+        <div class="section-content">
+            <hr class="section-line">
+            <div id="pendingOrders" class="order-list"></div>
+        </div>
+    </details>
 
 
-    <div class="order-section">
-        <h2 class="section-title" id="rejectedTitle">
-            🔴 Rejected Orders (0)
-        </h2>
+    <details class="order-section">
+        <summary>
+            <span class="summary-left" id="confirmedTitle">
+                🟢 Confirmed Orders (0)
+            </span>
+            <span class="summary-arrow">▶</span>
+        </summary>
 
-        <hr class="section-line">
+        <div class="section-content">
+            <hr class="section-line">
+            <div id="confirmedOrders" class="order-list"></div>
+        </div>
+    </details>
 
-        <div id="rejectedOrders" class="order-list"></div>
-    </div>
+
+    <details class="order-section">
+        <summary>
+            <span class="summary-left" id="rejectedTitle">
+                🔴 Rejected Orders (0)
+            </span>
+            <span class="summary-arrow">▶</span>
+        </summary>
+
+        <div class="section-content">
+            <hr class="section-line">
+            <div id="rejectedOrders" class="order-list"></div>
+        </div>
+    </details>
 
 </div>
 
@@ -305,7 +348,7 @@ function renderPendingOrders(orders) {
                 </div>
 
                 <div class="order-info">
-                    Customer: <b>${order.username || ""}</b><br>
+                    Customer: <b>${getCustomerName(order)}</b><br>
                     Total: <b>$${Number(order.total || 0).toFixed(2)}</b>
                 </div>
 
@@ -347,7 +390,7 @@ function renderConfirmedOrders(orders) {
                 </div>
 
                 <div class="order-info">
-                    Customer: <b>${order.username || ""}</b><br>
+                    Customer: <b>${getCustomerName(order)}</b><br>
                     Total: <b>$${Number(order.total || 0).toFixed(2)}</b>
                 </div>
 
@@ -383,7 +426,7 @@ function renderRejectedOrders(orders) {
                 </div>
 
                 <div class="order-info">
-                    Customer: <b>${order.username || ""}</b><br>
+                    Customer: <b>${getCustomerName(order)}</b><br>
                     Total: <b>$${Number(order.total || 0).toFixed(2)}</b>
                 </div>
 
@@ -398,12 +441,23 @@ function renderRejectedOrders(orders) {
 }
 
 
+function getCustomerName(order) {
+    return (
+        order.username ||
+        order.customer ||
+        order.customer_name ||
+        order.customer_username ||
+        ""
+    );
+}
+
+
 function renderCartDetails(rawItems) {
     const items = parseItems(rawItems);
 
     if (!items || items.length === 0) {
         return `
-            <details>
+            <details class="cart-details">
                 <summary>Cart Items</summary>
                 <div class="cart-item">No item details.</div>
             </details>
@@ -411,7 +465,7 @@ function renderCartDetails(rawItems) {
     }
 
     let html = `
-        <details>
+        <details class="cart-details">
             <summary>Cart Items</summary>
     `;
 
