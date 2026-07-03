@@ -171,6 +171,11 @@ def register_page():
     return FileResponse("templates/register.html")
 
 
+@app.get("/change_password.html")
+def change_password_page():
+    return FileResponse("templates/change_password.html")
+
+
 @app.get("/account_status.html")
 def account_status_page():
     return FileResponse("templates/account_status.html")
@@ -407,6 +412,51 @@ def login(user: dict):
     return result
 
 
+@app.post("/change-password")
+def change_password(data: dict):
+    db = SessionLocal()
+
+    username = data.get("username", "").strip()
+    current_password = data.get("current_password", "").strip()
+    new_password = data.get("new_password", "").strip()
+
+    if not username or not current_password or not new_password:
+        db.close()
+        return {
+            "success": False,
+            "message": "Please fill in username, current password and new password."
+        }
+
+    if len(new_password) < 6:
+        db.close()
+        return {
+            "success": False,
+            "message": "New password must be at least 6 characters."
+        }
+
+    user = db.query(User).filter(
+        User.username == username,
+        User.password == current_password
+    ).first()
+
+    if not user:
+        db.close()
+        return {
+            "success": False,
+            "message": "Invalid username or current password."
+        }
+
+    user.password = new_password
+
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Password updated successfully. Please log in again."
+    }
+
+
 # =========================
 # ADMIN USER APPROVAL
 # =========================
@@ -548,13 +598,6 @@ def change_user_password(user_id: int, data: dict):
         }
 
     username = user.username
-
-    if username == "orange":
-        db.close()
-        return {
-            "success": False,
-            "message": "Admin password cannot be changed here."
-        }
 
     if user.approval_status != "Approved":
         db.close()
