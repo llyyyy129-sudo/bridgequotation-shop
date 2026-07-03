@@ -39,6 +39,14 @@
   .detail-btn {
     background: #1f3c88;
   }
+
+  .quotation-hint {
+    width: 100%;
+    text-align: center;
+    color: #6b7280;
+    font-size: 13px;
+    margin-top: 6px;
+  }
 </style>
 
 <h2>Shopping Cart</h2>
@@ -51,6 +59,9 @@
   <input id="customerName" placeholder="Customer Name">
   <input id="customerCompany" placeholder="Customer Company">
   <input id="customerEmail" placeholder="Customer Email">
+  <div class="quotation-hint">
+    These fields are filled from your registered account. You can still edit them before downloading the PDF quotation.
+  </div>
 </div>
 
 <div id="cart"></div>
@@ -74,6 +85,45 @@ let cart = JSON.parse(localStorage.getItem("cart")) || [];
 
 const cartContainer = document.getElementById("cart");
 const totalElement = document.getElementById("total");
+
+async function fillCustomerInfo() {
+  const username = localStorage.getItem("user") || "";
+  const savedCompany = localStorage.getItem("company_name") || "";
+  const savedEmail = localStorage.getItem("email") || "";
+
+  document.getElementById("customerName").value = username;
+  document.getElementById("customerCompany").value = savedCompany;
+  document.getElementById("customerEmail").value = savedEmail;
+
+  if (!username) {
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      "/customer/info/" + encodeURIComponent(username)
+    );
+
+    const data = await response.json();
+
+    if (data.success) {
+      document.getElementById("customerName").value =
+        data.username || username;
+
+      document.getElementById("customerCompany").value =
+        data.company_name || savedCompany;
+
+      document.getElementById("customerEmail").value =
+        data.email || savedEmail;
+
+      localStorage.setItem("company_name", data.company_name || "");
+      localStorage.setItem("email", data.email || "");
+    }
+
+  } catch (error) {
+    console.error("Customer info load failed:", error);
+  }
+}
 
 function getTierPrice(quantity, item) {
   let unitPrice = item.price;
@@ -401,6 +451,7 @@ function escapeAttr(value) {
     .replace(/>/g, "&gt;");
 }
 
+fillCustomerInfo();
 renderCart();
 loadMyOrders();
 </script>
