@@ -241,6 +241,9 @@ async function checkout() {
   const result = await response.json();
 
   alert(result.message);
+
+  // Refresh My Orders immediately after creating an order.
+  await loadMyOrders();
 }
 
 async function downloadPDF() {
