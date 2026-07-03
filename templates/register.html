@@ -15,10 +15,12 @@
 
     select {
       width: 100%;
-      padding: 10px;
-      border-radius: 8px;
+      padding: 12px;
+      border-radius: 10px;
       border: 1px solid #ccc;
       box-sizing: border-box;
+      font-size: 16px;
+      background: white;
     }
 
     input {
@@ -78,7 +80,7 @@
       const email = document.getElementById("email").value.trim();
 
       if (!username || !password || !companyName || !email) {
-        alert("Please fill in all fields.");
+        alert("Please fill in username, password, company name and email.");
         return;
       }
 
