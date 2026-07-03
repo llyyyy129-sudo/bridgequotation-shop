@@ -52,6 +52,7 @@ def seed_products():
                 "material": value(row, "material"),
                 "volume": value(row, "volume"),
                 "size": value(row, "size"),
+                "packing": value(row, "packing"),
                 "category": value(row, "category"),
                 "price_500": value(row, "price_500", 0),
                 "price_1000": value(row, "price_1000", 0),

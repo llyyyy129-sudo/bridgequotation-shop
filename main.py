@@ -120,6 +120,12 @@ def run_migrations():
     )
 
     add_column_if_missing(
+        "products",
+        "packing",
+        "VARCHAR DEFAULT ''"
+    )
+
+    add_column_if_missing(
         "orders",
         "sales_username",
         "VARCHAR DEFAULT 'BILL'"
@@ -270,6 +276,7 @@ def get_products():
             "image_5": p.image_5,
             "image_6": p.image_6,
             "video": p.video,
+            "packing": p.packing,
             "price_500": p.price_500,
             "price_1000": p.price_1000,
             "price_3000": p.price_3000,
@@ -320,6 +327,7 @@ def get_product(product_id: int):
             "material": product.material,
             "volume": product.volume,
             "size": product.size,
+            "packing": product.packing,
             "price_500": product.price_500,
             "price_1000": product.price_1000,
             "price_3000": product.price_3000,
@@ -1068,6 +1076,7 @@ async def generate_cart_pdf(data: dict):
             "MOQ",
             "Material",
             "Size",
+            "Packing",
             "Qty",
             "Unit Price",
             "Amount"
@@ -1104,6 +1113,7 @@ async def generate_cart_pdf(data: dict):
             item.get("moq", ""),
             item.get("material", ""),
             item.get("size", ""),
+            item.get("packing_request") or item.get("packing", ""),
             f"{qty:,}",
             money(price),
             money(total)
@@ -1116,13 +1126,14 @@ async def generate_cart_pdf(data: dict):
         "",
         "",
         "",
+        "",
         "Grand Total",
         money(grand_total)
     ])
 
     table = Table(
         table_data,
-        colWidths=[65, 120, 50, 75, 65, 45, 65, 75]
+        colWidths=[50, 95, 42, 55, 45, 75, 38, 55, 65]
     )
 
     table.setStyle(TableStyle([

@@ -22,6 +22,7 @@ class Product(Base):
     material = Column(String)
     volume = Column(String)
     size = Column(String)
+    packing = Column(String, default="")
     category = Column(String)
     price_500 = Column(Float)
     price_1000 = Column(Float)
