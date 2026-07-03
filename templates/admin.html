@@ -244,14 +244,15 @@ async function loadAdminUsers() {
 async function loadPendingUsers() {
     const response = await fetch("/admin/users/pending");
     const users = await response.json();
+    const visibleUsers = users.filter(user => user.username !== "orange");
 
     document.getElementById("pendingTitle").innerText =
-        "Pending User Approval (" + users.length + ")";
+        "Pending User Approval (" + visibleUsers.length + ")";
 
     const container = document.getElementById("pendingUsers");
     container.innerHTML = "";
 
-    if (users.length === 0) {
+    if (visibleUsers.length === 0) {
         container.innerHTML = `
             <div class="empty-message">
                 No pending users.
@@ -260,7 +261,7 @@ async function loadPendingUsers() {
         return;
     }
 
-    users.forEach(user => {
+    visibleUsers.forEach(user => {
         container.innerHTML += `
             <div class="user-card" id="user-card-${user.id}">
                 <div class="user-title">
@@ -295,14 +296,15 @@ async function loadPendingUsers() {
 async function loadAllUsers() {
     const response = await fetch("/admin/users");
     const users = await response.json();
+    const visibleUsers = users.filter(user => user.username !== "orange");
 
     document.getElementById("allUsersTitle").innerText =
-        "All Users (" + users.length + ")";
+        "All Users (" + visibleUsers.length + ")";
 
     const container = document.getElementById("allUsers");
     container.innerHTML = "";
 
-    if (users.length === 0) {
+    if (visibleUsers.length === 0) {
         container.innerHTML = `
             <div class="empty-message">
                 No users.
@@ -311,7 +313,7 @@ async function loadAllUsers() {
         return;
     }
 
-    users.forEach(user => {
+    visibleUsers.forEach(user => {
         container.innerHTML += `
             <div class="user-card" id="all-user-card-${user.id}">
                 <div class="user-title">
