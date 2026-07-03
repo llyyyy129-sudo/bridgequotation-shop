@@ -107,7 +107,6 @@ def ensure_orange_admin():
     ).first()
 
     if orange:
-        orange.password = "Orange123456"
         orange.role = "admin"
         orange.account_type = "employee"
         orange.approval_status = "Approved"
