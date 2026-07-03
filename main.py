@@ -531,6 +531,40 @@ def reject_user(user_id: int):
     }
 
 
+@app.post("/admin/users/{user_id}/delete")
+def delete_user(user_id: int):
+    db = SessionLocal()
+
+    user = db.query(User).filter(
+        User.id == user_id
+    ).first()
+
+    if not user:
+        db.close()
+        return {
+            "success": False,
+            "message": "User not found."
+        }
+
+    username = user.username
+
+    if username == "orange":
+        db.close()
+        return {
+            "success": False,
+            "message": "Admin user cannot be deleted."
+        }
+
+    db.delete(user)
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": f"{username} has been deleted."
+    }
+
+
 # =========================
 # ORDERS
 # =========================

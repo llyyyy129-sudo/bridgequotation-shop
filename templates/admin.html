@@ -419,7 +419,7 @@ async function approveUser(userId) {
         const data = await response.json();
 
         if (!data.success) {
-            alert(data.message);
+            alert(data.message || data.detail || "Operation failed. Please check server logs.");
             setProcessing(userId, false);
             return;
         }
@@ -453,7 +453,7 @@ async function rejectUser(userId) {
         const data = await response.json();
 
         if (!data.success) {
-            alert(data.message);
+            alert(data.message || data.detail || "Operation failed. Please check server logs.");
             setProcessing(userId, false);
             return;
         }
@@ -489,7 +489,7 @@ async function deleteUser(userId, username) {
         const data = await response.json();
 
         if (!data.success) {
-            alert(data.message);
+            alert(data.message || data.detail || "Operation failed. Please check server logs.");
             setProcessing(userId, false);
             return;
         }
