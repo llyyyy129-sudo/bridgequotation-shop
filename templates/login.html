@@ -3,35 +3,281 @@
 <head>
   <meta charset="UTF-8">
   <title>Login</title>
-
   <link rel="stylesheet" href="/static/style.css">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      color: #111827;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .auth-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(360px, 1fr) 480px;
+      align-items: center;
+      gap: 70px;
+      padding: 60px 9vw;
+      position: relative;
+    }
+
+    .brand-side {
+      position: relative;
+      min-width: 0;
+    }
+
+    .brand-watermark {
+      position: absolute;
+      left: 170px;
+      top: 95px;
+      font-size: 180px;
+      font-weight: 900;
+      color: rgba(220, 38, 38, 0.055);
+      letter-spacing: 8px;
+      user-select: none;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 0;
+    }
+
+    .brand-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .brand-logo {
+      font-size: 74px;
+      font-weight: 900;
+      color: #df0b18;
+      letter-spacing: 2px;
+      margin-bottom: 34px;
+      line-height: 1;
+    }
+
+    .brand-title {
+      font-size: 68px;
+      line-height: 0.98;
+      font-weight: 900;
+      color: #0f172a;
+      margin: 0 0 26px 0;
+      letter-spacing: -2px;
+    }
+
+    .brand-desc {
+      max-width: 660px;
+      font-size: 18px;
+      line-height: 1.7;
+      color: #667085;
+      margin: 0;
+    }
+
+    .auth-card {
+      width: 100%;
+      background: #ffffff;
+      border-radius: 24px;
+      padding: 38px 36px 32px;
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.10);
+      border: 1px solid rgba(15, 23, 42, 0.04);
+    }
+
+    .auth-title {
+      font-size: 30px;
+      font-weight: 900;
+      margin: 0 0 10px;
+      color: #0f172a;
+    }
+
+    .auth-subtitle {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #667085;
+      margin: 0 0 24px;
+    }
+
+    .field {
+      margin-bottom: 17px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 14px;
+      font-weight: 800;
+      color: #111827;
+      margin-bottom: 8px;
+    }
+
+    .field input {
+      width: 100%;
+      height: 52px;
+      border: 1.5px solid #d7dce7;
+      border-radius: 13px;
+      padding: 0 16px;
+      font-size: 16px;
+      outline: none;
+      background: #fff;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .field input:focus {
+      border-color: #2f63ea;
+      box-shadow: 0 0 0 4px rgba(47, 99, 234, 0.12);
+    }
+
+    .btn {
+      width: 100%;
+      height: 52px;
+      border-radius: 13px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+
+    .btn-primary {
+      border: none;
+      background: #2f63ea;
+      color: #ffffff;
+      box-shadow: 0 12px 25px rgba(47, 99, 234, 0.24);
+      margin-top: 4px;
+    }
+
+    .btn-primary:hover {
+      background: #2957d8;
+      transform: translateY(-1px);
+    }
+
+    .btn-outline {
+      border: 1.5px solid #d7dce7;
+      background: #ffffff;
+      color: #111827;
+      margin-top: 12px;
+    }
+
+    .btn-outline:hover {
+      background: #f8fafc;
+    }
+
+    @media (max-width: 980px) {
+      .auth-shell {
+        grid-template-columns: 1fr;
+        gap: 34px;
+        padding: 42px 24px;
+      }
+
+      .brand-side {
+        text-align: center;
+      }
+
+      .brand-logo {
+        font-size: 54px;
+        margin-bottom: 20px;
+      }
+
+      .brand-title {
+        font-size: 46px;
+      }
+
+      .brand-desc {
+        margin: 0 auto;
+      }
+
+      .brand-watermark {
+        left: 50%;
+        top: 80px;
+        transform: translateX(-50%);
+        font-size: 120px;
+      }
+
+      .auth-card {
+        max-width: 520px;
+        margin: 0 auto;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .auth-shell {
+        padding: 28px 16px;
+      }
+
+      .brand-logo {
+        font-size: 42px;
+      }
+
+      .brand-title {
+        font-size: 36px;
+      }
+
+      .brand-desc {
+        font-size: 15px;
+      }
+
+      .auth-card {
+        padding: 28px 22px;
+        border-radius: 20px;
+      }
+
+      .brand-watermark {
+        font-size: 82px;
+        top: 82px;
+      }
+    }
+  </style>
 </head>
 
-<body class="auth-page">
+<body>
 
-  <div class="box">
+  <main class="auth-shell">
 
-    <h2>Login</h2>
+    <section class="brand-side">
+      <div class="brand-watermark">BRIDGE</div>
 
-    <input id="username" placeholder="Username">
+      <div class="brand-content">
+        <div class="brand-logo">COPEC</div>
 
-    <br><br>
+        <h1 class="brand-title">
+          Bridge Quotation<br>
+          System
+        </h1>
 
-    <input id="password" type="password" placeholder="Password">
+        <p class="brand-desc">
+          Manage quotations, product requests, shared carts and customer approvals in one secure workspace.
+        </p>
+      </div>
+    </section>
 
-    <br><br>
 
-    <button onclick="login()">Login</button>
+    <section class="auth-card">
+      <h2 class="auth-title">Welcome Back</h2>
 
-    <br><br>
+      <p class="auth-subtitle">
+        Sign in to continue, or change your own password with your current password.
+      </p>
 
-    <button onclick="goRegister()">Go to Register</button>
+      <div class="field">
+        <label>Username</label>
+        <input id="username" placeholder="Enter username">
+      </div>
 
-    <br><br>
+      <div class="field">
+        <label>Password</label>
+        <input id="password" type="password" placeholder="Enter password">
+      </div>
 
-    <button onclick="goChangePassword()">Change Password</button>
+      <button class="btn btn-primary" onclick="login()">Login</button>
+      <button class="btn btn-outline" onclick="goRegister()">Go to Register</button>
+      <button class="btn btn-outline" onclick="goChangePassword()">Change My Password</button>
+    </section>
 
-  </div>
+  </main>
+
 
   <script>
     function login() {
