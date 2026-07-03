@@ -290,6 +290,13 @@ def register(user: dict):
             "message": "Please fill in username, password, company name and email."
         }
 
+    if len(password) < 8:
+        db.close()
+        return {
+            "success": False,
+            "message": "Password must be at least 8 characters."
+        }
+
     if account_type not in ["customer", "employee"]:
         db.close()
         return {
