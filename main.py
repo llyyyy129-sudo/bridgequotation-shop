@@ -862,6 +862,36 @@ def reject_order(order_id: int):
     }
 
 
+@app.get("/customer/info/{username}")
+def get_customer_info(username: str):
+    db = SessionLocal()
+
+    user = db.query(User).filter(
+        User.username == username
+    ).first()
+
+    if not user:
+        db.close()
+        return {
+            "success": False,
+            "message": "User not found."
+        }
+
+    result = {
+        "success": True,
+        "username": user.username,
+        "role": user.role,
+        "account_type": user.account_type,
+        "company_name": user.company_name,
+        "email": user.email,
+        "assigned_sales": user.assigned_sales,
+        "approval_status": user.approval_status
+    }
+
+    db.close()
+    return result
+
+
 @app.get("/customer/orders/{username}")
 def get_customer_orders(username: str):
     db = SessionLocal()

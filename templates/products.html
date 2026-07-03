@@ -1,31 +1,173 @@
-<link rel="stylesheet" href="/static/style.css">
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Products List</title>
+  <link rel="stylesheet" href="/static/style.css">
 
-<h2>Products List</h2>
+  <style>
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 24px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
 
-<input id="searchInput" placeholder="Search Products name..." oninput="filterProducts()">
+    .header-left {
+      flex: 1;
+      min-width: 320px;
+    }
 
-<div class="category-buttons">
-  <button onclick="setCategory('All')">All</button>
-  <button onclick="setCategory('Electronics')">Electronics</button>
-  <button onclick="setCategory('Coffee')">Coffee</button>
-  <button onclick="setCategory('Storage')">Storage</button>
-  <button onclick="setCategory('Bakeware')">Bakeware</button>
-  <button onclick="setCategory('Decoration')">Decoration</button>
-  <button onclick="setCategory('Food')">Food</button>
-</div>
+    .header-left h2 {
+      text-align: center;
+      margin-top: 0;
+    }
 
-<div class="top-bar">
-  <div></div>
+    .customer-status-card {
+      background: white;
+      border-radius: 22px;
+      padding: 20px 22px;
+      min-width: 340px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      border: 1px solid rgba(15, 23, 42, 0.05);
+    }
 
-  <div class="user-box">
-    <span id="currentUser"></span>
-    <button onclick="logout()">Logout</button>
+    .status-info {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .status-line {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 16px;
+      color: #111827;
+      white-space: nowrap;
+    }
+
+    .status-label {
+      color: #6b7280;
+      font-weight: 600;
+    }
+
+    .status-value {
+      font-weight: 800;
+      color: #111827;
+    }
+
+    .sales-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #eef4ff;
+      color: #1f3c88;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .logout-small-btn {
+      margin: 0;
+      padding: 11px 18px;
+      border-radius: 12px;
+      white-space: nowrap;
+    }
+
+    .view-cart-row {
+      margin: 28px 0;
+    }
+
+    @media (max-width: 900px) {
+      .page-header {
+        flex-direction: column;
+      }
+
+      .customer-status-card {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .header-left h2 {
+        text-align: left;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .customer-status-card {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .logout-small-btn {
+        width: 100%;
+      }
+
+      .status-line {
+        white-space: normal;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="page-header">
+
+    <div class="header-left">
+      <h2>Products List</h2>
+
+      <input
+        id="searchInput"
+        placeholder="Search Products name..."
+        oninput="filterProducts()"
+      >
+
+      <div class="category-buttons">
+        <button onclick="setCategory('All')">All</button>
+        <button onclick="setCategory('Electronics')">Electronics</button>
+        <button onclick="setCategory('Coffee')">Coffee</button>
+        <button onclick="setCategory('Storage')">Storage</button>
+        <button onclick="setCategory('Bakeware')">Bakeware</button>
+        <button onclick="setCategory('Decoration')">Decoration</button>
+        <button onclick="setCategory('Food')">Food</button>
+      </div>
+    </div>
+
+
+    <div class="customer-status-card">
+      <div class="status-info">
+        <div class="status-line">
+          <span class="status-label">Logged in as:</span>
+          <span class="status-value" id="currentUser"></span>
+        </div>
+
+        <div class="sales-pill">
+          <span>Sales Contact:</span>
+          <span id="assignedSales">Loading...</span>
+        </div>
+      </div>
+
+      <button class="logout-small-btn" onclick="logout()">Logout</button>
+    </div>
+
   </div>
-</div>
 
-<button onclick="goCart()">View Cart</button>
 
-<div id="list"></div>
+  <div class="view-cart-row">
+    <button onclick="goCart()">View Cart</button>
+  </div>
+
+  <div id="list"></div>
+
 
 <script>
 let allProducts = [];
@@ -37,9 +179,11 @@ if (!user) {
   window.location.href = "login.html";
 }
 
-document.getElementById("currentUser").innerText = "Logged in as: " + user;
+document.getElementById("currentUser").innerText = user;
 
 const container = document.getElementById("list");
+
+loadCustomerInfo();
 
 fetch("/products")
   .then(response => response.json())
@@ -48,24 +192,56 @@ fetch("/products")
     filterProducts();
   });
 
+
+function loadCustomerInfo() {
+  const fallbackSales = localStorage.getItem("assigned_sales") || "Not assigned";
+
+  document.getElementById("assignedSales").innerText = fallbackSales;
+
+  fetch("/customer/info/" + encodeURIComponent(user))
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        const assignedSales = data.assigned_sales || "Not assigned";
+
+        document.getElementById("assignedSales").innerText = assignedSales;
+        localStorage.setItem("assigned_sales", assignedSales);
+      }
+    })
+    .catch(error => {
+      console.error("Customer info error:", error);
+      document.getElementById("assignedSales").innerText = fallbackSales;
+    });
+}
+
+
 function view(id) {
   window.location.href = "product.html?id=" + id;
 }
+
 
 function goCart() {
   window.location.href = "cart.html";
 }
 
+
 function logout() {
   localStorage.removeItem("user");
+  localStorage.removeItem("role");
+  localStorage.removeItem("assigned_sales");
+  localStorage.removeItem("company_name");
+  localStorage.removeItem("email");
+
   alert("You have been logged out.");
   window.location.href = "login.html";
 }
+
 
 function setCategory(category) {
   currentCategory = category;
   filterProducts();
 }
+
 
 function filterProducts() {
   const keyword = document.getElementById("searchInput").value.toLowerCase();
@@ -86,6 +262,7 @@ function filterProducts() {
   renderProducts(filtered);
 }
 
+
 function renderProducts(products) {
   container.innerHTML = "";
 
@@ -104,3 +281,6 @@ function renderProducts(products) {
   });
 }
 </script>
+
+</body>
+</html>
