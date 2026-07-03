@@ -6,6 +6,22 @@
   <link rel="stylesheet" href="/static/style.css">
 
   <style>
+
+    /* Override old global #detail style from style.css */
+    #detail {
+      background: transparent !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      max-width: none !important;
+      width: 100% !important;
+      margin: 0 !important;
+    }
+
+    #detail img {
+      border-radius: 0;
+    }
+
     .product-detail-page {
       max-width: 1180px;
       margin: 0 auto;
@@ -17,7 +33,7 @@
       box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
       padding: 30px;
       display: grid;
-      grid-template-columns: 520px 1fr;
+      grid-template-columns: minmax(420px, 520px) minmax(360px, 1fr);
       gap: 36px;
       align-items: flex-start;
     }
@@ -105,6 +121,7 @@
       max-height: 520px;
       object-fit: contain;
       display: block;
+      border-radius: 16px;
     }
 
     .main-media video {
