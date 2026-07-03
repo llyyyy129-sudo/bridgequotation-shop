@@ -5,6 +5,58 @@
   <title>Register</title>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/auth.css">
+
+  <style>
+    .password-wrap {
+      position: relative;
+    }
+
+    .password-wrap input {
+      padding-right: 52px;
+    }
+
+    .eye-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 34px;
+      height: 34px;
+      border: none;
+      background: transparent;
+      color: #667085;
+      cursor: pointer;
+      padding: 0;
+      margin: 0;
+      box-shadow: none;
+      font-size: 18px;
+      line-height: 34px;
+      border-radius: 50%;
+    }
+
+    .eye-btn:hover {
+      background: #f1f5f9;
+      transform: translateY(-50%);
+      box-shadow: none;
+    }
+
+    .password-message {
+      font-size: 13px;
+      margin-top: 7px;
+      min-height: 18px;
+      line-height: 18px;
+    }
+
+    .password-message.error {
+      color: #e11d48;
+      font-weight: 700;
+    }
+
+    .password-message.ok {
+      color: #16a34a;
+      font-weight: 700;
+    }
+  </style>
 </head>
 
 <body>
@@ -47,12 +99,42 @@
 
       <div class="field">
         <label>Password</label>
-        <input id="password" type="password" placeholder="At least 8 characters">
+
+        <div class="password-wrap">
+          <input
+            id="password"
+            type="password"
+            placeholder="At least 8 characters"
+            oninput="checkPasswordMatch()"
+          >
+          <button
+            type="button"
+            class="eye-btn"
+            onclick="togglePassword('password', this)"
+            aria-label="Show password"
+          >👁</button>
+        </div>
       </div>
 
       <div class="field">
         <label>Confirm Password</label>
-        <input id="confirm_password" type="password" placeholder="Enter password again">
+
+        <div class="password-wrap">
+          <input
+            id="confirm_password"
+            type="password"
+            placeholder="Enter password again"
+            oninput="checkPasswordMatch()"
+          >
+          <button
+            type="button"
+            class="eye-btn"
+            onclick="togglePassword('confirm_password', this)"
+            aria-label="Show confirm password"
+          >👁</button>
+        </div>
+
+        <div id="passwordMessage" class="password-message"></div>
       </div>
 
       <div class="field">
@@ -74,6 +156,49 @@
 
 
   <script>
+    function togglePassword(inputId, button) {
+      const input = document.getElementById(inputId);
+
+      if (input.type === "password") {
+        input.type = "text";
+        button.innerText = "🙈";
+      } else {
+        input.type = "password";
+        button.innerText = "👁";
+      }
+    }
+
+
+    function checkPasswordMatch() {
+      const password = document.getElementById("password").value;
+      const confirmPassword = document.getElementById("confirm_password").value;
+      const message = document.getElementById("passwordMessage");
+
+      message.className = "password-message";
+      message.innerText = "";
+
+      if (!confirmPassword) {
+        return false;
+      }
+
+      if (password !== confirmPassword) {
+        message.innerText = "Passwords do not match.";
+        message.classList.add("error");
+        return false;
+      }
+
+      if (password.length < 8) {
+        message.innerText = "Password must be at least 8 characters.";
+        message.classList.add("error");
+        return false;
+      }
+
+      message.innerText = "Passwords match.";
+      message.classList.add("ok");
+      return true;
+    }
+
+
     function register() {
       const accountType = document.getElementById("account_type").value;
       const username = document.getElementById("username").value.trim();
@@ -88,12 +213,18 @@
       }
 
       if (password.length < 8) {
-        alert("Password must be at least 8 characters.");
+        document.getElementById("passwordMessage").innerText =
+          "Password must be at least 8 characters.";
+        document.getElementById("passwordMessage").className =
+          "password-message error";
         return;
       }
 
       if (password !== confirmPassword) {
-        alert("Password and confirm password do not match.");
+        document.getElementById("passwordMessage").innerText =
+          "Passwords do not match.";
+        document.getElementById("passwordMessage").className =
+          "password-message error";
         return;
       }
 
