@@ -645,12 +645,14 @@ def assign_sales_to_customer(customer_id: int, data: dict):
             "message": "Sales user not found or not approved."
         }
 
+    customer_username = customer.username
+
     customer.assigned_sales = sales_username
 
     # Demo-friendly behavior:
     # move this customer's existing orders to the newly assigned sales.
     orders = db.query(Order).filter(
-        Order.username == customer.username
+        Order.username == customer_username
     ).all()
 
     for order in orders:
@@ -661,7 +663,7 @@ def assign_sales_to_customer(customer_id: int, data: dict):
 
     return {
         "success": True,
-        "message": f"{customer.username} has been assigned to {sales_username}."
+        "message": f"{customer_username} has been assigned to {sales_username}."
     }
 
 @app.post("/admin/users/{user_id}/change-password")
