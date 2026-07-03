@@ -86,6 +86,89 @@
       margin: 28px 0;
     }
 
+    .category-buttons button {
+      position: relative;
+      opacity: 0.86;
+    }
+
+    .category-buttons button.active-category {
+      opacity: 1;
+      background: linear-gradient(135deg, #0f3fb5, #1d4ed8);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(29, 78, 216, 0.36);
+      border: 2px solid rgba(255,255,255,0.95);
+    }
+
+    .category-buttons button.active-category::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -10px;
+      transform: translateX(-50%);
+      width: 42%;
+      height: 4px;
+      border-radius: 999px;
+      background: #1d4ed8;
+      box-shadow: 0 3px 8px rgba(29, 78, 216, 0.25);
+    }
+
+    .current-category-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      padding: 8px 14px;
+      background: white;
+      border-radius: 999px;
+      color: #1f3c88;
+      font-weight: 800;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.07);
+    }
+
+    .slogan-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 6px 0 18px 0;
+      min-height: 32px;
+    }
+
+    .slogan-badge {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: #fff7ed;
+      color: #c2410c;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      border: 1px solid #fed7aa;
+    }
+
+    .slogan-badge.blue {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-color: #bfdbfe;
+    }
+
+    .slogan-badge.green {
+      background: #ecfdf5;
+      color: #047857;
+      border-color: #bbf7d0;
+    }
+
+    .slogan-badge.purple {
+      background: #f5f3ff;
+      color: #6d28d9;
+      border-color: #ddd6fe;
+    }
+
+    .product-card p {
+      margin-bottom: 10px;
+    }
+
     @media (max-width: 900px) {
       .page-header {
         flex-direction: column;
@@ -132,13 +215,18 @@
       >
 
       <div class="category-buttons">
-        <button onclick="setCategory('All')">All</button>
-        <button onclick="setCategory('Electronics')">Electronics</button>
-        <button onclick="setCategory('Coffee')">Coffee</button>
-        <button onclick="setCategory('Storage')">Storage</button>
-        <button onclick="setCategory('Bakeware')">Bakeware</button>
-        <button onclick="setCategory('Decoration')">Decoration</button>
-        <button onclick="setCategory('Food')">Food</button>
+        <button data-category="All" onclick="setCategory('All')">All</button>
+        <button data-category="Electronics" onclick="setCategory('Electronics')">Electronics</button>
+        <button data-category="Coffee" onclick="setCategory('Coffee')">Coffee</button>
+        <button data-category="Storage" onclick="setCategory('Storage')">Storage</button>
+        <button data-category="Bakeware" onclick="setCategory('Bakeware')">Bakeware</button>
+        <button data-category="Decoration" onclick="setCategory('Decoration')">Decoration</button>
+        <button data-category="Food" onclick="setCategory('Food')">Food</button>
+      </div>
+
+      <div class="current-category-title">
+        Current Category:
+        <span id="currentCategoryLabel">All</span>
       </div>
     </div>
 
@@ -189,6 +277,7 @@ fetch("/products")
   .then(response => response.json())
   .then(products => {
     allProducts = products;
+    updateActiveCategory();
     filterProducts();
   });
 
@@ -239,7 +328,23 @@ function logout() {
 
 function setCategory(category) {
   currentCategory = category;
+  updateActiveCategory();
   filterProducts();
+}
+
+
+function updateActiveCategory() {
+  document.getElementById("currentCategoryLabel").innerText = currentCategory;
+
+  document.querySelectorAll(".category-buttons button").forEach(button => {
+    const buttonCategory = button.getAttribute("data-category");
+
+    if (buttonCategory === currentCategory) {
+      button.classList.add("active-category");
+    } else {
+      button.classList.remove("active-category");
+    }
+  });
 }
 
 
@@ -263,17 +368,76 @@ function filterProducts() {
 }
 
 
+function getProductSlogan(product, index) {
+  const category = (product.category || "").trim().toLowerCase();
+
+  if (product.slogan) {
+    return product.slogan;
+  }
+
+  if (category === "storage") {
+    return index % 2 === 0 ? "Space Saving" : "Hot Selling";
+  }
+
+  if (category === "electronics") {
+    return index % 2 === 0 ? "New Arrival" : "Special Price";
+  }
+
+  if (category === "coffee") {
+    return index % 2 === 0 ? "Premium Choice" : "Best Seller";
+  }
+
+  if (category === "bakeware") {
+    return index % 2 === 0 ? "Kitchen Essential" : "Hot Selling";
+  }
+
+  if (category === "decoration") {
+    return index % 2 === 0 ? "Elegant Design" : "Gift Pick";
+  }
+
+  if (category === "food") {
+    return index % 2 === 0 ? "Daily Use" : "Special Price";
+  }
+
+  const slogans = [
+    "Hot Selling",
+    "Special Price",
+    "New Arrival",
+    "Best Seller",
+    "Recommended"
+  ];
+
+  return slogans[index % slogans.length];
+}
+
+
+function getSloganColor(index) {
+  const colors = ["", "blue", "green", "purple"];
+  return colors[index % colors.length];
+}
+
+
 function renderProducts(products) {
   container.innerHTML = "";
 
-  products.forEach(p => {
+  products.forEach((p, index) => {
     const div = document.createElement("div");
     div.className = "product-card";
+
+    const slogan = getProductSlogan(p, index);
+    const sloganColor = getSloganColor(index);
 
     div.innerHTML = `
       <img src="${p.image}" class="product-image">
       <h3>${p.name}</h3>
       <p>Price: $${p.price}</p>
+
+      <div class="slogan-row">
+        <span class="slogan-badge ${sloganColor}">
+          ${slogan}
+        </span>
+      </div>
+
       <button onclick="view(${p.id})">View Details</button>
     `;
 
