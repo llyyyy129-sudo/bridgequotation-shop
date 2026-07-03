@@ -1,5 +1,9 @@
+* {
+  font-family: "Century Gothic", CenturyGothic, AppleGothic, Arial, sans-serif !important;
+}
+
 body {
-  font-family: Arial, sans-serif;
+  font-family: "Century Gothic", CenturyGothic, AppleGothic, Arial, sans-serif;
   background: #f5f6fa;
   margin: 0;
   padding: 40px;
