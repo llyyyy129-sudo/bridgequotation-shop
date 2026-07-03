@@ -467,25 +467,25 @@ def change_password(data: dict):
 # ADMIN USER APPROVAL
 # =========================
 
+def serialize_user(u):
+    return {
+        "id": u.id,
+        "username": u.username,
+        "company_name": u.company_name,
+        "email": u.email,
+        "account_type": u.account_type,
+        "role": u.role,
+        "assigned_sales": u.assigned_sales,
+        "approval_status": u.approval_status
+    }
+
+
 @app.get("/admin/users")
 def get_all_users():
     db = SessionLocal()
 
     users = db.query(User).order_by(User.id.desc()).all()
-
-    result = []
-
-    for u in users:
-        result.append({
-            "id": u.id,
-            "username": u.username,
-            "company_name": u.company_name,
-            "email": u.email,
-            "account_type": u.account_type,
-            "role": u.role,
-            "assigned_sales": u.assigned_sales,
-            "approval_status": u.approval_status
-        })
+    result = [serialize_user(u) for u in users]
 
     db.close()
     return result
@@ -499,19 +499,7 @@ def get_pending_users():
         User.approval_status == "Pending"
     ).order_by(User.id.desc()).all()
 
-    result = []
-
-    for u in users:
-        result.append({
-            "id": u.id,
-            "username": u.username,
-            "company_name": u.company_name,
-            "email": u.email,
-            "account_type": u.account_type,
-            "role": u.role,
-            "assigned_sales": u.assigned_sales,
-            "approval_status": u.approval_status
-        })
+    result = [serialize_user(u) for u in users]
 
     db.close()
     return result
@@ -587,6 +575,94 @@ def reject_user(user_id: int):
     }
 
 
+
+
+@app.get("/admin/sales-users")
+def get_sales_users():
+    db = SessionLocal()
+
+    users = db.query(User).filter(
+        User.role == "sales",
+        User.approval_status == "Approved"
+    ).order_by(User.username.asc()).all()
+
+    result = [
+        {
+            "id": u.id,
+            "username": u.username,
+            "company_name": u.company_name,
+            "email": u.email
+        }
+        for u in users
+        if u.username != "orange"
+    ]
+
+    db.close()
+    return result
+
+
+@app.post("/admin/customers/{customer_id}/assign-sales")
+def assign_sales_to_customer(customer_id: int, data: dict):
+    db = SessionLocal()
+
+    customer = db.query(User).filter(
+        User.id == customer_id
+    ).first()
+
+    if not customer:
+        db.close()
+        return {
+            "success": False,
+            "message": "Customer not found."
+        }
+
+    if customer.role != "customer":
+        db.close()
+        return {
+            "success": False,
+            "message": "Only customer users can be assigned to sales."
+        }
+
+    sales_username = data.get("sales_username", "").strip()
+
+    if not sales_username:
+        db.close()
+        return {
+            "success": False,
+            "message": "Please choose a sales user."
+        }
+
+    sales_user = db.query(User).filter(
+        User.username == sales_username,
+        User.role == "sales",
+        User.approval_status == "Approved"
+    ).first()
+
+    if not sales_user:
+        db.close()
+        return {
+            "success": False,
+            "message": "Sales user not found or not approved."
+        }
+
+    customer.assigned_sales = sales_username
+
+    # Demo-friendly behavior:
+    # move this customer's existing orders to the newly assigned sales.
+    orders = db.query(Order).filter(
+        Order.username == customer.username
+    ).all()
+
+    for order in orders:
+        order.sales_username = sales_username
+
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": f"{customer.username} has been assigned to {sales_username}."
+    }
 
 @app.post("/admin/users/{user_id}/change-password")
 def change_user_password(user_id: int, data: dict):
@@ -680,9 +756,18 @@ def delete_user(user_id: int):
 def create_order(data: dict):
     db = SessionLocal()
 
+    customer = db.query(User).filter(
+        User.username == data["username"]
+    ).first()
+
+    assigned_sales = "BILL"
+
+    if customer and customer.assigned_sales:
+        assigned_sales = customer.assigned_sales
+
     order = Order(
         username=data["username"],
-        sales_username="BILL",
+        sales_username=assigned_sales,
         items=json.dumps(data["items"]),
         total=data["total"],
         status="Pending"

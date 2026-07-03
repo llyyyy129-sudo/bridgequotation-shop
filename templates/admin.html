@@ -7,7 +7,7 @@
 
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: "Century Gothic", CenturyGothic, AppleGothic, Arial, sans-serif;
             background: #f5f6fa;
             margin: 0;
             padding: 35px;
@@ -79,6 +79,25 @@
         .section h2 {
             margin-top: 0;
             color: #1f3c88;
+        }
+
+        details.user-section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px 28px;
+            margin-bottom: 26px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+
+        details.user-section summary {
+            cursor: pointer;
+            font-size: 22px;
+            font-weight: bold;
+            color: #1f3c88;
+        }
+
+        .user-list {
+            margin-top: 22px;
         }
 
         .user-card {
@@ -153,6 +172,16 @@
             font-weight: bold;
         }
 
+        .save-btn {
+            background: #1f3c88;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 9px 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
         button:disabled {
             opacity: 0.65;
             cursor: not-allowed;
@@ -180,15 +209,30 @@
             font-weight: bold;
         }
 
-        details {
-            margin-bottom: 18px;
+        .assign-box {
+            margin-top: 14px;
+            background: #f8f9fc;
+            border: 1px solid #e2e5ec;
+            border-radius: 10px;
+            padding: 14px;
         }
 
-        summary {
-            cursor: pointer;
-            font-size: 20px;
-            font-weight: bold;
-            color: #1f3c88;
+        .assign-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 8px;
+        }
+
+        .sales-select {
+            min-width: 220px;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid #ccd3df;
+            padding: 0 10px;
+            background: white;
+            font-size: 14px;
         }
 
         .toast {
@@ -232,18 +276,20 @@
 
     <div class="section">
         <h2 id="pendingTitle">Pending User Approval (0)</h2>
-
         <div id="pendingUsers"></div>
     </div>
 
 
-    <div class="section">
-        <details id="allUsersDetails" open>
-            <summary id="allUsersTitle">All Users (0)</summary>
-            <br>
-            <div id="allUsers"></div>
-        </details>
-    </div>
+    <details class="user-section">
+        <summary id="customerUsersTitle">Customer Users (0)</summary>
+        <div id="customerUsers" class="user-list"></div>
+    </details>
+
+
+    <details class="user-section">
+        <summary id="salesUsersTitle">Sales Users (0)</summary>
+        <div id="salesUsers" class="user-list"></div>
+    </details>
 
 </div>
 
@@ -253,6 +299,9 @@
 <script>
 const currentUser = localStorage.getItem("user");
 const currentRole = localStorage.getItem("role");
+
+let allUsersCache = [];
+let salesUsersCache = [];
 
 document.getElementById("adminName").innerText = currentUser || "Unknown";
 
@@ -268,14 +317,22 @@ if (currentRole !== "admin") {
 
 
 async function loadAdminUsers() {
+    await loadSalesOptions();
     await loadPendingUsers();
-    await loadAllUsers();
+    await loadUserGroups();
+}
+
+
+async function loadSalesOptions() {
+    const response = await fetch("/admin/sales-users");
+    salesUsersCache = await response.json();
 }
 
 
 async function loadPendingUsers() {
     const response = await fetch("/admin/users/pending");
     const users = await response.json();
+
     const visibleUsers = users.filter(user => user.username !== "orange");
 
     document.getElementById("pendingTitle").innerText =
@@ -297,15 +354,15 @@ async function loadPendingUsers() {
         container.innerHTML += `
             <div class="user-card" id="user-card-${user.id}">
                 <div class="user-title">
-                    User #${user.id} - ${user.username}
+                    User #${user.id} - ${escapeHtml(user.username)}
                 </div>
 
                 <div class="user-info">
                     Account Type: <b>${formatAccountType(user.account_type)}</b><br>
-                    Company: <b>${user.company_name || ""}</b><br>
-                    Email: <b>${user.email || ""}</b><br>
-                    Role After Approval: <b>${user.role || ""}</b><br>
-                    Status: <span class="status-pending">${user.approval_status}</span>
+                    Company: <b>${escapeHtml(user.company_name || "")}</b><br>
+                    Email: <b>${escapeHtml(user.email || "")}</b><br>
+                    Role After Approval: <b>${escapeHtml(user.role || "")}</b><br>
+                    Status: <span class="status-pending">${escapeHtml(user.approval_status || "")}</span>
                 </div>
 
                 <div class="button-row">
@@ -325,39 +382,97 @@ async function loadPendingUsers() {
 }
 
 
-async function loadAllUsers() {
+async function loadUserGroups() {
     const response = await fetch("/admin/users");
     const users = await response.json();
-    const visibleUsers = users.filter(user => user.username !== "orange");
 
-    document.getElementById("allUsersTitle").innerText =
-        "All Users (" + visibleUsers.length + ")";
+    allUsersCache = users.filter(user => user.username !== "orange");
 
-    const container = document.getElementById("allUsers");
+    const customerUsers = allUsersCache.filter(user =>
+        user.role === "customer" || user.account_type === "customer"
+    );
+
+    const salesUsers = allUsersCache.filter(user =>
+        user.role === "sales" || user.account_type === "employee"
+    );
+
+    document.getElementById("customerUsersTitle").innerText =
+        "Customer Users (" + customerUsers.length + ")";
+
+    document.getElementById("salesUsersTitle").innerText =
+        "Sales Users (" + salesUsers.length + ")";
+
+    renderCustomerUsers(customerUsers);
+    renderSalesUsers(salesUsers);
+}
+
+
+function renderCustomerUsers(users) {
+    const container = document.getElementById("customerUsers");
     container.innerHTML = "";
 
-    if (visibleUsers.length === 0) {
+    if (users.length === 0) {
         container.innerHTML = `
             <div class="empty-message">
-                No users.
+                No customer users.
             </div>
         `;
         return;
     }
 
-    visibleUsers.forEach(user => {
+    users.forEach(user => {
         container.innerHTML += `
             <div class="user-card" id="all-user-card-${user.id}">
                 <div class="user-title">
-                    User #${user.id} - ${user.username}
+                    User #${user.id} - ${escapeHtml(user.username)}
                 </div>
 
                 <div class="user-info">
                     Account Type: <b>${formatAccountType(user.account_type)}</b><br>
-                    Company: <b>${user.company_name || ""}</b><br>
-                    Email: <b>${user.email || ""}</b><br>
-                    Role: <b>${user.role || ""}</b><br>
-                    Assigned Sales: <b>${user.assigned_sales || ""}</b><br>
+                    Company: <b>${escapeHtml(user.company_name || "")}</b><br>
+                    Email: <b>${escapeHtml(user.email || "")}</b><br>
+                    Role: <b>${escapeHtml(user.role || "")}</b><br>
+                    Assigned Sales: <b>${escapeHtml(user.assigned_sales || "Not assigned")}</b><br>
+                    Status: ${formatStatus(user.approval_status)}
+                </div>
+
+                ${renderAssignSalesBox(user)}
+
+                <div class="button-row">
+                    ${renderChangePasswordButton(user)}
+                    ${renderDeleteButton(user)}
+                </div>
+            </div>
+        `;
+    });
+}
+
+
+function renderSalesUsers(users) {
+    const container = document.getElementById("salesUsers");
+    container.innerHTML = "";
+
+    if (users.length === 0) {
+        container.innerHTML = `
+            <div class="empty-message">
+                No sales users.
+            </div>
+        `;
+        return;
+    }
+
+    users.forEach(user => {
+        container.innerHTML += `
+            <div class="user-card" id="all-user-card-${user.id}">
+                <div class="user-title">
+                    User #${user.id} - ${escapeHtml(user.username)}
+                </div>
+
+                <div class="user-info">
+                    Account Type: <b>${formatAccountType(user.account_type)}</b><br>
+                    Company: <b>${escapeHtml(user.company_name || "")}</b><br>
+                    Email: <b>${escapeHtml(user.email || "")}</b><br>
+                    Role: <b>${escapeHtml(user.role || "")}</b><br>
                     Status: ${formatStatus(user.approval_status)}
                 </div>
 
@@ -368,6 +483,53 @@ async function loadAllUsers() {
             </div>
         `;
     });
+}
+
+
+function renderAssignSalesBox(user) {
+    if (user.role !== "customer") {
+        return "";
+    }
+
+    if (user.approval_status !== "Approved") {
+        return "";
+    }
+
+    if (!salesUsersCache || salesUsersCache.length === 0) {
+        return `
+            <div class="assign-box">
+                <b>Assign Sales</b><br>
+                <span style="color:#777;">No approved sales users available.</span>
+            </div>
+        `;
+    }
+
+    let options = salesUsersCache.map(sales => {
+        const selected = sales.username === user.assigned_sales ? "selected" : "";
+
+        return `
+            <option value="${escapeHtml(sales.username)}" ${selected}>
+                ${escapeHtml(sales.username)}
+            </option>
+        `;
+    }).join("");
+
+    return `
+        <div class="assign-box">
+            <b>Assign Sales</b>
+
+            <div class="assign-row">
+                <select class="sales-select" id="assign-sales-${user.id}">
+                    <option value="">Choose sales</option>
+                    ${options}
+                </select>
+
+                <button class="save-btn" onclick="assignSales(${user.id})">
+                    Save Assignment
+                </button>
+            </div>
+        </div>
+    `;
 }
 
 
@@ -394,13 +556,6 @@ function renderDeleteButton(user) {
             Delete Account
         </button>
     `;
-}
-
-
-function escapeForJs(value) {
-    return String(value || "")
-        .replace(/\\/g, "\\\\")
-        .replace(/'/g, "\\'");
 }
 
 
@@ -517,9 +672,53 @@ async function rejectUser(userId) {
 }
 
 
+async function assignSales(userId) {
+    const select = document.getElementById("assign-sales-" + userId);
+    const salesUsername = select.value;
+
+    if (!salesUsername) {
+        alert("Please choose a sales user.");
+        return;
+    }
+
+    setProcessing(userId, true);
+
+    try {
+        const response = await fetch(
+            "/admin/customers/" + userId + "/assign-sales",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    sales_username: salesUsername
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!data.success) {
+            alert(data.message || data.detail || "Assignment failed.");
+            setProcessing(userId, false);
+            return;
+        }
+
+        await loadAdminUsers();
+        showToast(data.message);
+
+    } catch (error) {
+        console.error("Assign sales error:", error);
+        alert("Assignment failed. Please check server logs.");
+        setProcessing(userId, false);
+    }
+}
+
+
 async function changePassword(userId, username) {
     const newPassword = prompt(
-        "Enter new password for: " + username + "\n\nPassword must be at least 6 characters."
+        "Enter new password for: " + username + "\\n\\nPassword must be at least 6 characters."
     );
 
     if (newPassword === null) return;
@@ -573,7 +772,7 @@ async function changePassword(userId, username) {
 
 async function deleteUser(userId, username) {
     const ok = confirm(
-        "Delete account: " + username + "?\n\nThis will remove this user from the user list."
+        "Delete account: " + username + "?\\n\\nThis will remove this user from the user list."
     );
 
     if (!ok) return;
@@ -604,18 +803,6 @@ async function deleteUser(userId, username) {
         alert("Delete failed. Please check server logs.");
         setProcessing(userId, false);
     }
-}
-
-
-function showToast(message) {
-    const toast = document.getElementById("toast");
-
-    toast.innerText = message;
-    toast.style.display = "block";
-
-    setTimeout(() => {
-        toast.style.display = "none";
-    }, 1800);
 }
 
 
@@ -673,6 +860,35 @@ async function changeMyPassword() {
         console.error("Change my password error:", error);
         alert("Password update failed. Please check server logs.");
     }
+}
+
+
+function showToast(message) {
+    const toast = document.getElementById("toast");
+
+    toast.innerText = message;
+    toast.style.display = "block";
+
+    setTimeout(() => {
+        toast.style.display = "none";
+    }, 1800);
+}
+
+
+function escapeForJs(value) {
+    return String(value || "")
+        .replace(/\\/g, "\\\\")
+        .replace(/'/g, "\\'");
+}
+
+
+function escapeHtml(value) {
+    return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 
