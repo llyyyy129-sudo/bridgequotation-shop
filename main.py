@@ -531,6 +531,64 @@ def reject_user(user_id: int):
     }
 
 
+
+@app.post("/admin/users/{user_id}/change-password")
+def change_user_password(user_id: int, data: dict):
+    db = SessionLocal()
+
+    user = db.query(User).filter(
+        User.id == user_id
+    ).first()
+
+    if not user:
+        db.close()
+        return {
+            "success": False,
+            "message": "User not found."
+        }
+
+    username = user.username
+
+    if username == "orange":
+        db.close()
+        return {
+            "success": False,
+            "message": "Admin password cannot be changed here."
+        }
+
+    if user.approval_status != "Approved":
+        db.close()
+        return {
+            "success": False,
+            "message": "Only approved users can change password."
+        }
+
+    new_password = data.get("password", "").strip()
+
+    if not new_password:
+        db.close()
+        return {
+            "success": False,
+            "message": "Password cannot be empty."
+        }
+
+    if len(new_password) < 6:
+        db.close()
+        return {
+            "success": False,
+            "message": "Password must be at least 6 characters."
+        }
+
+    user.password = new_password
+
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": f"Password for {username} has been updated."
+    }
+
 @app.post("/admin/users/{user_id}/delete")
 def delete_user(user_id: int):
     db = SessionLocal()

@@ -117,6 +117,16 @@
             font-weight: bold;
         }
 
+        .password-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 18px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
         .delete-btn {
             background: #111827;
             color: white;
@@ -330,11 +340,29 @@ async function loadAllUsers() {
                 </div>
 
                 <div class="button-row">
+                    ${renderChangePasswordButton(user)}
                     ${renderDeleteButton(user)}
                 </div>
             </div>
         `;
     });
+}
+
+
+function renderChangePasswordButton(user) {
+    if (user.username === "orange") {
+        return "";
+    }
+
+    if (user.approval_status !== "Approved") {
+        return "";
+    }
+
+    return `
+        <button class="password-btn" onclick="changePassword(${user.id}, '${escapeForJs(user.username)}')">
+            Change Password
+        </button>
+    `;
 }
 
 
@@ -466,6 +494,60 @@ async function rejectUser(userId) {
     } catch (error) {
         console.error("Reject error:", error);
         alert("Reject failed. Please check server logs.");
+        setProcessing(userId, false);
+    }
+}
+
+
+async function changePassword(userId, username) {
+    const newPassword = prompt(
+        "Enter new password for: " + username + "\n\nPassword must be at least 6 characters."
+    );
+
+    if (newPassword === null) return;
+
+    const password = newPassword.trim();
+
+    if (!password) {
+        alert("Password cannot be empty.");
+        return;
+    }
+
+    if (password.length < 6) {
+        alert("Password must be at least 6 characters.");
+        return;
+    }
+
+    setProcessing(userId, true);
+
+    try {
+        const response = await fetch(
+            "/admin/users/" + userId + "/change-password",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    password: password
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!data.success) {
+            alert(data.message || data.detail || "Password update failed. Please check server logs.");
+            setProcessing(userId, false);
+            return;
+        }
+
+        await loadAdminUsers();
+        showToast(data.message);
+
+    } catch (error) {
+        console.error("Change password error:", error);
+        alert("Password update failed. Please check server logs.");
         setProcessing(userId, false);
     }
 }
