@@ -57,3 +57,4 @@ class Order(Base):
     items = Column(String)
     total = Column(Float)
     status = Column(String, default="Pending")
+    created_at = Column(String, default="")

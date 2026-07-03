@@ -137,6 +137,12 @@ def run_migrations():
         "VARCHAR DEFAULT 'Pending'"
     )
 
+    add_column_if_missing(
+        "orders",
+        "created_at",
+        "VARCHAR DEFAULT ''"
+    )
+
 
 run_migrations()
 
@@ -843,7 +849,8 @@ def create_order(data: dict):
         sales_username=assigned_sales,
         items=json.dumps(data["items"]),
         total=data["total"],
-        status="Pending"
+        status="Pending",
+        created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     )
 
     db.add(order)
@@ -874,6 +881,7 @@ def get_sales_orders(sales_username: str):
             "sales_username": order.sales_username,
             "total": order.total,
             "status": order.status,
+            "created_at": order.created_at,
             "items": order.items
         })
 
@@ -977,7 +985,9 @@ def get_customer_orders(username: str):
         result.append({
             "id": order.id,
             "status": order.status,
-            "total": order.total
+            "total": order.total,
+            "created_at": order.created_at,
+            "items": order.items
         })
 
     db.close()
