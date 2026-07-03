@@ -476,6 +476,8 @@ def approve_user(user_id: int):
             "message": "User not found."
         }
 
+    username = user.username
+
     user.approval_status = "Approved"
 
     if user.account_type == "employee":
@@ -490,7 +492,7 @@ def approve_user(user_id: int):
 
     return {
         "success": True,
-        "message": f"{user.username} has been approved."
+        "message": f"{username} has been approved."
     }
 
 
@@ -509,7 +511,9 @@ def reject_user(user_id: int):
             "message": "User not found."
         }
 
-    if user.username == "orange":
+    username = user.username
+
+    if username == "orange":
         db.close()
         return {
             "success": False,
@@ -523,7 +527,7 @@ def reject_user(user_id: int):
 
     return {
         "success": True,
-        "message": f"{user.username} has been rejected."
+        "message": f"{username} has been rejected."
     }
 
 
