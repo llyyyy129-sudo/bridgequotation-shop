@@ -11,45 +11,137 @@ from reportlab.lib.pagesizes import A4
 from io import BytesIO
 from datetime import datetime
 
+from sqlalchemy import text, inspect
+import json
+
+
 app = FastAPI()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 Base.metadata.create_all(bind=engine)
-from sqlalchemy import text
 
-try:
-    with engine.connect() as conn:
 
-        conn.execute(text("""
-        ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS role VARCHAR DEFAULT 'customer';
-        """))
+# =========================
+# AUTO DATABASE MIGRATION
+# =========================
 
-        conn.execute(text("""
-        ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS assigned_sales VARCHAR DEFAULT 'sales1';
-        """))
+def column_exists(table_name, column_name):
+    inspector = inspect(engine)
+    columns = inspector.get_columns(table_name)
+    return any(column["name"] == column_name for column in columns)
 
-        conn.execute(text("""
-        ALTER TABLE orders
-        ADD COLUMN IF NOT EXISTS sales_username VARCHAR DEFAULT 'sales1';
-        """))
 
-        conn.execute(text("""
-        ALTER TABLE orders
-        ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'Pending';
-        """))
+def add_column_if_missing(table_name, column_name, column_sql):
+    try:
+        if not column_exists(table_name, column_name):
+            with engine.connect() as conn:
+                conn.execute(text(f"""
+                    ALTER TABLE {table_name}
+                    ADD COLUMN {column_name} {column_sql};
+                """))
+                conn.commit()
+                print(f"Added column: {table_name}.{column_name}")
+    except Exception as e:
+        print(f"Migration skipped for {table_name}.{column_name}:", e)
 
-        conn.commit()
 
-except Exception as e:
-    print("Migration skipped:", e)
+def run_migrations():
+    add_column_if_missing(
+        "users",
+        "role",
+        "VARCHAR DEFAULT 'customer'"
+    )
+
+    add_column_if_missing(
+        "users",
+        "assigned_sales",
+        "VARCHAR DEFAULT 'BILL'"
+    )
+
+    add_column_if_missing(
+        "users",
+        "company_name",
+        "VARCHAR DEFAULT ''"
+    )
+
+    add_column_if_missing(
+        "users",
+        "email",
+        "VARCHAR DEFAULT ''"
+    )
+
+    add_column_if_missing(
+        "users",
+        "account_type",
+        "VARCHAR DEFAULT 'customer'"
+    )
+
+    add_column_if_missing(
+        "users",
+        "approval_status",
+        "VARCHAR DEFAULT 'Approved'"
+    )
+
+    add_column_if_missing(
+        "orders",
+        "sales_username",
+        "VARCHAR DEFAULT 'BILL'"
+    )
+
+    add_column_if_missing(
+        "orders",
+        "status",
+        "VARCHAR DEFAULT 'Pending'"
+    )
+
+
+run_migrations()
+
+
+def ensure_orange_admin():
+    db = SessionLocal()
+
+    orange = db.query(User).filter(
+        User.username == "orange"
+    ).first()
+
+    if orange:
+        orange.password = "Orange123456"
+        orange.role = "admin"
+        orange.account_type = "employee"
+        orange.approval_status = "Approved"
+        orange.assigned_sales = ""
+        orange.company_name = orange.company_name or "COPEC"
+        db.commit()
+        db.close()
+        return
+
+    orange = User(
+        username="orange",
+        password="Orange123456",
+        role="admin",
+        assigned_sales="",
+        company_name="COPEC",
+        email="",
+        account_type="employee",
+        approval_status="Approved"
+    )
+
+    db.add(orange)
+    db.commit()
+    db.close()
+
+
+ensure_orange_admin()
+
+
 try:
     from seed import seed_products
     seed_products()
 except Exception as e:
     print("Seed products skipped:", e)
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -60,10 +152,58 @@ app.add_middleware(
 )
 
 
+# =========================
+# PAGE ROUTES
+# =========================
+
 @app.get("/")
 def root():
     return FileResponse("templates/login.html")
 
+
+@app.get("/login.html")
+def login_page():
+    return FileResponse("templates/login.html")
+
+
+@app.get("/register.html")
+def register_page():
+    return FileResponse("templates/register.html")
+
+
+@app.get("/products.html")
+def products_page():
+    return FileResponse("templates/products.html")
+
+
+@app.get("/product.html")
+def product_page():
+    return FileResponse("templates/product.html")
+
+
+@app.get("/cart.html")
+def cart_page():
+    return FileResponse("templates/cart.html")
+
+
+@app.get("/share.html")
+def share_page():
+    return FileResponse("templates/share.html")
+
+
+@app.get("/sales.html")
+def sales_page():
+    return FileResponse("templates/sales.html")
+
+
+@app.get("/admin.html")
+def admin_page():
+    return FileResponse("templates/admin.html")
+
+
+# =========================
+# PRODUCTS
+# =========================
 
 @app.get("/products")
 def get_products():
@@ -119,26 +259,72 @@ def get_product(product_id: int):
     return {"error": "Product not found"}
 
 
+# =========================
+# AUTH
+# =========================
+
 @app.post("/register")
 def register(user: dict):
     db = SessionLocal()
 
-    existing = db.query(User).filter(
-        User.username == user["username"]
+    username = user.get("username", "").strip()
+    password = user.get("password", "").strip()
+    company_name = user.get("company_name", "").strip()
+    email = user.get("email", "").strip()
+    account_type = user.get("account_type", "customer").strip()
+
+    if not username or not password or not company_name or not email:
+        db.close()
+        return {
+            "success": False,
+            "message": "Please fill in username, password, company name and email."
+        }
+
+    if account_type not in ["customer", "employee"]:
+        db.close()
+        return {
+            "success": False,
+            "message": "Invalid account type."
+        }
+
+    existing_username = db.query(User).filter(
+        User.username == username
     ).first()
 
-    if existing:
+    if existing_username:
         db.close()
         return {
             "success": False,
             "message": "Username already exists!"
         }
 
+    existing_email = db.query(User).filter(
+        User.email == email
+    ).first()
+
+    if existing_email:
+        db.close()
+        return {
+            "success": False,
+            "message": "Email already exists!"
+        }
+
+    if account_type == "employee":
+        role = "sales"
+        assigned_sales = ""
+    else:
+        role = "customer"
+        assigned_sales = "BILL"
+
     new_user = User(
-        username=user["username"],
-        password=user["password"],
-        role="customer",
-        assigned_sales="BILL"
+        username=username,
+        password=password,
+        role=role,
+        assigned_sales=assigned_sales,
+        company_name=company_name,
+        email=email,
+        account_type=account_type,
+        approval_status="Pending"
     )
 
     db.add(new_user)
@@ -147,7 +333,7 @@ def register(user: dict):
 
     return {
         "success": True,
-        "message": "Registration successful!"
+        "message": "Registration submitted. Please wait for admin approval."
     }
 
 
@@ -156,25 +342,170 @@ def login(user: dict):
     db = SessionLocal()
 
     existing = db.query(User).filter(
-        User.username == user["username"],
-        User.password == user["password"]
+        User.username == user.get("username", ""),
+        User.password == user.get("password", "")
     ).first()
 
-    db.close()
-
-    if existing:
+    if not existing:
+        db.close()
         return {
-            "success": True,
-            "message": "Login successful!",
-            "username": existing.username,
-            "role": existing.role
+            "success": False,
+            "message": "Invalid username or password"
         }
 
-    return {
-        "success": False,
-        "message": "Invalid username or password"
+    if existing.approval_status == "Pending":
+        db.close()
+        return {
+            "success": False,
+            "message": "Your account is waiting for admin approval."
+        }
+
+    if existing.approval_status == "Rejected":
+        db.close()
+        return {
+            "success": False,
+            "message": "Your account has been rejected. Please contact admin."
+        }
+
+    result = {
+        "success": True,
+        "message": "Login successful!",
+        "username": existing.username,
+        "role": existing.role,
+        "assigned_sales": existing.assigned_sales,
+        "account_type": existing.account_type,
+        "approval_status": existing.approval_status,
+        "company_name": existing.company_name,
+        "email": existing.email
     }
 
+    db.close()
+    return result
+
+
+# =========================
+# ADMIN USER APPROVAL
+# =========================
+
+@app.get("/admin/users")
+def get_all_users():
+    db = SessionLocal()
+
+    users = db.query(User).order_by(User.id.desc()).all()
+
+    result = []
+
+    for u in users:
+        result.append({
+            "id": u.id,
+            "username": u.username,
+            "company_name": u.company_name,
+            "email": u.email,
+            "account_type": u.account_type,
+            "role": u.role,
+            "assigned_sales": u.assigned_sales,
+            "approval_status": u.approval_status
+        })
+
+    db.close()
+    return result
+
+
+@app.get("/admin/users/pending")
+def get_pending_users():
+    db = SessionLocal()
+
+    users = db.query(User).filter(
+        User.approval_status == "Pending"
+    ).order_by(User.id.desc()).all()
+
+    result = []
+
+    for u in users:
+        result.append({
+            "id": u.id,
+            "username": u.username,
+            "company_name": u.company_name,
+            "email": u.email,
+            "account_type": u.account_type,
+            "role": u.role,
+            "assigned_sales": u.assigned_sales,
+            "approval_status": u.approval_status
+        })
+
+    db.close()
+    return result
+
+
+@app.post("/admin/users/{user_id}/approve")
+def approve_user(user_id: int):
+    db = SessionLocal()
+
+    user = db.query(User).filter(
+        User.id == user_id
+    ).first()
+
+    if not user:
+        db.close()
+        return {
+            "success": False,
+            "message": "User not found."
+        }
+
+    user.approval_status = "Approved"
+
+    if user.account_type == "employee":
+        user.role = "sales"
+        user.assigned_sales = ""
+    else:
+        user.role = "customer"
+        user.assigned_sales = "BILL"
+
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": f"{user.username} has been approved."
+    }
+
+
+@app.post("/admin/users/{user_id}/reject")
+def reject_user(user_id: int):
+    db = SessionLocal()
+
+    user = db.query(User).filter(
+        User.id == user_id
+    ).first()
+
+    if not user:
+        db.close()
+        return {
+            "success": False,
+            "message": "User not found."
+        }
+
+    if user.username == "orange":
+        db.close()
+        return {
+            "success": False,
+            "message": "Admin user cannot be rejected."
+        }
+
+    user.approval_status = "Rejected"
+
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": f"{user.username} has been rejected."
+    }
+
+
+# =========================
+# ORDERS
+# =========================
 
 @app.post("/create-order")
 def create_order(data: dict):
@@ -183,7 +514,7 @@ def create_order(data: dict):
     order = Order(
         username=data["username"],
         sales_username="BILL",
-        items=str(data["items"]),
+        items=json.dumps(data["items"]),
         total=data["total"],
         status="Pending"
     )
@@ -198,39 +529,107 @@ def create_order(data: dict):
     }
 
 
-@app.get("/login.html")
-def login_page():
-    return FileResponse("templates/login.html")
+@app.get("/sales/orders/{sales_username}")
+def get_sales_orders(sales_username: str):
+    db = SessionLocal()
+
+    orders = db.query(Order).filter(
+        Order.sales_username == sales_username
+    ).all()
+
+    result = []
+
+    for order in orders:
+        result.append({
+            "id": order.id,
+            "username": order.username,
+            "customer": order.username,
+            "sales_username": order.sales_username,
+            "total": order.total,
+            "status": order.status,
+            "items": order.items
+        })
+
+    db.close()
+    return result
 
 
-@app.get("/register.html")
-def register_page():
-    return FileResponse("templates/register.html")
+@app.post("/sales/orders/{order_id}/confirm")
+def confirm_order(order_id: int):
+    db = SessionLocal()
+
+    order = db.query(Order).filter(
+        Order.id == order_id
+    ).first()
+
+    if not order:
+        db.close()
+        return {
+            "success": False,
+            "message": "Order not found"
+        }
+
+    order.status = "Confirmed"
+
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Order confirmed successfully!"
+    }
 
 
-@app.get("/products.html")
-def products_page():
-    return FileResponse("templates/products.html")
+@app.post("/sales/orders/{order_id}/reject")
+def reject_order(order_id: int):
+    db = SessionLocal()
+
+    order = db.query(Order).filter(
+        Order.id == order_id
+    ).first()
+
+    if not order:
+        db.close()
+        return {
+            "success": False,
+            "message": "Order not found"
+        }
+
+    order.status = "Rejected"
+
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Order rejected successfully!"
+    }
 
 
-@app.get("/product.html")
-def product_page():
-    return FileResponse("templates/product.html")
+@app.get("/customer/orders/{username}")
+def get_customer_orders(username: str):
+    db = SessionLocal()
+
+    orders = db.query(Order).filter(
+        Order.username == username
+    ).all()
+
+    result = []
+
+    for order in orders:
+        result.append({
+            "id": order.id,
+            "status": order.status,
+            "total": order.total
+        })
+
+    db.close()
+    return result
 
 
-@app.get("/cart.html")
-def cart_page():
-    return FileResponse("templates/cart.html")
-
-
-@app.get("/share.html")
-def share_page():
-    return FileResponse("templates/share.html")
-
-@app.get("/sales.html")
-def sales_page():
-    return FileResponse("templates/sales.html")
-
+# =========================
+# PDF QUOTATION
+# =========================
 
 @app.post("/cart/pdf")
 async def generate_cart_pdf(data: dict):
@@ -347,7 +746,7 @@ async def generate_cart_pdf(data: dict):
                 width=55,
                 height=55
             )
-        except:
+        except Exception:
             product_image = "No Image"
 
         table_data.append([
@@ -417,17 +816,20 @@ async def generate_cart_pdf(data: dict):
     buffer.seek(0)
 
     return StreamingResponse(
-            buffer,
-            media_type="application/pdf",
-            headers={
+        buffer,
+        media_type="application/pdf",
+        headers={
             "Content-Disposition": "attachment; filename=quotation.pdf"
-            }
+        }
     )
 
 
+# =========================
+# DEBUG TOOLS
+# =========================
+
 @app.get("/debug/users")
 def debug_users():
-
     db = SessionLocal()
 
     users = db.query(User).all()
@@ -435,7 +837,11 @@ def debug_users():
     result = [
         {
             "id": u.id,
-            "username": u.username
+            "username": u.username,
+            "role": u.role,
+            "approval_status": u.approval_status,
+            "company_name": u.company_name,
+            "email": u.email
         }
         for u in users
     ]
@@ -443,6 +849,7 @@ def debug_users():
     db.close()
 
     return result
+
 
 @app.get("/debug/make-sales/{username}")
 def make_sales(username: str):
@@ -460,6 +867,8 @@ def make_sales(username: str):
         }
 
     user.role = "sales"
+    user.account_type = "employee"
+    user.approval_status = "Approved"
     user.assigned_sales = ""
 
     db.commit()
@@ -470,82 +879,9 @@ def make_sales(username: str):
         "message": f"{username} is now a sales user"
     }
 
-@app.get("/sales/orders/{sales_username}")
-def get_sales_orders(sales_username: str):
-
-    db = SessionLocal()
-
-    orders = db.query(Order).filter(
-        Order.sales_username == sales_username
-    ).all()
-
-    result = []
-
-    for order in orders:
-
-        result.append({
-            "id": order.id,
-            "customer": order.username,
-            "total": order.total,
-            "status": order.status,
-            "items": order.items
-        })
-
-    db.close()
-
-    return result
-
-@app.post("/sales/orders/{order_id}/confirm")
-def confirm_order(order_id: int):
-
-    db = SessionLocal()
-
-    order = db.query(Order).filter(
-        Order.id == order_id
-    ).first()
-
-    if not order:
-        db.close()
-        return {
-            "success": False,
-            "message": "Order not found"
-        }
-
-    order.status = "Confirmed"
-
-    db.commit()
-    db.close()
-
-    return {
-        "success": True,
-        "message": "Order confirmed successfully!"
-    }
-
-@app.get("/customer/orders/{username}")
-def get_customer_orders(username: str):
-
-    db = SessionLocal()
-
-    orders = db.query(Order).filter(
-        Order.username == username
-    ).all()
-
-    result = []
-
-    for order in orders:
-        result.append({
-            "id": order.id,
-            "status": order.status,
-            "total": order.total
-        })
-
-    db.close()
-
-    return result
 
 @app.get("/debug/delete-order/{order_id}")
 def delete_order(order_id: int):
-
     db = SessionLocal()
 
     order = db.query(Order).filter(
@@ -568,30 +904,4 @@ def delete_order(order_id: int):
     return {
         "success": True,
         "message": f"Order {order_id} deleted"
-    }
-
-@app.post("/sales/orders/{order_id}/reject")
-def reject_order(order_id: int):
-
-    db = SessionLocal()
-
-    order = db.query(Order).filter(
-        Order.id == order_id
-    ).first()
-
-    if not order:
-        db.close()
-        return {
-            "success": False,
-            "message": "Order not found"
-        }
-
-    order.status = "Rejected"
-
-    db.commit()
-    db.close()
-
-    return {
-        "success": True,
-        "message": "Order rejected successfully!"
     }

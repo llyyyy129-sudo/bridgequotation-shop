@@ -31,9 +31,14 @@
 
   <script>
     function login() {
-      const username = document.getElementById("username").value;
-      const password = document.getElementById("password").value;
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
       const sharedCart = localStorage.getItem("sharedCart");
+
+      if (!username || !password) {
+        alert("Please enter username and password.");
+        return;
+      }
 
       fetch("/login", {
         method: "POST",
@@ -52,17 +57,26 @@
         if (data.success) {
           localStorage.setItem("user", data.username);
           localStorage.setItem("role", data.role);
+          localStorage.setItem("assigned_sales", data.assigned_sales || "");
+          localStorage.setItem("company_name", data.company_name || "");
+          localStorage.setItem("email", data.email || "");
+
+          if (data.role === "admin") {
+            window.location.href = "admin.html";
+            return;
+          }
 
           if (sharedCart) {
             localStorage.setItem("cart", sharedCart);
             localStorage.removeItem("sharedCart");
             window.location.href = "cart.html";
+            return;
+          }
+
+          if (data.role === "sales") {
+            window.location.href = "sales.html";
           } else {
-            if (data.role === "sales") {
-              window.location.href = "sales.html";
-            } else {
-              window.location.href = "products.html";
-            }
+            window.location.href = "products.html";
           }
         }
       })

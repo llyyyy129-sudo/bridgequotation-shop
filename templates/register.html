@@ -4,6 +4,28 @@
   <meta charset="UTF-8">
   <title>Register</title>
   <link rel="stylesheet" href="/static/style.css">
+
+  <style>
+    .register-note {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.5;
+      margin-bottom: 15px;
+    }
+
+    select {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+    }
+  </style>
 </head>
 
 <body class="auth-page">
@@ -11,6 +33,17 @@
   <div class="box">
 
     <h2>Register</h2>
+
+    <div class="register-note">
+      Please choose account type. Your account will be reviewed by admin before login.
+    </div>
+
+    <select id="account_type">
+      <option value="customer">Customer Account</option>
+      <option value="employee">Employee Account</option>
+    </select>
+
+    <br><br>
 
     <input id="username" placeholder="Username">
 
@@ -20,7 +53,15 @@
 
     <br><br>
 
-    <button onclick="register()">Register</button>
+    <input id="company_name" placeholder="Company Name">
+
+    <br><br>
+
+    <input id="email" type="email" placeholder="Email">
+
+    <br><br>
+
+    <button onclick="register()">Submit Registration</button>
 
     <br><br>
 
@@ -30,8 +71,16 @@
 
   <script>
     function register() {
-      const username = document.getElementById("username").value;
-      const password = document.getElementById("password").value;
+      const accountType = document.getElementById("account_type").value;
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const companyName = document.getElementById("company_name").value.trim();
+      const email = document.getElementById("email").value.trim();
+
+      if (!username || !password || !companyName || !email) {
+        alert("Please fill in all fields.");
+        return;
+      }
 
       fetch("/register", {
         method: "POST",
@@ -39,8 +88,11 @@
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
+          account_type: accountType,
           username: username,
-          password: password
+          password: password,
+          company_name: companyName,
+          email: email
         })
       })
       .then(response => response.json())
@@ -50,6 +102,10 @@
         if (data.success) {
           window.location.href = "login.html";
         }
+      })
+      .catch(error => {
+        console.error("Register error:", error);
+        alert("Registration failed. Please check server logs.");
       });
     }
 
@@ -60,4 +116,3 @@
 
 </body>
 </html>
-
