@@ -84,6 +84,42 @@ def run_migrations():
     )
 
     add_column_if_missing(
+        "products",
+        "image_2",
+        "VARCHAR DEFAULT ''"
+    )
+
+    add_column_if_missing(
+        "products",
+        "image_3",
+        "VARCHAR DEFAULT ''"
+    )
+
+    add_column_if_missing(
+        "products",
+        "image_4",
+        "VARCHAR DEFAULT ''"
+    )
+
+    add_column_if_missing(
+        "products",
+        "image_5",
+        "VARCHAR DEFAULT ''"
+    )
+
+    add_column_if_missing(
+        "products",
+        "image_6",
+        "VARCHAR DEFAULT ''"
+    )
+
+    add_column_if_missing(
+        "products",
+        "video",
+        "VARCHAR DEFAULT ''"
+    )
+
+    add_column_if_missing(
         "orders",
         "sales_username",
         "VARCHAR DEFAULT 'BILL'"
@@ -228,6 +264,12 @@ def get_products():
             "price": p.price,
             "description": p.description,
             "image": p.image,
+            "image_2": p.image_2,
+            "image_3": p.image_3,
+            "image_4": p.image_4,
+            "image_5": p.image_5,
+            "image_6": p.image_6,
+            "video": p.video,
             "price_500": p.price_500,
             "price_1000": p.price_1000,
             "price_3000": p.price_3000,
@@ -247,12 +289,33 @@ def get_product(product_id: int):
     db.close()
 
     if product:
+        gallery_images = [
+            product.image,
+            product.image_2,
+            product.image_3,
+            product.image_4,
+            product.image_5,
+            product.image_6
+        ]
+
+        gallery_images = [
+            image for image in gallery_images
+            if image and str(image).strip()
+        ]
+
         return {
             "id": product.id,
             "name": product.name,
             "price": product.price,
             "description": product.description,
             "image": product.image,
+            "image_2": product.image_2,
+            "image_3": product.image_3,
+            "image_4": product.image_4,
+            "image_5": product.image_5,
+            "image_6": product.image_6,
+            "gallery_images": gallery_images,
+            "video": product.video,
             "moq": product.moq,
             "material": product.material,
             "volume": product.volume,

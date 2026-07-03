@@ -10,6 +10,14 @@ class Product(Base):
     price = Column(Integer)
     description = Column(String)
     image = Column(String)
+
+    image_2 = Column(String, default="")
+    image_3 = Column(String, default="")
+    image_4 = Column(String, default="")
+    image_5 = Column(String, default="")
+    image_6 = Column(String, default="")
+    video = Column(String, default="")
+
     moq = Column(Integer)
     material = Column(String)
     volume = Column(String)

@@ -1,28 +1,257 @@
-<link rel="stylesheet" href="/static/style.css">
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Product Details</title>
+  <link rel="stylesheet" href="/static/style.css">
 
-<h2>Product Details</h2>
+  <style>
+    .product-detail-page {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
 
-<div id="detail"></div>
+    .product-detail-card {
+      background: white;
+      border-radius: 24px;
+      box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
+      padding: 30px;
+      display: grid;
+      grid-template-columns: 520px 1fr;
+      gap: 36px;
+      align-items: flex-start;
+    }
 
-<br>
+    .media-gallery {
+      display: grid;
+      grid-template-columns: 82px 1fr;
+      gap: 18px;
+      align-items: flex-start;
+    }
 
-<label>Quantity:</label>
-<input id="quantity" type="number" value="1" min="1" onchange="updatePrice()">
+    .thumb-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 520px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
 
-<br><br>
+    .thumb-item {
+      width: 76px;
+      height: 76px;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      background: #fff;
+      cursor: pointer;
+      overflow: hidden;
+      position: relative;
+      padding: 0;
+      margin: 0;
+      box-shadow: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-<button onclick="addToCart()">Add to Cart</button>
+    .thumb-item:hover {
+      transform: none;
+      box-shadow: none;
+      border-color: #93c5fd;
+      background: #f8fafc;
+    }
 
-<br><br>
+    .thumb-item.active {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
 
-<button onclick="goBack()">Back to List</button>
+    .thumb-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .video-thumb {
+      background: #0f172a;
+      color: white;
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+      line-height: 1.2;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .video-thumb .play-icon {
+      font-size: 24px;
+    }
+
+    .main-media {
+      width: 100%;
+      min-height: 430px;
+      background: #f8fafc;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border: 1px solid #eef2f7;
+    }
+
+    .main-media img {
+      width: 100%;
+      max-height: 520px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .main-media video {
+      width: 100%;
+      max-height: 520px;
+      border-radius: 18px;
+      background: #000;
+    }
+
+    .product-info h3 {
+      font-size: 30px;
+      margin: 0 0 12px 0;
+      color: #111827;
+    }
+
+    .product-desc {
+      color: #4b5563;
+      line-height: 1.7;
+      font-size: 16px;
+      margin-bottom: 24px;
+    }
+
+    .price-table {
+      border-collapse: collapse;
+      margin: 12px 0 24px 0;
+      width: 100%;
+      max-width: 360px;
+      background: white;
+    }
+
+    .price-table th,
+    .price-table td {
+      border: 1px solid #d1d5db;
+      padding: 10px 12px;
+      text-align: left;
+    }
+
+    .price-table th {
+      background: #f3f4f6;
+      color: #111827;
+    }
+
+    .live-price-box {
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 16px;
+      margin: 20px 0;
+      line-height: 1.7;
+    }
+
+    .spec-list p {
+      margin: 10px 0;
+      color: #374151;
+    }
+
+    .action-area {
+      max-width: 1180px;
+      margin: 22px auto 0;
+      background: white;
+      border-radius: 20px;
+      padding: 22px 30px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .action-area label {
+      font-weight: 800;
+    }
+
+    .action-area input {
+      width: 160px;
+    }
+
+    @media (max-width: 980px) {
+      .product-detail-card {
+        grid-template-columns: 1fr;
+      }
+
+      .media-gallery {
+        grid-template-columns: 74px 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .product-detail-card {
+        padding: 20px;
+      }
+
+      .media-gallery {
+        grid-template-columns: 1fr;
+      }
+
+      .thumb-list {
+        order: 2;
+        flex-direction: row;
+        max-height: none;
+        overflow-x: auto;
+        overflow-y: hidden;
+      }
+
+      .thumb-item {
+        flex: 0 0 72px;
+      }
+
+      .main-media {
+        min-height: 300px;
+      }
+
+      .action-area {
+        padding: 18px;
+      }
+
+      .action-area input,
+      .action-area button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="product-detail-page">
+  <h2>Product Details</h2>
+
+  <div id="detail"></div>
+</div>
+
+<div class="action-area">
+  <label>Quantity:</label>
+  <input id="quantity" type="number" value="1" min="1" onchange="updatePrice()">
+
+  <button onclick="addToCart()">Add to Cart</button>
+  <button onclick="goBack()">Back to List</button>
+</div>
+
 
 <script>
 const params = new URLSearchParams(window.location.search);
 const id = params.get("id");
 
 function money(value) {
-  return Number(value).toLocaleString(undefined, {
+  return Number(value || 0).toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
@@ -35,62 +264,179 @@ fetch(`/products/${id}`)
     document.getElementById("quantity").value = product.moq;
     document.getElementById("quantity").min = product.moq;
 
-    document.getElementById("detail").innerHTML = `
-      <img src="${product.image}" width="250">
-
-      <h3>${product.name}</h3>
-
-      <p>${product.description}</p>
-
-      <h4>Price Breaks</h4>
-
-      <table border="1" cellpadding="8" cellspacing="0">
-        <tr>
-          <th>Qty Break</th>
-          <th>Unit Price</th>
-        </tr>
-
-        <tr>
-          <td>500+ pcs</td>
-          <td>$${money(product.price_500)}</td>
-        </tr>
-
-        <tr>
-          <td>1,000+ pcs</td>
-          <td>$${money(product.price_1000)}</td>
-        </tr>
-
-        <tr>
-          <td>3,000+ pcs</td>
-          <td>$${money(product.price_3000)}</td>
-        </tr>
-
-        <tr>
-          <td>10,000+ pcs</td>
-          <td>$${money(product.price_10000)}</td>
-        </tr>
-
-        <tr>
-          <td>50,000+ pcs</td>
-          <td>$${money(product.price_50000)}</td>
-        </tr>
-      </table>
-
-      <br>
-
-      <p id="livePrice"></p>
-
-      <p>MOQ: ${Number(product.moq).toLocaleString()} pcs</p>
-      <p>Material: ${product.material}</p>
-      <p>Volume: ${product.volume}</p>
-      <p>Size: ${product.size}</p>
-      <p>Category: ${product.category}</p>
-    `;
-
     window.currentProduct = product;
+
+    renderProductDetail(product);
 
     updatePrice();
   });
+
+
+function renderProductDetail(product) {
+  const images = getGalleryImages(product);
+  const hasVideo = product.video && String(product.video).trim();
+
+  const thumbnails = [];
+
+  images.forEach((image, index) => {
+    thumbnails.push(`
+      <button
+        class="thumb-item ${index === 0 ? "active" : ""}"
+        onclick="showImage('${escapeForJs(image)}', this)"
+        type="button"
+      >
+        <img src="${image}">
+      </button>
+    `);
+  });
+
+  if (hasVideo) {
+    thumbnails.push(`
+      <button
+        class="thumb-item video-thumb ${images.length === 0 ? "active" : ""}"
+        onclick="showVideo('${escapeForJs(product.video)}', this)"
+        type="button"
+      >
+        <span class="play-icon">▶</span>
+        <span>VIDEO</span>
+      </button>
+    `);
+  }
+
+  const firstImage = images.length > 0 ? images[0] : product.image;
+
+  document.getElementById("detail").innerHTML = `
+    <div class="product-detail-card">
+
+      <div class="media-gallery">
+        <div class="thumb-list">
+          ${thumbnails.join("")}
+        </div>
+
+        <div id="mainMedia" class="main-media">
+          ${
+            firstImage
+              ? `<img src="${firstImage}" alt="${escapeHtml(product.name)}">`
+              : `<div>No Image</div>`
+          }
+        </div>
+      </div>
+
+
+      <div class="product-info">
+        <h3>${escapeHtml(product.name)}</h3>
+
+        <p class="product-desc">${escapeHtml(product.description || "")}</p>
+
+        <h4>Price Breaks</h4>
+
+        <table class="price-table">
+          <tr>
+            <th>Qty Break</th>
+            <th>Unit Price</th>
+          </tr>
+
+          <tr>
+            <td>500+ pcs</td>
+            <td>$${money(product.price_500)}</td>
+          </tr>
+
+          <tr>
+            <td>1,000+ pcs</td>
+            <td>$${money(product.price_1000)}</td>
+          </tr>
+
+          <tr>
+            <td>3,000+ pcs</td>
+            <td>$${money(product.price_3000)}</td>
+          </tr>
+
+          <tr>
+            <td>10,000+ pcs</td>
+            <td>$${money(product.price_10000)}</td>
+          </tr>
+
+          <tr>
+            <td>50,000+ pcs</td>
+            <td>$${money(product.price_50000)}</td>
+          </tr>
+        </table>
+
+        <div id="livePrice" class="live-price-box"></div>
+
+        <div class="spec-list">
+          <p>MOQ: ${Number(product.moq).toLocaleString()} pcs</p>
+          <p>Material: ${escapeHtml(product.material || "")}</p>
+          <p>Volume: ${escapeHtml(product.volume || "")}</p>
+          <p>Size: ${escapeHtml(product.size || "")}</p>
+          <p>Category: ${escapeHtml(product.category || "")}</p>
+        </div>
+      </div>
+
+    </div>
+  `;
+}
+
+
+function getGalleryImages(product) {
+  const list = [];
+
+  const fields = [
+    product.image,
+    product.image_2,
+    product.image_3,
+    product.image_4,
+    product.image_5,
+    product.image_6
+  ];
+
+  fields.forEach(image => {
+    if (image && String(image).trim()) {
+      list.push(String(image).trim());
+    }
+  });
+
+  if (product.gallery_images && Array.isArray(product.gallery_images)) {
+    product.gallery_images.forEach(image => {
+      if (image && !list.includes(image)) {
+        list.push(image);
+      }
+    });
+  }
+
+  return list;
+}
+
+
+function showImage(src, button) {
+  setActiveThumb(button);
+
+  document.getElementById("mainMedia").innerHTML = `
+    <img src="${src}" alt="Product Image">
+  `;
+}
+
+
+function showVideo(src, button) {
+  setActiveThumb(button);
+
+  document.getElementById("mainMedia").innerHTML = `
+    <video controls autoplay>
+      <source src="${src}">
+      Your browser does not support video playback.
+    </video>
+  `;
+}
+
+
+function setActiveThumb(button) {
+  document.querySelectorAll(".thumb-item").forEach(item => {
+    item.classList.remove("active");
+  });
+
+  button.classList.add("active");
+}
+
 
 function getTierPrice(quantity, product) {
   let unitPrice = product.price_500 || product.price;
@@ -114,6 +460,7 @@ function getTierPrice(quantity, product) {
   return Number(unitPrice);
 }
 
+
 function getTierLabel(quantity) {
   if (quantity >= 50000) return "50,000+ pcs";
   if (quantity >= 10000) return "10,000+ pcs";
@@ -122,6 +469,7 @@ function getTierLabel(quantity) {
   if (quantity >= 500) return "500+ pcs";
   return "MOQ";
 }
+
 
 function updatePrice() {
   const quantityInput = document.getElementById("quantity");
@@ -151,6 +499,7 @@ function updatePrice() {
     <b>Amount:</b> $${money(total)}
   `;
 }
+
 
 function addToCart() {
   let cart = JSON.parse(localStorage.getItem("cart")) || [];
@@ -191,7 +540,28 @@ function addToCart() {
   alert(`Added to cart!\nUnit Price: $${money(unitPrice)}`);
 }
 
+
 function goBack() {
   window.location.href = "products.html";
 }
+
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+
+function escapeForJs(value) {
+  return String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'");
+}
 </script>
+
+</body>
+</html>

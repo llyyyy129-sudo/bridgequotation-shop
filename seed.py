@@ -6,6 +6,18 @@ from models import Product
 Base.metadata.create_all(bind=engine)
 
 
+def value(row, column, default=""):
+    if column not in row:
+        return default
+
+    item = row[column]
+
+    if pd.isna(item):
+        return default
+
+    return item
+
+
 def seed_products():
 
     db = SessionLocal()
@@ -14,48 +26,48 @@ def seed_products():
 
         df = pd.read_excel("Products.xlsx")
         df.columns = df.columns.str.strip().str.lower()
+
         print(df.columns.tolist())
+
         for _, row in df.iterrows():
 
             existing = db.query(Product).filter(
                 Product.id == row["id"]
             ).first()
 
-            if existing:
+            product_data = {
+                "name": value(row, "name"),
+                "price": value(row, "price", 0),
+                "description": value(row, "description"),
+                "image": value(row, "image"),
 
-                existing.name = row["name"]
-                existing.price = row["price"]
-                existing.description = row["description"]
-                existing.image = row["image"]
-                existing.moq = row["moq"]
-                existing.material = row["material"]
-                existing.volume = row["volume"]
-                existing.size = row["size"]
-                existing.category = row["category"]
-                existing.price_500 = row["price_500"]
-                existing.price_1000 = row["price_1000"]
-                existing.price_3000 = row["price_3000"]
-                existing.price_10000 = row["price_10000"]
-                existing.price_50000 = row["price_50000"]   
+                "image_2": value(row, "image_2"),
+                "image_3": value(row, "image_3"),
+                "image_4": value(row, "image_4"),
+                "image_5": value(row, "image_5"),
+                "image_6": value(row, "image_6"),
+                "video": value(row, "video"),
+
+                "moq": value(row, "moq", 1),
+                "material": value(row, "material"),
+                "volume": value(row, "volume"),
+                "size": value(row, "size"),
+                "category": value(row, "category"),
+                "price_500": value(row, "price_500", 0),
+                "price_1000": value(row, "price_1000", 0),
+                "price_3000": value(row, "price_3000", 0),
+                "price_10000": value(row, "price_10000", 0),
+                "price_50000": value(row, "price_50000", 0),
+            }
+
+            if existing:
+                for key, item in product_data.items():
+                    setattr(existing, key, item)
 
             else:
-
                 product = Product(
                     id=row["id"],
-                    name=row["name"],
-                    price=row["price"],
-                    description=row["description"],
-                    image=row["image"],
-                    moq=row["moq"],
-                    material=row["material"],
-                    volume=row["volume"],
-                    size=row["size"],
-                    category=row["category"],
-                    price_500=row["price_500"],
-                    price_1000=row["price_1000"],
-                    price_3000=row["price_3000"],
-                    price_10000=row["price_10000"],
-                    price_50000=row["price_50000"]
+                    **product_data
                 )
 
                 db.add(product)
