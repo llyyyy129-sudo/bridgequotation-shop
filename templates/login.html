@@ -52,32 +52,49 @@
       })
       .then(response => response.json())
       .then(data => {
-        alert(data.message);
 
-        if (data.success) {
-          localStorage.setItem("user", data.username);
-          localStorage.setItem("role", data.role);
-          localStorage.setItem("assigned_sales", data.assigned_sales || "");
-          localStorage.setItem("company_name", data.company_name || "");
-          localStorage.setItem("email", data.email || "");
+        if (!data.success) {
+          if (
+            data.approval_status === "Pending" ||
+            data.approval_status === "Rejected"
+          ) {
+            localStorage.setItem("status_username", data.username || username);
+            localStorage.setItem("status_company_name", data.company_name || "");
+            localStorage.setItem("status_email", data.email || "");
+            localStorage.setItem("status_account_type", data.account_type || "");
+            localStorage.setItem("status_approval_status", data.approval_status || "");
+            localStorage.setItem("status_message", data.message || "");
 
-          if (data.role === "admin") {
-            window.location.href = "admin.html";
+            window.location.href = "account_status.html";
             return;
           }
 
-          if (sharedCart) {
-            localStorage.setItem("cart", sharedCart);
-            localStorage.removeItem("sharedCart");
-            window.location.href = "cart.html";
-            return;
-          }
+          alert(data.message);
+          return;
+        }
 
-          if (data.role === "sales") {
-            window.location.href = "sales.html";
-          } else {
-            window.location.href = "products.html";
-          }
+        localStorage.setItem("user", data.username);
+        localStorage.setItem("role", data.role);
+        localStorage.setItem("assigned_sales", data.assigned_sales || "");
+        localStorage.setItem("company_name", data.company_name || "");
+        localStorage.setItem("email", data.email || "");
+
+        if (data.role === "admin") {
+          window.location.href = "admin.html";
+          return;
+        }
+
+        if (sharedCart) {
+          localStorage.setItem("cart", sharedCart);
+          localStorage.removeItem("sharedCart");
+          window.location.href = "cart.html";
+          return;
+        }
+
+        if (data.role === "sales") {
+          window.location.href = "sales.html";
+        } else {
+          window.location.href = "products.html";
         }
       })
       .catch(error => {

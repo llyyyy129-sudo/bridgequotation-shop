@@ -171,6 +171,11 @@ def register_page():
     return FileResponse("templates/register.html")
 
 
+@app.get("/account_status.html")
+def account_status_page():
+    return FileResponse("templates/account_status.html")
+
+
 @app.get("/products.html")
 def products_page():
     return FileResponse("templates/products.html")
@@ -341,9 +346,12 @@ def register(user: dict):
 def login(user: dict):
     db = SessionLocal()
 
+    username = user.get("username", "").strip()
+    password = user.get("password", "").strip()
+
     existing = db.query(User).filter(
-        User.username == user.get("username", ""),
-        User.password == user.get("password", "")
+        User.username == username,
+        User.password == password
     ).first()
 
     if not existing:
@@ -353,19 +361,35 @@ def login(user: dict):
             "message": "Invalid username or password"
         }
 
-    if existing.approval_status == "Pending":
-        db.close()
-        return {
-            "success": False,
-            "message": "Your account is waiting for admin approval."
-        }
+    approval_status = existing.approval_status or "Approved"
 
-    if existing.approval_status == "Rejected":
-        db.close()
-        return {
+    if approval_status == "Pending":
+        result = {
             "success": False,
-            "message": "Your account has been rejected. Please contact admin."
+            "message": "Your account is waiting for admin approval.",
+            "username": existing.username,
+            "role": existing.role,
+            "account_type": existing.account_type,
+            "approval_status": "Pending",
+            "company_name": existing.company_name,
+            "email": existing.email
         }
+        db.close()
+        return result
+
+    if approval_status == "Rejected":
+        result = {
+            "success": False,
+            "message": "Your registration request has been rejected.",
+            "username": existing.username,
+            "role": existing.role,
+            "account_type": existing.account_type,
+            "approval_status": "Rejected",
+            "company_name": existing.company_name,
+            "email": existing.email
+        }
+        db.close()
+        return result
 
     result = {
         "success": True,
@@ -374,7 +398,7 @@ def login(user: dict):
         "role": existing.role,
         "assigned_sales": existing.assigned_sales,
         "account_type": existing.account_type,
-        "approval_status": existing.approval_status,
+        "approval_status": approval_status,
         "company_name": existing.company_name,
         "email": existing.email
     }

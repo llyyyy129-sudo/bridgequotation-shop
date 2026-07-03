@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Account Status</title>
+    <link rel="stylesheet" href="/static/style.css">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f6fa;
+            margin: 0;
+            padding: 35px;
+            color: #222;
+        }
+
+        .status-page {
+            max-width: 720px;
+            margin: 80px auto;
+        }
+
+        .status-card {
+            background: white;
+            border-radius: 18px;
+            padding: 36px 42px;
+            box-shadow: 0 4px 18px rgba(0,0,0,0.10);
+            text-align: center;
+        }
+
+        .status-icon {
+            font-size: 54px;
+            margin-bottom: 16px;
+        }
+
+        .status-title {
+            font-size: 30px;
+            margin: 0 0 12px 0;
+            color: #1f3c88;
+        }
+
+        .status-message {
+            color: #555;
+            line-height: 1.7;
+            font-size: 16px;
+            margin-bottom: 24px;
+        }
+
+        .info-box {
+            background: #f8f9fc;
+            border: 1px solid #e3e6ef;
+            border-radius: 12px;
+            text-align: left;
+            padding: 18px 20px;
+            line-height: 1.9;
+            margin-bottom: 24px;
+        }
+
+        .pending {
+            color: #ff9800;
+            font-weight: bold;
+        }
+
+        .rejected {
+            color: #f44336;
+            font-weight: bold;
+        }
+
+        .back-btn {
+            background: #1f3c88;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 22px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 15px;
+        }
+
+        .register-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 22px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 15px;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="status-page">
+    <div class="status-card">
+        <div id="statusIcon" class="status-icon">⏳</div>
+
+        <h1 id="statusTitle" class="status-title">
+            Waiting for Admin Approval
+        </h1>
+
+        <div id="statusMessage" class="status-message">
+            Your account has been submitted successfully. Please wait for admin approval.
+        </div>
+
+        <div class="info-box">
+            Username: <b id="username"></b><br>
+            Account Type: <b id="accountType"></b><br>
+            Company: <b id="companyName"></b><br>
+            Email: <b id="email"></b><br>
+            Current Status: <span id="approvalStatus" class="pending">Pending</span>
+        </div>
+
+        <button class="back-btn" onclick="goLogin()">Back to Login</button>
+        <button class="register-btn" onclick="goRegister()">Register Again</button>
+    </div>
+</div>
+
+
+<script>
+const username = localStorage.getItem("status_username") || "";
+const companyName = localStorage.getItem("status_company_name") || "";
+const email = localStorage.getItem("status_email") || "";
+const accountType = localStorage.getItem("status_account_type") || "";
+const approvalStatus = localStorage.getItem("status_approval_status") || "Pending";
+
+document.getElementById("username").innerText = username;
+document.getElementById("companyName").innerText = companyName;
+document.getElementById("email").innerText = email;
+document.getElementById("accountType").innerText =
+    accountType === "employee" ? "Employee" : "Customer";
+
+const statusEl = document.getElementById("approvalStatus");
+
+if (approvalStatus === "Rejected") {
+    document.getElementById("statusIcon").innerText = "❌";
+    document.getElementById("statusTitle").innerText = "Registration Request Rejected";
+    document.getElementById("statusMessage").innerText =
+        "Your registration request has been rejected. Please contact your administrator or submit a new registration if needed.";
+
+    statusEl.innerText = "Rejected";
+    statusEl.className = "rejected";
+} else {
+    document.getElementById("statusIcon").innerText = "⏳";
+    document.getElementById("statusTitle").innerText = "Waiting for Admin Approval";
+    document.getElementById("statusMessage").innerText =
+        "Your account has been submitted successfully. Please wait for admin approval. Once approved, you can log in directly.";
+
+    statusEl.innerText = "Pending";
+    statusEl.className = "pending";
+}
+
+function goLogin() {
+    window.location.href = "login.html";
+}
+
+function goRegister() {
+    window.location.href = "register.html";
+}
+</script>
+
+</body>
+</html>

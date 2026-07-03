@@ -71,6 +71,12 @@
             padding: 18px 20px;
             background: #fafbff;
             margin-bottom: 16px;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .user-card.processing {
+            opacity: 0.55;
+            transform: scale(0.99);
         }
 
         .user-title {
@@ -110,6 +116,11 @@
             font-weight: bold;
         }
 
+        button:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+
         .empty-message {
             color: #777;
             background: #f8f9fc;
@@ -142,6 +153,21 @@
             font-weight: bold;
             color: #1f3c88;
         }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            top: 32px;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.84);
+            color: white;
+            padding: 13px 22px;
+            border-radius: 10px;
+            font-size: 15px;
+            display: none;
+            z-index: 9999;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+        }
     </style>
 </head>
 
@@ -169,7 +195,7 @@
 
 
     <div class="section">
-        <details>
+        <details id="allUsersDetails" open>
             <summary id="allUsersTitle">All Users (0)</summary>
             <br>
             <div id="allUsers"></div>
@@ -177,6 +203,8 @@
     </div>
 
 </div>
+
+<div id="toast" class="toast"></div>
 
 
 <script>
@@ -223,7 +251,7 @@ async function loadPendingUsers() {
 
     users.forEach(user => {
         container.innerHTML += `
-            <div class="user-card">
+            <div class="user-card" id="pending-user-${user.id}">
                 <div class="user-title">
                     User #${user.id} - ${user.username}
                 </div>
@@ -313,22 +341,55 @@ function formatStatus(status) {
 }
 
 
+function setProcessing(userId, processing) {
+    const card = document.getElementById("pending-user-" + userId);
+
+    if (!card) return;
+
+    if (processing) {
+        card.classList.add("processing");
+    } else {
+        card.classList.remove("processing");
+    }
+
+    const buttons = card.querySelectorAll("button");
+    buttons.forEach(button => {
+        button.disabled = processing;
+    });
+}
+
+
 async function approveUser(userId) {
     const ok = confirm("Approve this user?");
 
     if (!ok) return;
 
-    const response = await fetch(
-        "/admin/users/" + userId + "/approve",
-        {
-            method: "POST"
+    setProcessing(userId, true);
+
+    try {
+        const response = await fetch(
+            "/admin/users/" + userId + "/approve",
+            {
+                method: "POST"
+            }
+        );
+
+        const data = await response.json();
+
+        if (!data.success) {
+            alert(data.message);
+            setProcessing(userId, false);
+            return;
         }
-    );
 
-    const data = await response.json();
-    alert(data.message);
+        await loadAdminUsers();
+        showToast(data.message);
 
-    loadAdminUsers();
+    } catch (error) {
+        console.error("Approve error:", error);
+        alert("Approve failed. Please check server logs.");
+        setProcessing(userId, false);
+    }
 }
 
 
@@ -337,17 +398,44 @@ async function rejectUser(userId) {
 
     if (!ok) return;
 
-    const response = await fetch(
-        "/admin/users/" + userId + "/reject",
-        {
-            method: "POST"
+    setProcessing(userId, true);
+
+    try {
+        const response = await fetch(
+            "/admin/users/" + userId + "/reject",
+            {
+                method: "POST"
+            }
+        );
+
+        const data = await response.json();
+
+        if (!data.success) {
+            alert(data.message);
+            setProcessing(userId, false);
+            return;
         }
-    );
 
-    const data = await response.json();
-    alert(data.message);
+        await loadAdminUsers();
+        showToast(data.message);
 
-    loadAdminUsers();
+    } catch (error) {
+        console.error("Reject error:", error);
+        alert("Reject failed. Please check server logs.");
+        setProcessing(userId, false);
+    }
+}
+
+
+function showToast(message) {
+    const toast = document.getElementById("toast");
+
+    toast.innerText = message;
+    toast.style.display = "block";
+
+    setTimeout(() => {
+        toast.style.display = "none";
+    }, 1800);
 }
 
 
