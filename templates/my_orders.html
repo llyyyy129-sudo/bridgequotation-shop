@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>My Orders</title>
+  <link rel="stylesheet" href="/static/style.css">
+
+  <style>
+    body {
+      background: #f5f6fa;
+      padding: 38px;
+    }
+
+    .orders-page {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    .orders-header {
+      background: #ffffff;
+      border-radius: 22px;
+      padding: 24px 30px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    .orders-header h2 {
+      margin: 0;
+      color: #111827;
+      text-align: left;
+    }
+
+    .orders-header .sub {
+      margin-top: 8px;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .orders-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .orders-section {
+      background: #ffffff;
+      border-radius: 22px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    .empty-message {
+      padding: 18px;
+      border-radius: 14px;
+      background: #f8fafc;
+      color: #6b7280;
+    }
+
+    .my-order-details {
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      background: #ffffff;
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+
+    .my-order-details summary {
+      cursor: pointer;
+      padding: 16px 18px;
+      list-style: none;
+    }
+
+    .my-order-details summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .my-order-summary {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .my-order-main {
+      line-height: 1.65;
+    }
+
+    .my-order-time {
+      color: #6b7280;
+      font-size: 13px;
+    }
+
+    .my-order-toggle {
+      color: #1f3c88;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .my-order-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .delete-order-btn {
+      background: #ef4444;
+    }
+
+    .delete-order-btn:hover {
+      background: #dc2626;
+    }
+
+    .my-order-items {
+      border-top: 1px solid #e5e7eb;
+      padding: 12px 18px 18px;
+      background: #fafbff;
+    }
+
+    .order-item-row {
+      padding: 12px 0;
+      border-bottom: 1px solid #e5e7eb;
+      line-height: 1.7;
+    }
+
+    .order-item-row:last-child {
+      border-bottom: none;
+    }
+
+    .order-item-name {
+      font-weight: 800;
+      color: #111827;
+      font-size: 16px;
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 18px;
+      }
+
+      .orders-header {
+        padding: 20px;
+      }
+
+      .orders-actions button {
+        width: 100%;
+      }
+
+      .my-order-right {
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="orders-page">
+
+  <div class="orders-header">
+    <div>
+      <h2>My Orders</h2>
+      <div class="sub">
+        Logged in as: <b id="currentUser"></b>
+      </div>
+    </div>
+
+    <div class="orders-actions">
+      <button onclick="goCart()">Back to Cart</button>
+      <button onclick="goProducts()">Continue Shopping</button>
+    </div>
+  </div>
+
+
+  <div class="orders-section">
+    <div id="myOrders"></div>
+  </div>
+
+</div>
+
+
+<script>
+const currentUser = localStorage.getItem("user");
+
+if (!currentUser) {
+  window.location.href = "login.html";
+}
+
+document.getElementById("currentUser").innerText = currentUser;
+
+
+async function loadMyOrders() {
+  const response = await fetch(
+    "/customer/orders/" + encodeURIComponent(currentUser)
+  );
+
+  const orders = await response.json();
+
+  const container = document.getElementById("myOrders");
+
+  container.innerHTML = "";
+
+  if (!orders || orders.length === 0) {
+    container.innerHTML = `
+      <div class="empty-message">
+        No submitted orders yet.
+      </div>
+    `;
+    return;
+  }
+
+  orders.reverse();
+
+  orders.forEach(order => {
+    let statusColor = "#ff9800";
+    let statusText = "⏳ Pending";
+
+    if (order.status === "Confirmed") {
+      statusColor = "#4caf50";
+      statusText = "✅ Confirmed";
+    }
+
+    if (order.status === "Rejected") {
+      statusColor = "#f44336";
+      statusText = "❌ Rejected";
+    }
+
+    const orderTime = order.created_at || "Not recorded";
+    const orderItems = parseOrderItems(order.items);
+
+    container.innerHTML += `
+      <details class="my-order-details" id="order-${order.id}">
+        <summary>
+          <div class="my-order-summary">
+            <div class="my-order-main">
+              <b>Order #${order.id}</b>
+              <br>
+              Total: $${Number(order.total).toFixed(2)}
+              <br>
+              Status:
+              <span style="
+                color:${statusColor};
+                font-weight:bold;
+              ">
+                ${statusText}
+              </span>
+              <br>
+              <span class="my-order-time">
+                Order Time: ${escapeHtml(orderTime)}
+              </span>
+            </div>
+
+            <div class="my-order-right">
+              <span class="my-order-toggle">
+                View Order Details ▼
+              </span>
+
+              <button
+                class="delete-order-btn"
+                onclick="deleteOrder(event, ${order.id})"
+              >
+                Delete Order
+              </button>
+            </div>
+          </div>
+        </summary>
+
+        <div class="my-order-items">
+          ${renderOrderItems(orderItems)}
+        </div>
+      </details>
+    `;
+  });
+}
+
+
+function parseOrderItems(rawItems) {
+  if (!rawItems) return [];
+
+  if (Array.isArray(rawItems)) {
+    return rawItems;
+  }
+
+  if (typeof rawItems === "string") {
+    try {
+      return JSON.parse(rawItems);
+    } catch (error) {
+      return [];
+    }
+  }
+
+  return [];
+}
+
+
+function renderOrderItems(items) {
+  if (!items || items.length === 0) {
+    return `<div class="order-item-row">No item details.</div>`;
+  }
+
+  let html = "";
+
+  items.forEach(item => {
+    const quantity = Number(item.quantity || item.qty || 0);
+    const unitPrice = Number(item.price || item.unit_price || 0);
+    const lineTotal = quantity * unitPrice;
+
+    html += `
+      <div class="order-item-row">
+        <div class="order-item-name">
+          ${escapeHtml(item.name || item.product_name || "Product")}
+        </div>
+
+        Category: ${escapeHtml(item.category || "")}<br>
+        MOQ: ${escapeHtml(item.moq || "")}<br>
+        Material: ${escapeHtml(item.material || "")}<br>
+        Size: ${escapeHtml(item.size || "")}<br>
+        Packing: ${escapeHtml(item.packing || "")}<br>
+        Customer Requirements: ${escapeHtml(item.customer_requirement || "")}<br>
+        Quantity: ${quantity.toLocaleString()}<br>
+        Unit Price: $${money(unitPrice)}<br>
+        Line Total: $${money(lineTotal)}
+      </div>
+    `;
+  });
+
+  return html;
+}
+
+
+async function deleteOrder(event, orderId) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const ok = confirm(
+    "Delete Order #" + orderId + "?\\n\\nThis will remove it from your My Orders list."
+  );
+
+  if (!ok) return;
+
+  try {
+    const response = await fetch(
+      "/customer/orders/" + orderId + "/delete",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          username: currentUser
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!data.success) {
+      alert(data.message || "Delete failed.");
+      return;
+    }
+
+    alert(data.message);
+    await loadMyOrders();
+
+  } catch (error) {
+    console.error("Delete order error:", error);
+    alert("Delete failed. Please check server logs.");
+  }
+}
+
+
+function money(value) {
+  return Number(value || 0).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+
+function goCart() {
+  window.location.href = "cart.html";
+}
+
+
+function goProducts() {
+  window.location.href = "products.html";
+}
+
+
+loadMyOrders();
+</script>
+
+</body>
+</html>

@@ -354,6 +354,11 @@ def cart_page():
     return FileResponse("templates/cart.html")
 
 
+@app.get("/my_orders.html")
+def my_orders_page():
+    return FileResponse("templates/my_orders.html")
+
+
 @app.get("/share.html")
 def share_page():
     return FileResponse("templates/share.html")
@@ -1179,6 +1184,40 @@ def get_customer_orders(username: str):
 
     db.close()
     return result
+
+
+@app.post("/customer/orders/{order_id}/delete")
+def delete_customer_order(order_id: int, data: dict):
+    db = SessionLocal()
+
+    username = data.get("username", "").strip()
+
+    order = db.query(Order).filter(
+        Order.id == order_id
+    ).first()
+
+    if not order:
+        db.close()
+        return {
+            "success": False,
+            "message": "Order not found."
+        }
+
+    if order.username != username:
+        db.close()
+        return {
+            "success": False,
+            "message": "You can only delete your own orders."
+        }
+
+    db.delete(order)
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": f"Order #{order_id} has been deleted."
+    }
 
 
 # =========================
