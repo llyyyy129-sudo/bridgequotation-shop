@@ -76,6 +76,16 @@
     background: #1f3c88;
   }
 
+  .cart-requirement-note {
+    margin: 8px 0 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    color: #374151;
+    line-height: 1.5;
+  }
+
   .quotation-hint {
     width: 100%;
     text-align: center;
@@ -299,7 +309,7 @@ function renderCart() {
         <div class="cart-requirements-box">
           <label>Customer Requirements</label>
           <div class="hint">
-            You can write special requests here, such as packing, size, color, label, artwork, shipping mark or other requirements.
+            You can change the customer's special requests here, such as packing, size, color, label, artwork, shipping mark or other requirements.
           </div>
 
           <textarea
@@ -350,6 +360,7 @@ function updateRequirement(index, value) {
   cart[index].customer_requirement = value.trim();
   localStorage.setItem("cart", JSON.stringify(cart));
 }
+
 
 function updateQuantity(index, value) {
 

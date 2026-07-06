@@ -203,8 +203,12 @@
       font-weight: 700;
     }
 
+    .media-requirements {
+      grid-column: 2 / 3;
+      margin-top: 16px;
+    }
+
     .requirements-box {
-      margin-top: 18px;
       padding: 16px;
       border-radius: 16px;
       background: #f8fafc;
@@ -293,6 +297,10 @@
 
       .thumb-item {
         flex: 0 0 72px;
+      }
+
+      .media-requirements {
+        grid-column: 1 / -1;
       }
 
       .main-media {
@@ -402,6 +410,21 @@ function renderProductDetail(product) {
               : `<div>No Image</div>`
           }
         </div>
+
+        <div class="media-requirements">
+          <div class="requirements-box">
+            <label>Customer Requirements</label>
+            <div class="hint">
+              Please write your special requests here, such as packing, size, color, label, artwork, shipping mark or other requirements.
+            </div>
+
+            <textarea
+              id="customerRequirement"
+              class="requirements-textarea"
+              placeholder="Example: Please quote color box packing. Need black color. Please check if size can be 20 x 15 cm."
+            ></textarea>
+          </div>
+        </div>
       </div>
 
 
@@ -460,19 +483,6 @@ function renderProductDetail(product) {
           </div>
 
           <p>Category: ${escapeHtml(product.category || "")}</p>
-
-          <div class="requirements-box">
-            <label>Customer Requirements</label>
-            <div class="hint">
-              Please write your special requests here, such as packing, size, color, label, artwork, shipping mark or other requirements.
-            </div>
-
-            <textarea
-              id="customerRequirement"
-              class="requirements-textarea"
-              placeholder="Example: Please quote color box packing. Need black color. Please check if size can be 20 x 15 cm."
-            ></textarea>
-          </div>
         </div>
       </div>
 
