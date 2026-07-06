@@ -205,41 +205,50 @@
 
     .media-requirements {
       grid-column: 2 / 3;
-      margin-top: 16px;
+      margin-top: 12px;
+      width: 100%;
+      max-width: 100%;
     }
 
     .requirements-box {
-      padding: 16px;
-      border-radius: 16px;
-      background: #f8fafc;
-      border: 1px solid #e5e7eb;
+      width: 100%;
+      max-width: 100%;
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      border: none;
+      box-shadow: none;
     }
 
     .requirements-box label {
       display: block;
       font-weight: 800;
       color: #111827;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
+      font-size: 15px;
     }
 
     .requirements-box .hint {
       color: #6b7280;
-      font-size: 13px;
-      line-height: 1.5;
-      margin-bottom: 10px;
+      font-size: 12px;
+      line-height: 1.45;
+      margin-bottom: 8px;
     }
 
     .requirements-textarea {
       width: 100%;
-      min-height: 120px;
+      max-width: 100%;
+      min-height: 92px;
       resize: vertical;
       border: 1.5px solid #d7dce7;
       border-radius: 14px;
-      padding: 12px 14px;
-      font-size: 15px;
+      padding: 11px 13px;
+      font-size: 14px;
       line-height: 1.5;
       background: white;
       outline: none;
+      display: block;
+      box-sizing: border-box;
     }
 
     .requirements-textarea:focus {
@@ -421,7 +430,7 @@ function renderProductDetail(product) {
             <textarea
               id="customerRequirement"
               class="requirements-textarea"
-              placeholder="Example: Please quote color box packing. Need black color. Please check if size can be 20 x 15 cm."
+              placeholder="Example: Need color box packing, black color, or custom size."
             ></textarea>
           </div>
         </div>
