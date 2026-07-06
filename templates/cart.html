@@ -155,17 +155,17 @@
     font-weight: 800;
     color: #111827;
   }
-
     .center-toast {
       position: fixed;
       left: 50%;
       top: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(17, 24, 39, 0.92);
-      color: white;
+      background: #eef4ff;
+      color: #1f3c88;
+      border: 1px solid #bfdbfe;
       padding: 16px 26px;
-      border-radius: 14px;
-      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.28);
+      border-radius: 16px;
+      box-shadow: 0 18px 45px rgba(37, 99, 235, 0.16);
       font-size: 16px;
       font-weight: 700;
       line-height: 1.55;
@@ -226,7 +226,7 @@ function showCenterMessage(message) {
 
   window.centerToastTimer = setTimeout(() => {
     toast.style.display = "none";
-  }, 1800);
+  }, 1700);
 }
 
 
@@ -465,7 +465,7 @@ async function checkout() {
 
   const result = await response.json();
 
-  showCenterMessage(result.message);
+  showCenterMessage(result.message || "Order created successfully!");
 }
 
 async function downloadPDF() {

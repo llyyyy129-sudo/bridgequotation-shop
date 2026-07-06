@@ -248,24 +248,102 @@
         .cart-item:last-child {
             border-bottom: none;
         }
+    .toast {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: #eef4ff;
+      color: #1f3c88;
+      border: 1px solid #bfdbfe;
+      padding: 16px 26px;
+      border-radius: 16px;
+      box-shadow: 0 18px 45px rgba(37, 99, 235, 0.16);
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.55;
+      white-space: pre-line;
+      max-width: min(520px, 86vw);
+      word-break: break-word;
+      text-align: center;
+      display: none;
+      z-index: 99999;
+    }
+    
+    .center-confirm-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.12);
+      z-index: 100000;
+      padding: 20px;
+    }
 
-        .toast {
-            position: fixed;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.82);
-            color: white;
-            padding: 16px 26px;
-            border-radius: 12px;
-            font-size: 16px;
-            display: none;
-            z-index: 9999;
-        }
-    </style>
+    .center-confirm-box {
+      width: min(480px, 90vw);
+      background: #ffffff;
+      border: 1px solid #dbeafe;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+      text-align: center;
+    }
+
+    .center-confirm-message {
+      color: #111827;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.65;
+      white-space: pre-line;
+      margin-bottom: 20px;
+    }
+
+    .center-confirm-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .center-confirm-ok,
+    .center-confirm-cancel {
+      min-width: 104px;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 18px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10);
+    }
+
+    .center-confirm-ok {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    .center-confirm-cancel {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+</style>
 </head>
 
 <body>
+
+<div id="centerConfirmOverlay" class="center-confirm-overlay">
+  <div class="center-confirm-box">
+    <div id="centerConfirmMessage" class="center-confirm-message"></div>
+
+    <div class="center-confirm-actions">
+      <button id="centerConfirmOk" class="center-confirm-ok" type="button">Confirm</button>
+      <button id="centerConfirmCancel" class="center-confirm-cancel" type="button">Cancel</button>
+    </div>
+  </div>
+</div>
+
 
 <div class="sales-page">
 
@@ -331,6 +409,42 @@
 
 
 <script>
+
+function showCenterConfirm(message) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("centerConfirmOverlay");
+    const messageBox = document.getElementById("centerConfirmMessage");
+    const okButton = document.getElementById("centerConfirmOk");
+    const cancelButton = document.getElementById("centerConfirmCancel");
+
+    if (!overlay || !messageBox || !okButton || !cancelButton) {
+      resolve(false);
+      return;
+    }
+
+    messageBox.innerText = message;
+    overlay.style.display = "flex";
+
+    const close = (result) => {
+      overlay.style.display = "none";
+      okButton.onclick = null;
+      cancelButton.onclick = null;
+      overlay.onclick = null;
+      resolve(result);
+    };
+
+    okButton.onclick = () => close(true);
+    cancelButton.onclick = () => close(false);
+
+    overlay.onclick = (event) => {
+      if (event.target === overlay) {
+        close(false);
+      }
+    };
+  });
+}
+
+
 const salesUsername = localStorage.getItem("user");
 const role = localStorage.getItem("role");
 
@@ -615,7 +729,7 @@ function toggleReturnButton(orderId) {
 
 
 async function confirmOrder(orderId) {
-    const ok = confirm("Confirm Order #" + orderId + "?");
+    const ok = await showCenterConfirm("Confirm Order #" + orderId + "?");
 
     if (!ok) return;
 
@@ -647,7 +761,7 @@ async function returnOrder(orderId) {
         return;
     }
 
-    const ok = confirm("Return Order #" + orderId + "?");
+    const ok = await showCenterConfirm("Return Order #" + orderId + "?");
 
     if (!ok) return;
 
@@ -689,7 +803,7 @@ function showToast(message) {
 
     setTimeout(() => {
         toast.style.display = "none";
-    }, 1500);
+    }, 1700);
 }
 
 
