@@ -1168,11 +1168,14 @@ async def generate_cart_pdf(data: dict):
     def money(value):
         return "${:,.2f}".format(float(value))
 
-    def make_text(value, center=False):
+    def make_text(value, center=False, raw_html=False):
         if value is None:
             value = ""
 
-        text = str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        if raw_html:
+            text = str(value)
+        else:
+            text = str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
         if center:
             return Paragraph(text, small_center_style)
@@ -1230,13 +1233,20 @@ async def generate_cart_pdf(data: dict):
 
         product_image = make_product_image(item.get("image", ""))
 
+        requirement = item.get("customer_requirement", "")
+
+        product_text = item.get("name", "")
+
+        if requirement:
+            product_text = f"{product_text}<br/><font size='7' color='gray'>Req: {requirement}</font>"
+
         table_data.append([
             product_image,
-            make_text(item.get("name", "")),
+            make_text(product_text, raw_html=True),
             make_text(item.get("moq", ""), center=True),
             make_text(item.get("material", ""), center=True),
             make_text(item.get("size", ""), center=True),
-            make_text(item.get("packing_request") or item.get("packing", ""), center=True),
+            make_text(item.get("packing", ""), center=True),
             make_text(f"{qty:,}", center=True),
             make_text(money(price), center=True),
             make_text(money(total), center=True)

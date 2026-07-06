@@ -13,18 +13,54 @@
     font-weight: 800;
   }
 
-  .cart-packing-input {
-    width: min(320px, 100%);
-    height: 42px;
-    border: 1.5px solid #d7dce7;
+  .packing-value {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 8px 14px;
     border-radius: 12px;
-    padding: 0 12px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    color: #111827;
+    font-weight: 700;
+  }
+
+  .cart-requirements-box {
+    margin: 12px 0;
+    padding: 14px;
+    border-radius: 16px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+  }
+
+  .cart-requirements-box label {
+    display: block;
+    font-weight: 800;
+    color: #111827;
+    margin-bottom: 7px;
+  }
+
+  .cart-requirements-box .hint {
+    color: #6b7280;
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 9px;
+  }
+
+  .cart-requirements-textarea {
+    width: 100%;
+    min-height: 96px;
+    resize: vertical;
+    border: 1.5px solid #d7dce7;
+    border-radius: 14px;
+    padding: 11px 13px;
     font-size: 15px;
+    line-height: 1.5;
     background: white;
     outline: none;
   }
 
-  .cart-packing-input:focus {
+  .cart-requirements-textarea:focus {
     border-color: #2563eb;
     box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
   }
@@ -237,10 +273,6 @@ function renderCart() {
 
     item.price = unitPrice;
 
-    if (!item.packing_request && item.packing) {
-      item.packing_request = item.packing;
-    }
-
     grandTotal += lineTotal;
 
     const div = document.createElement("div");
@@ -259,13 +291,23 @@ function renderCart() {
 
         <div class="packing-edit-row">
           <label>Packing:</label>
-          <input
-            class="cart-packing-input"
-            value="${escapeAttr(item.packing_request || item.packing || "")}"
-            placeholder="e.g. color box, hang card, blister card"
-            onchange="updatePacking(${index}, this.value)"
-            oninput="updatePacking(${index}, this.value, false)"
-          >
+          <span class="packing-value">
+            ${escapeHtml(item.packing || "Not specified")}
+          </span>
+        </div>
+
+        <div class="cart-requirements-box">
+          <label>Customer Requirements</label>
+          <div class="hint">
+            You can write special requests here, such as packing, size, color, label, artwork, shipping mark or other requirements.
+          </div>
+
+          <textarea
+            class="cart-requirements-textarea"
+            placeholder="Example: Please quote color box packing. Need black color. Please check if size can be 20 x 15 cm."
+            onchange="updateRequirement(${index}, this.value)"
+            oninput="updateRequirement(${index}, this.value)"
+          >${escapeHtml(item.customer_requirement || "")}</textarea>
         </div>
 
         <p><b>Price Tier:</b> ${getTierLabel(item.quantity)}</p>
@@ -304,13 +346,9 @@ function viewDetail(productId) {
 }
 
 
-function updatePacking(index, value, rerender = false) {
-  cart[index].packing_request = value.trim();
+function updateRequirement(index, value) {
+  cart[index].customer_requirement = value.trim();
   localStorage.setItem("cart", JSON.stringify(cart));
-
-  if (rerender) {
-    renderCart();
-  }
 }
 
 function updateQuantity(index, value) {
@@ -555,7 +593,8 @@ function renderOrderItems(items) {
         MOQ: ${escapeHtml(item.moq || "")}<br>
         Material: ${escapeHtml(item.material || "")}<br>
         Size: ${escapeHtml(item.size || "")}<br>
-        Packing: ${escapeHtml(item.packing_request || item.packing || "")}<br>
+        Packing: ${escapeHtml(item.packing || "")}<br>
+        Customer Requirements: ${escapeHtml(item.customer_requirement || "")}<br>
         Quantity: ${quantity.toLocaleString()}<br>
         Unit Price: $${money(unitPrice)}<br>
         Line Total: $${money(lineTotal)}

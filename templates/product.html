@@ -191,18 +191,54 @@
       font-weight: 800;
     }
 
-    .packing-input {
-      width: min(320px, 100%);
-      height: 42px;
-      border: 1.5px solid #d7dce7;
+    .packing-value {
+      display: inline-flex;
+      align-items: center;
+      min-height: 38px;
+      padding: 8px 14px;
       border-radius: 12px;
-      padding: 0 12px;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      color: #111827;
+      font-weight: 700;
+    }
+
+    .requirements-box {
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 16px;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+    }
+
+    .requirements-box label {
+      display: block;
+      font-weight: 800;
+      color: #111827;
+      margin-bottom: 8px;
+    }
+
+    .requirements-box .hint {
+      color: #6b7280;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+
+    .requirements-textarea {
+      width: 100%;
+      min-height: 120px;
+      resize: vertical;
+      border: 1.5px solid #d7dce7;
+      border-radius: 14px;
+      padding: 12px 14px;
       font-size: 15px;
+      line-height: 1.5;
       background: white;
       outline: none;
     }
 
-    .packing-input:focus {
+    .requirements-textarea:focus {
       border-color: #2563eb;
       box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
     }
@@ -418,15 +454,25 @@ function renderProductDetail(product) {
 
           <div class="packing-row">
             <label>Packing:</label>
-            <input
-              id="packingRequest"
-              class="packing-input"
-              value="${escapeAttr(product.packing || "")}"
-              placeholder="e.g. color box, hang card, blister card"
-            >
+            <span class="packing-value">
+              ${escapeHtml(product.packing || "Not specified")}
+            </span>
           </div>
 
           <p>Category: ${escapeHtml(product.category || "")}</p>
+
+          <div class="requirements-box">
+            <label>Customer Requirements</label>
+            <div class="hint">
+              Please write your special requests here, such as packing, size, color, label, artwork, shipping mark or other requirements.
+            </div>
+
+            <textarea
+              id="customerRequirement"
+              class="requirements-textarea"
+              placeholder="Example: Please quote color box packing. Need black color. Please check if size can be 20 x 15 cm."
+            ></textarea>
+          </div>
         </div>
       </div>
 
@@ -577,12 +623,13 @@ function addToCart() {
 
   const unitPrice = getTierPrice(quantity, currentProduct);
 
-  const packingRequestInput = document.getElementById("packingRequest");
-  const packingRequest = packingRequestInput
-    ? packingRequestInput.value.trim()
-    : (currentProduct.packing || "");
+  const requirementInput = document.getElementById("customerRequirement");
+  const customerRequirement = requirementInput
+    ? requirementInput.value.trim()
+    : "";
 
-  currentProduct.packing_request = packingRequest;
+  currentProduct.customer_requirement = customerRequirement;
+  currentProduct.packing = currentProduct.packing || "";
 
   const existing = cart.find(
     item => item.id === currentProduct.id
@@ -592,14 +639,14 @@ function addToCart() {
     existing.quantity += quantity;
     existing.price = getTierPrice(existing.quantity, currentProduct);
     existing.packing = currentProduct.packing || "";
-    existing.packing_request = packingRequest;
+    existing.customer_requirement = customerRequirement;
   } else {
     cart.push({
       ...currentProduct,
       quantity: quantity,
       price: unitPrice,
       packing: currentProduct.packing || "",
-      packing_request: packingRequest
+      customer_requirement: customerRequirement
     });
   }
 
