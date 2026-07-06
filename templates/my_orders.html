@@ -398,15 +398,24 @@ async function loadMyOrders() {
 
   const orders = await response.json();
 
+  // Customer-facing order numbers are counted from the customer's visible orders.
+  // Deleted orders are not included, so the numbers will always be continuous:
+  // Order #1, Order #2, Order #3...
+  orders
+    .sort((a, b) => Number(a.id || 0) - Number(b.id || 0))
+    .forEach((order, index) => {
+      order.customer_order_no = index + 1;
+    });
+
   const pendingOrders = orders.filter(order => order.status === "Pending");
   const confirmedOrders = orders.filter(order => order.status === "Confirmed");
   const returnedOrders = orders.filter(order =>
     order.status === "Returned" || order.status === "Rejected"
   );
 
-  pendingOrders.sort((a, b) => b.id - a.id);
-  confirmedOrders.sort((a, b) => b.id - a.id);
-  returnedOrders.sort((a, b) => b.id - a.id);
+  pendingOrders.sort((a, b) => b.customer_order_no - a.customer_order_no);
+  confirmedOrders.sort((a, b) => b.customer_order_no - a.customer_order_no);
+  returnedOrders.sort((a, b) => b.customer_order_no - a.customer_order_no);
 
   document.getElementById("pendingTitle").innerText =
     "🟠 Pending Orders (" + pendingOrders.length + ")";
@@ -465,7 +474,7 @@ function renderOrderCard(order) {
       <summary>
         <div class="my-order-summary">
           <div class="my-order-main">
-            <b>Order #${order.id}</b>
+            <b>Order #${order.customer_order_no || order.id}</b>
             <br>
             Total: $${Number(order.total).toFixed(2)}
             <br>
@@ -494,7 +503,7 @@ function renderOrderCard(order) {
 
             <button
               class="delete-order-btn"
-              onclick="deleteOrder(event, ${order.id})"
+              onclick="deleteOrder(event, ${order.id}, ${order.customer_order_no || order.id})"
             >
               Delete Order
             </button>
@@ -631,12 +640,12 @@ function getItemStatus(item, orderStatus) {
 }
 
 
-async function deleteOrder(event, orderId) {
+async function deleteOrder(event, orderId, displayOrderNo) {
   event.preventDefault();
   event.stopPropagation();
 
   const ok = await showCenterConfirm(
-    "Delete Order #" + orderId + "?\n\nThis will remove it from your My Orders list."
+    "Delete Order #" + displayOrderNo + "?\n\nThis will remove it from your My Orders list."
   );
 
   if (!ok) return;
@@ -662,7 +671,7 @@ async function deleteOrder(event, orderId) {
       return;
     }
 
-    showCenterMessage(data.message);
+    showCenterMessage("Order #" + displayOrderNo + " has been deleted.");
     await loadMyOrders();
 
   } catch (error) {
