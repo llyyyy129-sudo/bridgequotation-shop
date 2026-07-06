@@ -263,21 +263,90 @@
             background: white;
             font-size: 14px;
         }
-
-        .toast {
+    
+        .center-toast {
             position: fixed;
             left: 50%;
-            top: 32px;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.84);
-            color: white;
-            padding: 13px 22px;
-            border-radius: 10px;
-            font-size: 15px;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: #eef4ff;
+            color: #1f3c88;
+            border: 1px solid #bfdbfe;
+            padding: 16px 26px;
+            border-radius: 16px;
+            box-shadow: 0 18px 45px rgba(37, 99, 235, 0.16);
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1.55;
+            white-space: pre-line;
+            max-width: min(520px, 86vw);
+            word-break: break-word;
+            text-align: center;
             display: none;
-            z-index: 9999;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+            z-index: 99999;
         }
+
+        .center-confirm-overlay {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.12);
+            z-index: 100000;
+            padding: 20px;
+        }
+
+        .center-confirm-box {
+            width: min(480px, 90vw);
+            background: #ffffff;
+            border: 1px solid #dbeafe;
+            border-radius: 18px;
+            padding: 26px 24px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+            text-align: center;
+        }
+
+        .center-confirm-message {
+            color: #111827;
+            font-size: 16px;
+            font-weight: 800;
+            line-height: 1.65;
+            white-space: pre-line;
+            margin-bottom: 22px;
+        }
+
+        .center-confirm-actions {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .center-confirm-ok,
+        .center-confirm-cancel {
+            min-width: 104px;
+            border: none;
+            border-radius: 12px;
+            padding: 10px 18px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .center-confirm-ok {
+            background: #2563eb;
+            color: #ffffff;
+        }
+
+        .center-confirm-cancel {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
     </style>
 </head>
 
@@ -350,10 +419,76 @@
 
 </div>
 
-<div id="toast" class="toast"></div>
+<div id="centerToast" class="center-toast"></div>
 
+<div id="centerConfirmOverlay" class="center-confirm-overlay">
+    <div class="center-confirm-box">
+        <div id="centerConfirmMessage" class="center-confirm-message"></div>
+
+        <div class="center-confirm-actions">
+            <button id="centerConfirmOk" class="center-confirm-ok" type="button">Confirm</button>
+            <button id="centerConfirmCancel" class="center-confirm-cancel" type="button">Cancel</button>
+        </div>
+    </div>
+</div>
 
 <script>
+
+function showCenterMessage(message) {
+    const toast = document.getElementById("centerToast");
+
+    if (!toast) {
+        return;
+    }
+
+    toast.innerText = message;
+    toast.style.display = "block";
+
+    if (window.centerToastTimer) {
+        clearTimeout(window.centerToastTimer);
+    }
+
+    window.centerToastTimer = setTimeout(() => {
+        toast.style.display = "none";
+    }, 1700);
+}
+
+
+function showCenterConfirm(message) {
+    return new Promise((resolve) => {
+        const overlay = document.getElementById("centerConfirmOverlay");
+        const messageBox = document.getElementById("centerConfirmMessage");
+        const okButton = document.getElementById("centerConfirmOk");
+        const cancelButton = document.getElementById("centerConfirmCancel");
+
+        if (!overlay || !messageBox || !okButton || !cancelButton) {
+            resolve(false);
+            return;
+        }
+
+        messageBox.innerText = message;
+        overlay.style.display = "flex";
+
+        const close = (result) => {
+            overlay.style.display = "none";
+            okButton.onclick = null;
+            cancelButton.onclick = null;
+            overlay.onclick = null;
+            resolve(result);
+        };
+
+        okButton.onclick = () => close(true);
+        cancelButton.onclick = () => close(false);
+
+        overlay.onclick = (event) => {
+            if (event.target === overlay) {
+                close(false);
+            }
+        };
+    });
+}
+
+
 const currentUser = localStorage.getItem("user");
 const currentRole = localStorage.getItem("role");
 
@@ -363,13 +498,17 @@ let salesUsersCache = [];
 document.getElementById("adminName").innerText = currentUser || "Unknown";
 
 if (!currentUser) {
-    alert("Please login first.");
-    window.location.href = "login.html";
+    showCenterMessage("Please login first.");
+    setTimeout(() => {
+        window.location.href = "login.html";
+    }, 900);
 }
 
 if (currentRole !== "admin") {
-    alert("Only admin can access this page.");
-    window.location.href = "login.html";
+    showCenterMessage("Only admin can access this page.");
+    setTimeout(() => {
+        window.location.href = "login.html";
+    }, 900);
 }
 
 
@@ -401,7 +540,7 @@ async function savePricingSetting() {
     const percentage = Number(document.getElementById("bClassPercent").value);
 
     if (!percentage || percentage < 100) {
-        alert("B Class percentage must be 100 or above.");
+        showCenterMessage("B Class percentage must be 100 or above.");
         return;
     }
 
@@ -419,7 +558,7 @@ async function savePricingSetting() {
         const data = await response.json();
 
         if (!data.success) {
-            alert(data.message || "Failed to update pricing.");
+            showCenterMessage(data.message || "Failed to update pricing.");
             return;
         }
 
@@ -427,7 +566,7 @@ async function savePricingSetting() {
 
     } catch (error) {
         console.error("Save pricing setting error:", error);
-        alert("Failed to update pricing. Please check server logs.");
+        showCenterMessage("Failed to update pricing. Please check server logs.");
     }
 }
 
@@ -654,7 +793,7 @@ async function updateCustomerLevel(userId) {
         const data = await response.json();
 
         if (!data.success) {
-            alert(data.message || data.detail || "Level update failed.");
+            showCenterMessage(data.message || data.detail || "Level update failed.");
             setProcessing(userId, false);
             return;
         }
@@ -664,7 +803,7 @@ async function updateCustomerLevel(userId) {
 
     } catch (error) {
         console.error("Update customer level error:", error);
-        alert("Level update failed. Please check server logs.");
+        showCenterMessage("Level update failed. Please check server logs.");
         setProcessing(userId, false);
     }
 }
@@ -789,7 +928,7 @@ function setProcessing(userId, processing) {
 
 
 async function approveUser(userId) {
-    const ok = confirm("Approve this user?");
+    const ok = await showCenterConfirm("Approve this user?");
 
     if (!ok) return;
 
@@ -806,7 +945,7 @@ async function approveUser(userId) {
         const data = await response.json();
 
         if (!data.success) {
-            alert(data.message || data.detail || "Operation failed. Please check server logs.");
+            showCenterMessage(data.message || data.detail || "Operation failed. Please check server logs.");
             setProcessing(userId, false);
             return;
         }
@@ -816,14 +955,14 @@ async function approveUser(userId) {
 
     } catch (error) {
         console.error("Approve error:", error);
-        alert("Approve failed. Please check server logs.");
+        showCenterMessage("Approve failed. Please check server logs.");
         setProcessing(userId, false);
     }
 }
 
 
 async function rejectUser(userId) {
-    const ok = confirm("Reject this user?");
+    const ok = await showCenterConfirm("Reject this user?");
 
     if (!ok) return;
 
@@ -840,7 +979,7 @@ async function rejectUser(userId) {
         const data = await response.json();
 
         if (!data.success) {
-            alert(data.message || data.detail || "Operation failed. Please check server logs.");
+            showCenterMessage(data.message || data.detail || "Operation failed. Please check server logs.");
             setProcessing(userId, false);
             return;
         }
@@ -850,7 +989,7 @@ async function rejectUser(userId) {
 
     } catch (error) {
         console.error("Reject error:", error);
-        alert("Reject failed. Please check server logs.");
+        showCenterMessage("Reject failed. Please check server logs.");
         setProcessing(userId, false);
     }
 }
@@ -861,7 +1000,7 @@ async function assignSales(userId) {
     const salesUsername = select.value;
 
     if (!salesUsername) {
-        alert("Please choose a sales user.");
+        showCenterMessage("Please choose a sales user.");
         return;
     }
 
@@ -884,7 +1023,7 @@ async function assignSales(userId) {
         const data = await response.json();
 
         if (!data.success) {
-            alert(data.message || data.detail || "Assignment failed.");
+            showCenterMessage(data.message || data.detail || "Assignment failed.");
             setProcessing(userId, false);
             return;
         }
@@ -894,7 +1033,7 @@ async function assignSales(userId) {
 
     } catch (error) {
         console.error("Assign sales error:", error);
-        alert("Assignment failed. Please check server logs.");
+        showCenterMessage("Assignment failed. Please check server logs.");
         setProcessing(userId, false);
     }
 }
@@ -910,12 +1049,12 @@ async function changePassword(userId, username) {
     const password = newPassword.trim();
 
     if (!password) {
-        alert("Password cannot be empty.");
+        showCenterMessage("Password cannot be empty.");
         return;
     }
 
     if (password.length < 6) {
-        alert("Password must be at least 6 characters.");
+        showCenterMessage("Password must be at least 6 characters.");
         return;
     }
 
@@ -938,7 +1077,7 @@ async function changePassword(userId, username) {
         const data = await response.json();
 
         if (!data.success) {
-            alert(data.message || data.detail || "Password update failed. Please check server logs.");
+            showCenterMessage(data.message || data.detail || "Password update failed. Please check server logs.");
             setProcessing(userId, false);
             return;
         }
@@ -948,15 +1087,15 @@ async function changePassword(userId, username) {
 
     } catch (error) {
         console.error("Change password error:", error);
-        alert("Password update failed. Please check server logs.");
+        showCenterMessage("Password update failed. Please check server logs.");
         setProcessing(userId, false);
     }
 }
 
 
 async function deleteUser(userId, username) {
-    const ok = confirm(
-        "Delete account: " + username + "?\\n\\nThis will remove this user from the user list."
+    const ok = await showCenterConfirm(
+        "Delete account: " + username + "?\n\nThis will remove this user from the user list."
     );
 
     if (!ok) return;
@@ -974,7 +1113,7 @@ async function deleteUser(userId, username) {
         const data = await response.json();
 
         if (!data.success) {
-            alert(data.message || data.detail || "Operation failed. Please check server logs.");
+            showCenterMessage(data.message || data.detail || "Operation failed. Please check server logs.");
             setProcessing(userId, false);
             return;
         }
@@ -984,7 +1123,7 @@ async function deleteUser(userId, username) {
 
     } catch (error) {
         console.error("Delete error:", error);
-        alert("Delete failed. Please check server logs.");
+        showCenterMessage("Delete failed. Please check server logs.");
         setProcessing(userId, false);
     }
 }
@@ -996,7 +1135,7 @@ async function changeMyPassword() {
     if (currentPassword === null) return;
 
     if (!currentPassword.trim()) {
-        alert("Current password cannot be empty.");
+        showCenterMessage("Current password cannot be empty.");
         return;
     }
 
@@ -1005,12 +1144,12 @@ async function changeMyPassword() {
     if (newPassword === null) return;
 
     if (!newPassword.trim()) {
-        alert("New password cannot be empty.");
+        showCenterMessage("New password cannot be empty.");
         return;
     }
 
     if (newPassword.trim().length < 6) {
-        alert("New password must be at least 6 characters.");
+        showCenterMessage("New password must be at least 6 characters.");
         return;
     }
 
@@ -1033,29 +1172,22 @@ async function changeMyPassword() {
         const data = await response.json();
 
         if (!data.success) {
-            alert(data.message || data.detail || "Password update failed.");
+            showCenterMessage(data.message || data.detail || "Password update failed.");
             return;
         }
 
-        alert(data.message);
+        showCenterMessage(data.message);
         logout();
 
     } catch (error) {
         console.error("Change my password error:", error);
-        alert("Password update failed. Please check server logs.");
+        showCenterMessage("Password update failed. Please check server logs.");
     }
 }
 
 
 function showToast(message) {
-    const toast = document.getElementById("toast");
-
-    toast.innerText = message;
-    toast.style.display = "block";
-
-    setTimeout(() => {
-        toast.style.display = "none";
-    }, 1800);
+    showCenterMessage(message);
 }
 
 
