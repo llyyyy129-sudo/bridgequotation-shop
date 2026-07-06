@@ -47,18 +47,109 @@
       flex-wrap: wrap;
     }
 
+    .customer-board {
+      background: #ffffff;
+      border-radius: 22px;
+      padding: 22px 24px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      margin-bottom: 24px;
+    }
+
+    .customer-board-title {
+      margin: 0 0 16px;
+      color: #1f3c88;
+      font-size: 22px;
+      font-weight: 900;
+    }
+
+    .customer-board-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      gap: 14px;
+    }
+
+    .customer-board-card {
+      border-radius: 16px;
+      padding: 16px 18px;
+      border: 1px solid #e5e7eb;
+      background: #f8fafc;
+    }
+
+    .customer-board-label {
+      color: #6b7280;
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .customer-board-number {
+      color: #111827;
+      font-size: 28px;
+      font-weight: 900;
+    }
+
+    .board-total {
+      background: #eef4ff;
+      border-color: #bfdbfe;
+    }
+
+    .board-pending {
+      background: #fff7ed;
+      border-color: #fed7aa;
+    }
+
+    .board-confirmed {
+      background: #ecfdf5;
+      border-color: #bbf7d0;
+    }
+
+    .board-returned {
+      background: #fff1f2;
+      border-color: #fecdd3;
+    }
+
     .order-section {
       background: #ffffff;
       border-radius: 22px;
-      padding: 24px;
+      padding: 0;
       box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
       margin-bottom: 22px;
+      overflow: hidden;
+    }
+
+    .order-section summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .order-section summary::-webkit-details-marker {
+      display: none;
     }
 
     .order-section-title {
-      margin: 0 0 18px;
+      margin: 0;
       color: #1f3c88;
       font-size: 22px;
+    }
+
+    .section-arrow {
+      color: #6b7280;
+      font-size: 18px;
+      transition: transform 0.2s ease;
+      flex: 0 0 auto;
+    }
+
+    .order-section[open] .section-arrow {
+      transform: rotate(90deg);
+    }
+
+    .section-content {
+      padding: 0 24px 24px;
     }
 
     .empty-message {
@@ -273,6 +364,10 @@
       .orders-header { padding: 20px; }
       .orders-actions button { width: 100%; }
       .my-order-right { width: 100%; justify-content: space-between; }
+
+      .customer-board-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -310,20 +405,59 @@
   </div>
 
 
-  <div class="order-section">
-    <h3 id="pendingTitle" class="order-section-title">🟠 Pending Orders (0)</h3>
-    <div id="pendingOrders"></div>
+  <div class="customer-board">
+    <h3 class="customer-board-title">Product Status Board</h3>
+
+    <div class="customer-board-grid">
+      <div class="customer-board-card board-total">
+        <div class="customer-board-label">Total Products</div>
+        <div id="boardTotalProducts" class="customer-board-number">0</div>
+      </div>
+
+      <div class="customer-board-card board-pending">
+        <div class="customer-board-label">Pending Products</div>
+        <div id="boardPendingProducts" class="customer-board-number">0</div>
+      </div>
+
+      <div class="customer-board-card board-confirmed">
+        <div class="customer-board-label">Confirmed Products</div>
+        <div id="boardConfirmedProducts" class="customer-board-number">0</div>
+      </div>
+
+      <div class="customer-board-card board-returned">
+        <div class="customer-board-label">Returned Products</div>
+        <div id="boardReturnedProducts" class="customer-board-number">0</div>
+      </div>
+    </div>
   </div>
 
-  <div class="order-section">
-    <h3 id="confirmedTitle" class="order-section-title">🟢 Confirmed Orders (0)</h3>
-    <div id="confirmedOrders"></div>
-  </div>
 
-  <div class="order-section">
-    <h3 id="returnedTitle" class="order-section-title">🔴 Returned Orders (0)</h3>
-    <div id="returnedOrders"></div>
-  </div>
+  <details class="order-section" open>
+    <summary>
+      <h3 id="pendingTitle" class="order-section-title">🟠 Pending Orders (0)</h3>
+      <span class="section-arrow">▶</span>
+    </summary>
+
+    <div id="pendingOrders" class="section-content"></div>
+  </details>
+
+  <details class="order-section">
+    <summary>
+      <h3 id="confirmedTitle" class="order-section-title">🟢 Confirmed Orders (0)</h3>
+      <span class="section-arrow">▶</span>
+    </summary>
+
+    <div id="confirmedOrders" class="section-content"></div>
+  </details>
+
+  <details class="order-section">
+    <summary>
+      <h3 id="returnedTitle" class="order-section-title">🔴 Returned Orders (0)</h3>
+      <span class="section-arrow">▶</span>
+    </summary>
+
+    <div id="returnedOrders" class="section-content"></div>
+  </details>
 
 </div>
 
@@ -407,6 +541,8 @@ async function loadMyOrders() {
       order.customer_order_no = index + 1;
     });
 
+  updateProductStatusBoard(orders);
+
   const pendingOrders = orders.filter(order => order.status === "Pending");
   const confirmedOrders = orders.filter(order => order.status === "Confirmed");
   const returnedOrders = orders.filter(order =>
@@ -430,6 +566,40 @@ async function loadMyOrders() {
   renderOrderGroup("confirmedOrders", confirmedOrders, "No confirmed orders.");
   renderOrderGroup("returnedOrders", returnedOrders, "No returned orders.");
 }
+
+
+function updateProductStatusBoard(orders) {
+  const board = {
+    total: 0,
+    pending: 0,
+    confirmed: 0,
+    returned: 0
+  };
+
+  orders.forEach(order => {
+    const items = parseOrderItems(order.items);
+
+    items.forEach(item => {
+      board.total += 1;
+
+      const status = getItemStatus(item, order.status);
+
+      if (status === "Confirmed") {
+        board.confirmed += 1;
+      } else if (status === "Returned") {
+        board.returned += 1;
+      } else {
+        board.pending += 1;
+      }
+    });
+  });
+
+  document.getElementById("boardTotalProducts").innerText = board.total;
+  document.getElementById("boardPendingProducts").innerText = board.pending;
+  document.getElementById("boardConfirmedProducts").innerText = board.confirmed;
+  document.getElementById("boardReturnedProducts").innerText = board.returned;
+}
+
 
 
 function renderOrderGroup(containerId, orders, emptyText) {
