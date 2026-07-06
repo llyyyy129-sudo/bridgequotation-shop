@@ -1120,14 +1120,33 @@ def delete_user(user_id: int):
 def create_order(data: dict):
     db = SessionLocal()
 
+    order_username = (
+        data.get("order_username") or
+        data.get("customer_username") or
+        data.get("username")
+    )
+
+    if not order_username:
+        db.close()
+        return {
+            "success": False,
+            "message": "Customer username is required."
+        }
+
     customer = db.query(User).filter(
-        User.username == data["username"]
+        User.username == order_username
     ).first()
 
     assigned_sales = "BILL"
 
     if customer and customer.assigned_sales:
         assigned_sales = customer.assigned_sales
+
+    # Sales users can create an order for a customer.
+    # In that case, the order still belongs to the customer,
+    # but sales_username is the current sales account.
+    if data.get("sales_username"):
+        assigned_sales = data.get("sales_username")
 
     items = data.get("items", [])
 
@@ -1137,7 +1156,7 @@ def create_order(data: dict):
             item["item_return_comment"] = ""
 
     order = Order(
-        username=data["username"],
+        username=order_username,
         sales_username=assigned_sales,
         items=json.dumps(items),
         total=data["total"],

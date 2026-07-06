@@ -94,6 +94,43 @@
     margin-top: 6px;
   }
 
+  .sales-cart-banner {
+    max-width: 980px;
+    margin: 0 auto 20px;
+    background: #eef4ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 18px;
+    padding: 16px 20px;
+    color: #1f3c88;
+    box-shadow: 0 10px 28px rgba(37, 99, 235, 0.12);
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .sales-cart-banner b {
+    color: #111827;
+  }
+
+  .sales-cart-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .sales-cart-actions button {
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-weight: 900;
+  }
+
+  .back-sales-btn {
+    background: #1f3c88;
+  }
+
+
   .my-order-details {
     border: 1px solid #e5e7eb;
     border-radius: 12px;
@@ -184,6 +221,20 @@
 <div id="centerToast" class="center-toast"></div>
 
 <h2>Shopping Cart</h2>
+
+<div id="salesCartBanner" class="sales-cart-banner">
+  <div>
+    Sales Mode:
+    creating order for customer
+    <b id="salesCartCustomer"></b>
+  </div>
+
+  <div class="sales-cart-actions">
+    <button onclick="goBack()">Continue Adding Products</button>
+    <button class="back-sales-btn" onclick="backToSalesDashboard()">Back to Sales Dashboard</button>
+  </div>
+</div>
+
 <div class="quotation-info">
   <input id="customerName" placeholder="Customer Name">
   <input id="customerCompany" placeholder="Customer Company">
@@ -234,15 +285,40 @@ function showCenterMessage(message) {
 }
 
 
-let cart = JSON.parse(localStorage.getItem("cart")) || [];
+const currentUser = localStorage.getItem("user") || "";
+const currentRole = localStorage.getItem("role") || "";
+
+const salesModeActive =
+  currentRole === "sales" &&
+  localStorage.getItem("sales_mode_active") === "1" &&
+  localStorage.getItem("sales_mode_customer");
+
+const salesModeCustomer =
+  salesModeActive ? localStorage.getItem("sales_mode_customer") : "";
+
+const orderUsername =
+  salesModeActive ? salesModeCustomer : currentUser;
+
+const cartKey =
+  salesModeActive && salesModeCustomer
+    ? "sales_cart_" + salesModeCustomer
+    : "cart";
+
+let cart = JSON.parse(localStorage.getItem(cartKey)) || [];
 
 const cartContainer = document.getElementById("cart");
 const totalElement = document.getElementById("total");
 
+setupSalesCartBanner();
+
 async function fillCustomerInfo() {
-  const username = localStorage.getItem("user") || "";
-  const savedCompany = localStorage.getItem("company_name") || "";
-  const savedEmail = localStorage.getItem("email") || "";
+  const username = orderUsername;
+  const savedCompany = salesModeActive
+    ? (localStorage.getItem("sales_mode_customer_company") || "")
+    : (localStorage.getItem("company_name") || "");
+  const savedEmail = salesModeActive
+    ? (localStorage.getItem("sales_mode_customer_email") || "")
+    : (localStorage.getItem("email") || "");
 
   document.getElementById("customerName").value = username;
   document.getElementById("customerCompany").value = savedCompany;
@@ -269,14 +345,33 @@ async function fillCustomerInfo() {
       document.getElementById("customerEmail").value =
         data.email || savedEmail;
 
-      localStorage.setItem("company_name", data.company_name || "");
-      localStorage.setItem("email", data.email || "");
+      if (salesModeActive) {
+        localStorage.setItem("sales_mode_customer_company", data.company_name || "");
+        localStorage.setItem("sales_mode_customer_email", data.email || "");
+      } else {
+        localStorage.setItem("company_name", data.company_name || "");
+        localStorage.setItem("email", data.email || "");
+      }
     }
 
   } catch (error) {
     console.error("Customer info load failed:", error);
   }
 }
+
+function setupSalesCartBanner() {
+  const banner = document.getElementById("salesCartBanner");
+
+  if (!banner) return;
+
+  if (salesModeActive) {
+    banner.style.display = "flex";
+    document.getElementById("salesCartCustomer").innerText = salesModeCustomer;
+  } else {
+    banner.style.display = "none";
+  }
+}
+
 
 function getTierPrice(quantity, item) {
   let unitPrice = item.price;
@@ -390,7 +485,7 @@ function renderCart() {
     cartContainer.appendChild(div);
   });
 
-  localStorage.setItem("cart", JSON.stringify(cart));
+  localStorage.setItem(cartKey, JSON.stringify(cart));
 
   totalElement.innerText = "Grand Total: $" + money(grandTotal);
 }
@@ -402,7 +497,7 @@ function viewDetail(productId) {
 
 function updateRequirement(index, value) {
   cart[index].customer_requirement = value.trim();
-  localStorage.setItem("cart", JSON.stringify(cart));
+  localStorage.setItem(cartKey, JSON.stringify(cart));
 }
 
 
@@ -422,33 +517,52 @@ function updateQuantity(index, value) {
   cart[index].quantity = quantity;
   cart[index].price = newPrice;
 
-  localStorage.setItem("cart", JSON.stringify(cart));
+  localStorage.setItem(cartKey, JSON.stringify(cart));
 
   renderCart();
 }
 
 function removeItem(index) {
   cart.splice(index, 1);
-  localStorage.setItem("cart", JSON.stringify(cart));
+  localStorage.setItem(cartKey, JSON.stringify(cart));
   renderCart();
 }
 
 function clearCart() {
-  localStorage.removeItem("cart");
+  localStorage.removeItem(cartKey);
   cart = [];
   renderCart();
 }
 
 function goBack() {
+  if (salesModeActive) {
+    window.location.href =
+      "products.html?sales_customer=" + encodeURIComponent(salesModeCustomer);
+    return;
+  }
+
   window.location.href = "products.html";
 }
 
+
+function backToSalesDashboard() {
+  window.location.href = "sales.html";
+}
+
 function goMyOrders() {
+  if (salesModeActive) {
+    window.location.href = "sales.html";
+    return;
+  }
+
   window.location.href = "my_orders.html";
 }
 
 async function checkout() {
-  const username = localStorage.getItem("user");
+  if (cart.length === 0) {
+    showCenterMessage("Cart is empty.");
+    return;
+  }
 
   const total = cart.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -461,7 +575,9 @@ async function checkout() {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      username: username,
+      username: orderUsername,
+      order_username: orderUsername,
+      sales_username: salesModeActive ? currentUser : "",
       items: cart,
       total: total
     })
@@ -474,7 +590,18 @@ async function checkout() {
     return;
   }
 
+  localStorage.removeItem(cartKey);
+  cart = [];
+
+  renderCart();
+
   showCenterMessage(result.message || "Order created successfully!");
+
+  if (salesModeActive) {
+    setTimeout(() => {
+      window.location.href = "sales.html";
+    }, 1000);
+  }
 }
 
 async function downloadPDF() {
@@ -484,7 +611,8 @@ async function downloadPDF() {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      username: localStorage.getItem("user"),
+      username: orderUsername,
+      salesUsername: salesModeActive ? currentUser : "",
       customerName: document.getElementById("customerName").value,
       customerCompany: document.getElementById("customerCompany").value,
       customerEmail: document.getElementById("customerEmail").value,

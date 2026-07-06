@@ -279,6 +279,49 @@
       color: #374151;
     }
 
+    .sales-mode-banner {
+      margin: 0 40px 26px;
+      background: #eef4ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 18px;
+      padding: 18px 22px;
+      color: #1f3c88;
+      box-shadow: 0 10px 28px rgba(37, 99, 235, 0.12);
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .sales-mode-title {
+      font-size: 18px;
+      font-weight: 900;
+      margin-bottom: 5px;
+    }
+
+    .sales-mode-sub {
+      font-size: 14px;
+      color: #4b5563;
+      font-weight: 700;
+    }
+
+    .sales-mode-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .sales-mode-actions button {
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-weight: 900;
+    }
+
+    .back-sales-btn {
+      background: #1f3c88;
+    }
+
 </style>
 </head>
 
@@ -342,6 +385,25 @@
       <button class="logout-small-btn" onclick="logout()">Logout</button>
     </div>
 
+  </div>
+
+
+  <div id="salesModeBanner" class="sales-mode-banner">
+    <div>
+      <div class="sales-mode-title">
+        Sales Mode
+      </div>
+
+      <div class="sales-mode-sub">
+        Creating order for customer:
+        <b id="salesModeCustomerName"></b>
+      </div>
+    </div>
+
+    <div class="sales-mode-actions">
+      <button onclick="goCart()">View Customer Cart</button>
+      <button class="back-sales-btn" onclick="backToSalesDashboard()">Back to Sales Dashboard</button>
+    </div>
   </div>
 
 
@@ -416,6 +478,27 @@ let allProducts = [];
 let currentCategory = "All";
 
 const user = localStorage.getItem("user");
+const role = localStorage.getItem("role") || "";
+
+const urlParams = new URLSearchParams(window.location.search);
+const urlSalesCustomer = urlParams.get("sales_customer");
+
+if (urlSalesCustomer && role === "sales") {
+  localStorage.setItem("sales_mode_active", "1");
+  localStorage.setItem("sales_mode_customer", urlSalesCustomer);
+  localStorage.setItem("sales_mode_sales", user || "");
+}
+
+const salesModeActive =
+  role === "sales" &&
+  localStorage.getItem("sales_mode_active") === "1" &&
+  localStorage.getItem("sales_mode_customer");
+
+const salesModeCustomer =
+  salesModeActive ? localStorage.getItem("sales_mode_customer") : "";
+
+const productPriceUsername =
+  salesModeActive ? salesModeCustomer : user;
 
 if (!user) {
   window.location.href = "login.html";
@@ -425,9 +508,10 @@ document.getElementById("currentUser").innerText = user;
 
 const container = document.getElementById("list");
 
+setupSalesModeBanner();
 loadCustomerInfo();
 
-fetch("/products?username=" + encodeURIComponent(user))
+fetch("/products?username=" + encodeURIComponent(productPriceUsername))
   .then(response => response.json())
   .then(products => {
     allProducts = products;
@@ -436,36 +520,72 @@ fetch("/products?username=" + encodeURIComponent(user))
   });
 
 
+function setupSalesModeBanner() {
+  const banner = document.getElementById("salesModeBanner");
+
+  if (!banner) return;
+
+  if (salesModeActive) {
+    banner.style.display = "flex";
+    document.getElementById("salesModeCustomerName").innerText =
+      salesModeCustomer;
+  } else {
+    banner.style.display = "none";
+  }
+}
+
+
 function loadCustomerInfo() {
   const fallbackSales = localStorage.getItem("assigned_sales") || "Not assigned";
+  const infoUsername = salesModeActive ? salesModeCustomer : user;
 
-  document.getElementById("assignedSales").innerText = fallbackSales;
+  document.getElementById("assignedSales").innerText =
+    salesModeActive ? user : fallbackSales;
 
-  fetch("/customer/info/" + encodeURIComponent(user))
+  fetch("/customer/info/" + encodeURIComponent(infoUsername))
     .then(response => response.json())
     .then(data => {
       if (data.success) {
         const assignedSales = data.assigned_sales || "Not assigned";
 
-        document.getElementById("assignedSales").innerText = assignedSales;
-        localStorage.setItem("assigned_sales", assignedSales);
-        localStorage.setItem("customer_level", data.customer_level || "A");
+        if (salesModeActive) {
+          document.getElementById("assignedSales").innerText = user;
+          localStorage.setItem("sales_mode_customer_company", data.company_name || "");
+          localStorage.setItem("sales_mode_customer_email", data.email || "");
+        } else {
+          document.getElementById("assignedSales").innerText = assignedSales;
+          localStorage.setItem("assigned_sales", assignedSales);
+          localStorage.setItem("customer_level", data.customer_level || "A");
+        }
       }
     })
     .catch(error => {
       console.error("Customer info error:", error);
-      document.getElementById("assignedSales").innerText = fallbackSales;
+      document.getElementById("assignedSales").innerText =
+        salesModeActive ? user : fallbackSales;
     });
 }
 
 
 function view(id) {
+  if (salesModeActive) {
+    window.location.href =
+      "product.html?id=" + id +
+      "&sales_customer=" + encodeURIComponent(salesModeCustomer);
+    return;
+  }
+
   window.location.href = "product.html?id=" + id;
 }
 
 
 function goCart() {
   window.location.href = "cart.html";
+}
+
+
+function backToSalesDashboard() {
+  window.location.href = "sales.html";
 }
 
 
@@ -481,6 +601,11 @@ async function logout() {
   localStorage.removeItem("assigned_sales");
   localStorage.removeItem("company_name");
   localStorage.removeItem("email");
+  localStorage.removeItem("sales_mode_active");
+  localStorage.removeItem("sales_mode_customer");
+  localStorage.removeItem("sales_mode_sales");
+  localStorage.removeItem("sales_mode_customer_company");
+  localStorage.removeItem("sales_mode_customer_email");
 
   showCenterMessage("You have been logged out.");
 

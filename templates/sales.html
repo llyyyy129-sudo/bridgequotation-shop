@@ -184,6 +184,32 @@
             padding: 0 26px 24px;
         }
 
+        .customer-action-row {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 0 0 18px 0;
+        }
+
+        .add-product-btn {
+            background: #2563eb;
+            color: #ffffff;
+            border: none;
+            border-radius: 12px;
+            padding: 10px 18px;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
+        }
+
+        .sales-mode-note {
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
         .customer-line,
         .section-line {
             border: none;
@@ -811,6 +837,19 @@ function renderCustomerGroups(customerGroups) {
                 <div class="customer-content">
                     <hr class="customer-line">
 
+                    <div class="customer-action-row">
+                        <button
+                            class="add-product-btn"
+                            onclick="startSalesCustomerOrder('${escapeForJs(group.customerName)}')"
+                        >
+                            Add Product for ${escapeHtml(group.customerName)}
+                        </button>
+
+                        <span class="sales-mode-note">
+                            Create a new order for this customer.
+                        </span>
+                    </div>
+
                     ${group.orders.map(order => renderOrderSection(order)).join("")}
                 </div>
             </details>
@@ -1259,6 +1298,30 @@ function escapeHtml(value) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }
+
+
+function startSalesCustomerOrder(customerName) {
+    if (!customerName) {
+        showCenterMessage("Customer name is missing.");
+        return;
+    }
+
+    localStorage.setItem("sales_mode_active", "1");
+    localStorage.setItem("sales_mode_customer", customerName);
+    localStorage.setItem("sales_mode_sales", salesUsername || "");
+
+    window.location.href =
+        "products.html?sales_customer=" + encodeURIComponent(customerName);
+}
+
+
+function escapeForJs(value) {
+    return String(value || "")
+        .replace(/\\/g, "\\\\")
+        .replace(/'/g, "\\'")
+        .replace(/"/g, "&quot;");
+}
+
 
 
 async function logout() {

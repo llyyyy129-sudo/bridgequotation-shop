@@ -327,6 +327,32 @@
     }
 
 
+    .sales-mode-product-banner {
+      max-width: 1180px;
+      margin: 0 auto 18px;
+      background: #eef4ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 18px;
+      padding: 16px 20px;
+      color: #1f3c88;
+      box-shadow: 0 10px 28px rgba(37, 99, 235, 0.12);
+      display: none;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sales-mode-product-banner b {
+      color: #111827;
+    }
+
+    .sales-mode-product-banner button {
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-weight: 900;
+    }
+
     .center-toast {
       position: fixed;
       left: 50%;
@@ -396,6 +422,29 @@ function showCenterMessage(message) {
 const params = new URLSearchParams(window.location.search);
 const id = params.get("id");
 const user = localStorage.getItem("user") || "";
+const role = localStorage.getItem("role") || "";
+
+const urlParamsForSales = new URLSearchParams(window.location.search);
+const urlSalesCustomer = urlParamsForSales.get("sales_customer");
+
+if (urlSalesCustomer && role === "sales") {
+  localStorage.setItem("sales_mode_active", "1");
+  localStorage.setItem("sales_mode_customer", urlSalesCustomer);
+  localStorage.setItem("sales_mode_sales", user || "");
+}
+
+const salesModeActive =
+  role === "sales" &&
+  localStorage.getItem("sales_mode_active") === "1" &&
+  localStorage.getItem("sales_mode_customer");
+
+const salesModeCustomer =
+  salesModeActive ? localStorage.getItem("sales_mode_customer") : "";
+
+const productPriceUsername =
+  salesModeActive ? salesModeCustomer : user;
+
+setupSalesModeBanner();
 
 function money(value) {
   return Number(value || 0).toLocaleString(undefined, {
@@ -404,7 +453,30 @@ function money(value) {
   });
 }
 
-fetch(`/products/${id}?username=${encodeURIComponent(user)}`)
+function setupSalesModeBanner() {
+  const banner = document.getElementById("salesModeProductBanner");
+
+  if (!banner) return;
+
+  if (salesModeActive) {
+    banner.style.display = "flex";
+    document.getElementById("salesModeProductCustomer").innerText =
+      salesModeCustomer;
+  } else {
+    banner.style.display = "none";
+  }
+}
+
+
+function getCartKey() {
+  if (salesModeActive && salesModeCustomer) {
+    return "sales_cart_" + salesModeCustomer;
+  }
+
+  return "cart";
+}
+
+fetch(`/products/${id}?username=${encodeURIComponent(productPriceUsername)}`)
   .then(response => response.json())
   .then(product => {
 
@@ -672,7 +744,8 @@ function updatePrice() {
 
 
 function addToCart() {
-  let cart = JSON.parse(localStorage.getItem("cart")) || [];
+  const cartKey = getCartKey();
+  let cart = JSON.parse(localStorage.getItem(cartKey)) || [];
 
   const quantityInput = document.getElementById("quantity");
 
@@ -707,24 +780,39 @@ function addToCart() {
     existing.price = getTierPrice(existing.quantity, currentProduct);
     existing.packing = currentProduct.packing || "";
     existing.customer_requirement = customerRequirement;
+    existing.order_customer = salesModeActive ? salesModeCustomer : user;
+    existing.created_by_sales = salesModeActive ? user : "";
   } else {
     cart.push({
       ...currentProduct,
       quantity: quantity,
       price: unitPrice,
       packing: currentProduct.packing || "",
-      customer_requirement: customerRequirement
+      customer_requirement: customerRequirement,
+      order_customer: salesModeActive ? salesModeCustomer : user,
+      created_by_sales: salesModeActive ? user : ""
     });
   }
 
-  localStorage.setItem("cart", JSON.stringify(cart));
+  localStorage.setItem(cartKey, JSON.stringify(cart));
 
   showCenterMessage(`Added to cart!\nUnit Price: $${money(unitPrice)}`);
 }
 
 
 function goBack() {
+  if (salesModeActive) {
+    window.location.href =
+      "products.html?sales_customer=" + encodeURIComponent(salesModeCustomer);
+    return;
+  }
+
   window.location.href = "products.html";
+}
+
+
+function backToSalesDashboard() {
+  window.location.href = "sales.html";
 }
 
 
