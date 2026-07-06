@@ -155,6 +155,8 @@
     font-weight: 800;
     color: #111827;
   }
+
+
     .center-toast {
       position: fixed;
       left: 50%;
@@ -178,6 +180,8 @@
     }
 
 </style>
+
+<div id="centerToast" class="center-toast"></div>
 
 <h2>Shopping Cart</h2>
 <div class="quotation-info">
@@ -465,6 +469,11 @@ async function checkout() {
 
   const result = await response.json();
 
+  if (!result.success) {
+    showCenterMessage(result.message || "Create order failed.");
+    return;
+  }
+
   showCenterMessage(result.message || "Order created successfully!");
 }
 
@@ -511,10 +520,7 @@ function shareCart() {
 
     navigator.clipboard.writeText(shareLink);
 
-    showCenterMessage(
-        "Share link copied!\n\n" +
-        shareLink
-    );
+    showCenterMessage("Share cart link copied.");
 }
 
 function escapeHtml(value) {

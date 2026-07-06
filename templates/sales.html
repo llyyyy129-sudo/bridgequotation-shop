@@ -269,7 +269,31 @@
       display: none;
       z-index: 99999;
     }
-    
+
+
+    .center-toast {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: #eef4ff;
+      color: #1f3c88;
+      border: 1px solid #bfdbfe;
+      padding: 16px 26px;
+      border-radius: 16px;
+      box-shadow: 0 18px 45px rgba(37, 99, 235, 0.16);
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.55;
+      white-space: pre-line;
+      max-width: min(520px, 86vw);
+      word-break: break-word;
+      text-align: center;
+      display: none;
+      z-index: 99999;
+    }
+
+
     .center-confirm-overlay {
       position: fixed;
       inset: 0;
@@ -286,7 +310,7 @@
       background: #ffffff;
       border: 1px solid #dbeafe;
       border-radius: 18px;
-      padding: 24px;
+      padding: 26px 24px;
       box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
       text-align: center;
     }
@@ -294,16 +318,16 @@
     .center-confirm-message {
       color: #111827;
       font-size: 16px;
-      font-weight: 700;
+      font-weight: 800;
       line-height: 1.65;
       white-space: pre-line;
-      margin-bottom: 20px;
+      margin-bottom: 22px;
     }
 
     .center-confirm-actions {
       display: flex;
       justify-content: center;
-      gap: 12px;
+      gap: 14px;
       flex-wrap: wrap;
     }
 
@@ -333,6 +357,7 @@
 
 <body>
 
+<div id="centerToast" class="center-toast"></div>
 <div id="centerConfirmOverlay" class="center-confirm-overlay">
   <div class="center-confirm-box">
     <div id="centerConfirmMessage" class="center-confirm-message"></div>
@@ -451,13 +476,17 @@ const role = localStorage.getItem("role");
 document.getElementById("salesName").innerText = salesUsername || "Unknown";
 
 if (!salesUsername) {
-    alert("Please login first.");
-    window.location.href = "/";
+    showCenterMessage("Please login first.");
+    setTimeout(() => {
+        window.location.href = "/";
+    }, 900);
 }
 
 if (role !== "sales") {
-    alert("Only sales users can access this page.");
-    window.location.href = "/";
+    showCenterMessage("Only sales users can access this page.");
+    setTimeout(() => {
+        window.location.href = "/";
+    }, 900);
 }
 
 
@@ -747,7 +776,7 @@ async function confirmOrder(orderId) {
         return;
     }
 
-    showToast("Order #" + orderId + " confirmed.");
+    showCenterMessage("Order #" + orderId + " confirmed.");
     loadSalesOrders();
 }
 
@@ -785,7 +814,7 @@ async function returnOrder(orderId) {
         return;
     }
 
-    showToast("Order #" + orderId + " returned.");
+    showCenterMessage("Order #" + orderId + " returned.");
     loadSalesOrders();
 }
 
@@ -817,10 +846,21 @@ function escapeHtml(value) {
 }
 
 
-function logout() {
+async function logout() {
+    const ok = await showCenterConfirm(
+        "Logout?\n\nAre you sure you want to log out?"
+    );
+
+    if (!ok) return;
+
     localStorage.removeItem("user");
     localStorage.removeItem("role");
-    window.location.href = "/";
+
+    showCenterMessage("You have been logged out.");
+
+    setTimeout(() => {
+        window.location.href = "/";
+    }, 900);
 }
 
 
