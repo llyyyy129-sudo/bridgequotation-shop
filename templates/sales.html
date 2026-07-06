@@ -15,7 +15,7 @@
         }
 
         .sales-page {
-            max-width: 1120px;
+            max-width: 1150px;
             margin: 0 auto;
         }
 
@@ -42,14 +42,19 @@
             font-size: 14px;
         }
 
-        .logout-btn {
-            background: #1f3c88;
-            color: white;
+        .logout-btn,
+        .confirm-btn,
+        .return-btn {
             border: none;
             border-radius: 10px;
             padding: 10px 18px;
             cursor: pointer;
             font-weight: bold;
+            color: white;
+        }
+
+        .logout-btn {
+            background: #1f3c88;
             box-shadow: 0 8px 18px rgba(31, 60, 136, 0.18);
         }
 
@@ -85,7 +90,10 @@
             color: #1f3c88;
         }
 
-        .customer-section > summary::-webkit-details-marker {
+        .customer-section > summary::-webkit-details-marker,
+        .order-section > summary::-webkit-details-marker,
+        .product-status-section > summary::-webkit-details-marker,
+        .cart-details > summary::-webkit-details-marker {
             display: none;
         }
 
@@ -121,34 +129,67 @@
             padding: 0 26px 24px;
         }
 
-        .customer-line {
+        .customer-line,
+        .section-line {
             border: none;
             border-top: 1px solid #e5e7eb;
             margin: 0 0 18px;
         }
 
-        details.status-section {
-            border: 1px solid #e5e7eb;
+        .order-section {
             background: #fbfcff;
+            border: 1px solid #e5e7eb;
             border-radius: 16px;
             margin-bottom: 16px;
             overflow: hidden;
         }
 
-        details.status-section > summary {
+        .order-section > summary {
             list-style: none;
             cursor: pointer;
             padding: 18px 20px;
             display: flex;
             justify-content: space-between;
+            gap: 14px;
             align-items: center;
-            gap: 12px;
-            font-size: 20px;
-            font-weight: 900;
         }
 
-        details.status-section > summary::-webkit-details-marker {
-            display: none;
+        .order-title {
+            font-size: 19px;
+            font-weight: 900;
+            color: #111827;
+        }
+
+        .order-meta {
+            margin-top: 8px;
+            color: #4b5563;
+            font-size: 14px;
+            line-height: 1.65;
+        }
+
+        .order-content {
+            padding: 0 20px 18px;
+        }
+
+        .product-status-section {
+            border: 1px solid #e5e7eb;
+            background: #ffffff;
+            border-radius: 14px;
+            margin-bottom: 14px;
+            overflow: hidden;
+        }
+
+        .product-status-section > summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 15px 16px;
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            font-size: 18px;
+            font-weight: 900;
+            color: #1f3c88;
         }
 
         .status-title-left {
@@ -165,50 +206,81 @@
             flex: 0 0 auto;
         }
 
-        .dot-pending {
-            background: #ff7a1a;
+        .dot-pending { background: #ff7a1a; }
+        .dot-confirmed { background: #12d51b; }
+        .dot-returned { background: #ff1f35; }
+
+        .product-status-content {
+            padding: 0 16px 16px;
         }
 
-        .dot-confirmed {
-            background: #12d51b;
-        }
-
-        .dot-returned {
-            background: #ff1f35;
-        }
-
-        .section-content {
-            padding: 0 20px 18px;
-        }
-
-        .section-line {
-            border: none;
-            border-top: 1px solid #e5e7eb;
-            margin: 0 0 16px;
-        }
-
-        .order-list {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .order-box {
-            border: 1px solid #e2e5ec;
+        .product-card {
+            border: 1px solid #e5e7eb;
             border-radius: 14px;
-            padding: 18px 20px;
-            background: #ffffff;
+            padding: 16px;
+            background: #fafbff;
+            margin-bottom: 14px;
         }
 
-        .order-title {
+        .product-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .product-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+        }
+
+        .product-thumb {
+            width: 84px;
+            height: 84px;
+            border-radius: 12px;
+            object-fit: cover;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            flex: 0 0 auto;
+        }
+
+        .product-name {
             font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 10px;
+            font-weight: 900;
+            color: #111827;
+            margin-bottom: 6px;
         }
 
-        .order-info {
-            line-height: 1.8;
-            font-size: 15px;
+        .product-info {
+            line-height: 1.7;
+            color: #374151;
+            font-size: 14px;
+        }
+
+        .product-status-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-weight: 900;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+
+        .pill-pending {
+            background: #fff7ed;
+            color: #ea580c;
+            border: 1px solid #fed7aa;
+        }
+
+        .pill-confirmed {
+            background: #ecfdf5;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+        }
+
+        .pill-returned {
+            background: #fff1f2;
+            color: #dc2626;
+            border: 1px solid #fecdd3;
         }
 
         .button-row {
@@ -220,23 +292,11 @@
 
         .confirm-btn {
             background: #4caf50;
-            color: white;
-            border: none;
-            border-radius: 9px;
-            padding: 10px 18px;
-            cursor: pointer;
-            font-weight: bold;
             box-shadow: 0 8px 18px rgba(76, 175, 80, 0.18);
         }
 
         .return-btn {
             background: #f44336;
-            color: white;
-            border: none;
-            border-radius: 9px;
-            padding: 10px 18px;
-            cursor: pointer;
-            font-weight: bold;
             box-shadow: 0 8px 18px rgba(244, 67, 54, 0.18);
         }
 
@@ -251,7 +311,7 @@
             padding: 14px;
             border-radius: 12px;
             border: 1px solid #e5e7eb;
-            background: #f8fafc;
+            background: #ffffff;
         }
 
         .return-comment-box label {
@@ -263,7 +323,7 @@
 
         .return-comment-box textarea {
             width: 100%;
-            min-height: 82px;
+            min-height: 76px;
             resize: vertical;
             border: 1.5px solid #d7dce7;
             border-radius: 12px;
@@ -280,19 +340,6 @@
             box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
         }
 
-        .status-text {
-            margin-top: 12px;
-            font-weight: bold;
-        }
-
-        .confirmed-text {
-            color: #4caf50;
-        }
-
-        .returned-text {
-            color: #f44336;
-        }
-
         .return-reason {
             margin-top: 10px;
             padding: 10px 12px;
@@ -307,35 +354,7 @@
             color: #777;
             background: #f8f9fc;
             border-radius: 10px;
-            padding: 16px;
-        }
-
-        details.cart-details {
-            margin-top: 12px;
-            background: white;
-            border-radius: 9px;
-            padding: 10px 12px;
-            border: 1px solid #e5e7ef;
-        }
-
-        details.cart-details summary {
-            cursor: pointer;
-            font-weight: bold;
-            color: #1f3c88;
-            font-size: 15px;
-            padding: 0;
-            display: block;
-        }
-
-        .cart-item {
-            padding: 8px 0;
-            border-bottom: 1px solid #eee;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-
-        .cart-item:last-child {
-            border-bottom: none;
+            padding: 14px;
         }
 
         .center-toast {
@@ -422,27 +441,11 @@
         }
 
         @media (max-width: 720px) {
-            body {
-                padding: 18px;
-            }
-
-            .top-bar {
-                align-items: flex-start;
-                flex-direction: column;
-            }
-
-            .customer-section > summary {
-                font-size: 20px;
-                padding: 18px 20px;
-            }
-
-            .customer-content {
-                padding: 0 18px 18px;
-            }
-
-            details.status-section > summary {
-                font-size: 18px;
-            }
+            body { padding: 18px; }
+            .top-bar { align-items: flex-start; flex-direction: column; }
+            .customer-section > summary { font-size: 20px; padding: 18px 20px; }
+            .customer-content { padding: 0 18px 18px; }
+            .product-header { flex-direction: column; }
         }
     </style>
 </head>
@@ -489,9 +492,7 @@
 function showCenterMessage(message) {
     const toast = document.getElementById("centerToast");
 
-    if (!toast) {
-        return;
-    }
+    if (!toast) return;
 
     toast.innerText = message;
     toast.style.display = "block";
@@ -583,30 +584,15 @@ function groupOrdersByCustomer(orders) {
         if (!groups[customerName]) {
             groups[customerName] = {
                 customerName: customerName,
-                orders: [],
-                pending: [],
-                confirmed: [],
-                returned: []
+                orders: []
             };
         }
 
         groups[customerName].orders.push(order);
-
-        if (order.status === "Pending") {
-            groups[customerName].pending.push(order);
-        } else if (order.status === "Confirmed") {
-            groups[customerName].confirmed.push(order);
-        } else if (order.status === "Returned" || order.status === "Rejected") {
-            groups[customerName].returned.push(order);
-        } else {
-            groups[customerName].pending.push(order);
-        }
     });
 
     return Object.values(groups).sort((a, b) => {
-        const latestA = getLatestOrderId(a.orders);
-        const latestB = getLatestOrderId(b.orders);
-        return latestB - latestA;
+        return getLatestOrderId(b.orders) - getLatestOrderId(a.orders);
     });
 }
 
@@ -638,9 +624,7 @@ function renderCustomerGroups(customerGroups) {
     }
 
     customerGroups.forEach((group, index) => {
-        group.pending.sort((a, b) => b.id - a.id);
-        group.confirmed.sort((a, b) => b.id - a.id);
-        group.returned.sort((a, b) => b.id - a.id);
+        group.orders.sort((a, b) => b.id - a.id);
 
         container.innerHTML += `
             <details class="customer-section" ${index === 0 ? "open" : ""}>
@@ -657,9 +641,7 @@ function renderCustomerGroups(customerGroups) {
                 <div class="customer-content">
                     <hr class="customer-line">
 
-                    ${renderStatusSection("pending", "Pending Orders", group.pending, true)}
-                    ${renderStatusSection("confirmed", "Confirmed Orders", group.confirmed, false)}
-                    ${renderStatusSection("returned", "Returned Orders", group.returned, false)}
+                    ${group.orders.map(order => renderOrderSection(order)).join("")}
                 </div>
             </details>
         `;
@@ -667,7 +649,60 @@ function renderCustomerGroups(customerGroups) {
 }
 
 
-function renderStatusSection(type, title, orders, openByDefault) {
+function renderOrderSection(order) {
+    const items = parseItems(order.items);
+    const pending = [];
+    const confirmed = [];
+    const returned = [];
+
+    items.forEach((item, index) => {
+        const status = getItemStatus(item, order.status);
+
+        const wrapped = {
+            item: item,
+            index: index
+        };
+
+        if (status === "Confirmed") {
+            confirmed.push(wrapped);
+        } else if (status === "Returned") {
+            returned.push(wrapped);
+        } else {
+            pending.push(wrapped);
+        }
+    });
+
+    return `
+        <details class="order-section" open>
+            <summary>
+                <span>
+                    <div class="order-title">Order #${order.id}</div>
+                    <div class="order-meta">
+                        Total: <b>$${Number(order.total || 0).toFixed(2)}</b><br>
+                        Order Time: ${escapeHtml(order.created_at || "Not recorded")}<br>
+                        Product Status:
+                        ${pending.length} Pending /
+                        ${confirmed.length} Confirmed /
+                        ${returned.length} Returned
+                    </div>
+                </span>
+
+                <span class="summary-arrow">▶</span>
+            </summary>
+
+            <div class="order-content">
+                <hr class="section-line">
+
+                ${renderProductStatusSection(order, "pending", "Pending Products", pending, true)}
+                ${renderProductStatusSection(order, "confirmed", "Confirmed Products", confirmed, false)}
+                ${renderProductStatusSection(order, "returned", "Returned Products", returned, false)}
+            </div>
+        </details>
+    `;
+}
+
+
+function renderProductStatusSection(order, type, title, productItems, openByDefault) {
     const dotClass = {
         pending: "dot-pending",
         confirmed: "dot-confirmed",
@@ -675,30 +710,30 @@ function renderStatusSection(type, title, orders, openByDefault) {
     }[type];
 
     const emptyText = {
-        pending: "No pending orders.",
-        confirmed: "No confirmed orders.",
-        returned: "No returned orders."
+        pending: "No pending products.",
+        confirmed: "No confirmed products.",
+        returned: "No returned products."
     }[type];
 
     return `
-        <details class="status-section" ${openByDefault ? "open" : ""}>
+        <details class="product-status-section" ${openByDefault ? "open" : ""}>
             <summary>
                 <span class="status-title-left">
                     <span class="status-dot ${dotClass}"></span>
-                    ${title} (${orders.length})
+                    ${title} (${productItems.length})
                 </span>
                 <span class="summary-arrow">▶</span>
             </summary>
 
-            <div class="section-content">
+            <div class="product-status-content">
                 <hr class="section-line">
 
                 ${
-                    orders.length === 0
+                    productItems.length === 0
                         ? `<div class="empty-message">${emptyText}</div>`
-                        : `<div class="order-list">
-                              ${orders.map(order => renderOrderCard(order, type)).join("")}
-                           </div>`
+                        : productItems.map(productItem =>
+                              renderProductCard(order, productItem.item, productItem.index, type)
+                          ).join("")
                 }
             </div>
         </details>
@@ -706,148 +741,118 @@ function renderStatusSection(type, title, orders, openByDefault) {
 }
 
 
-function renderOrderCard(order, type) {
-    const customerName = getCustomerName(order);
-    const orderTime = order.created_at || "Not recorded";
+function renderProductCard(order, item, index, type) {
+    const productName = item.name || item.product_name || "Product";
+    const quantity = Number(item.quantity || item.qty || 0);
+    const unitPrice = Number(item.price || item.unit_price || 0);
+    const lineTotal = quantity * unitPrice;
+    const status = getItemStatus(item, order.status);
+    const image = item.image || "";
 
-    let statusBlock = "";
+    let pillClass = "pill-pending";
+    let statusText = "Pending";
+
+    if (status === "Confirmed") {
+        pillClass = "pill-confirmed";
+        statusText = "Confirmed";
+    }
+
+    if (status === "Returned") {
+        pillClass = "pill-returned";
+        statusText = "Returned";
+    }
+
+    let actionBlock = "";
 
     if (type === "pending") {
-        statusBlock = `
+        actionBlock = `
             <div class="return-comment-box">
                 <label>Return Comment</label>
                 <textarea
-                    id="return-comment-${order.id}"
+                    id="return-comment-${order.id}-${index}"
                     placeholder="Example: Quantity is too small, packing cannot be made, product is out of stock..."
-                    oninput="toggleReturnButton(${order.id})"
+                    oninput="toggleReturnButton(${order.id}, ${index})"
                 ></textarea>
             </div>
 
             <div class="button-row">
-                <button class="confirm-btn" onclick="confirmOrder(${order.id})">
-                    Confirm
+                <button class="confirm-btn" onclick="confirmProduct(${order.id}, ${index})">
+                    Confirm Product
                 </button>
 
                 <button
-                    id="return-btn-${order.id}"
+                    id="return-btn-${order.id}-${index}"
                     class="return-btn"
-                    onclick="returnOrder(${order.id})"
+                    onclick="returnProduct(${order.id}, ${index})"
                     disabled
                 >
-                    Return
+                    Return Product
                 </button>
             </div>
         `;
     }
 
-    if (type === "confirmed") {
-        statusBlock = `
-            <div class="status-text confirmed-text">
-                Status: Confirmed
+    if (type === "returned" && item.item_return_comment) {
+        actionBlock = `
+            <div class="return-reason">
+                <b>Return Reason:</b>
+                ${escapeHtml(item.item_return_comment)}
             </div>
-        `;
-    }
-
-    if (type === "returned") {
-        statusBlock = `
-            <div class="status-text returned-text">
-                Status: Returned
-            </div>
-
-            ${
-                order.return_comment
-                    ? `<div class="return-reason">
-                           <b>Return Reason:</b> ${escapeHtml(order.return_comment)}
-                       </div>`
-                    : ""
-            }
         `;
     }
 
     return `
-        <div class="order-box">
-            <div class="order-title">
-                Order #${order.id}
+        <div class="product-card">
+            <div class="product-header">
+                ${
+                    image
+                        ? `<img class="product-thumb" src="${escapeHtml(image)}">`
+                        : `<div class="product-thumb"></div>`
+                }
+
+                <div>
+                    <div class="product-name">
+                        ${escapeHtml(productName)}
+                    </div>
+
+                    <div class="product-info">
+                        Category: ${escapeHtml(item.category || "")}<br>
+                        MOQ: ${escapeHtml(item.moq || "")}<br>
+                        Material: ${escapeHtml(item.material || "")}<br>
+                        Size: ${escapeHtml(item.size || "")}<br>
+                        Packing: ${escapeHtml(item.packing || "")}<br>
+                        Customer Requirements: ${escapeHtml(item.customer_requirement || "")}<br>
+                        Quantity: ${quantity.toLocaleString()}<br>
+                        Unit Price: $${unitPrice.toFixed(2)}<br>
+                        Line Total: $${lineTotal.toFixed(2)}
+                    </div>
+
+                    <div class="product-status-pill ${pillClass}">
+                        ${statusText}
+                    </div>
+                </div>
             </div>
 
-            <div class="order-info">
-                Customer: <b>${escapeHtml(customerName)}</b><br>
-                Total: <b>$${Number(order.total || 0).toFixed(2)}</b><br>
-                Order Time: ${escapeHtml(orderTime)}
-            </div>
-
-            ${renderCartDetails(order.items)}
-
-            ${statusBlock}
+            ${actionBlock}
         </div>
     `;
 }
 
 
-function getCustomerName(order) {
-    return (
-        order.username ||
-        order.customer ||
-        order.customer_name ||
-        order.customer_username ||
-        ""
-    );
-}
-
-
-function renderCartDetails(rawItems) {
-    const items = parseItems(rawItems);
-
-    if (!items || items.length === 0) {
-        return `
-            <details class="cart-details">
-                <summary>Cart Items</summary>
-                <div class="cart-item">No item details.</div>
-            </details>
-        `;
+function getItemStatus(item, orderStatus) {
+    if (item && item.item_status) {
+        return item.item_status;
     }
 
-    let html = `
-        <details class="cart-details">
-            <summary>Cart Items</summary>
-    `;
+    if (orderStatus === "Confirmed") {
+        return "Confirmed";
+    }
 
-    items.forEach(item => {
-        const name =
-            item.name ||
-            item.product_name ||
-            item.description ||
-            "Product";
+    if (orderStatus === "Returned" || orderStatus === "Rejected") {
+        return "Returned";
+    }
 
-        const qty =
-            item.quantity ||
-            item.qty ||
-            1;
-
-        const price =
-            Number(item.price || item.unit_price || 0);
-
-        const lineTotal = Number(qty) * price;
-
-        html += `
-            <div class="cart-item">
-                <b>${escapeHtml(name)}</b><br>
-                Category: ${escapeHtml(item.category || "")}<br>
-                MOQ: ${escapeHtml(item.moq || "")}<br>
-                Material: ${escapeHtml(item.material || "")}<br>
-                Size: ${escapeHtml(item.size || "")}<br>
-                Packing: ${escapeHtml(item.packing || "")}<br>
-                Customer Requirements: ${escapeHtml(item.customer_requirement || "")}<br>
-                Quantity: ${qty}<br>
-                Unit Price: $${price.toFixed(2)}<br>
-                Line Total: $${lineTotal.toFixed(2)}
-            </div>
-        `;
-    });
-
-    html += `</details>`;
-
-    return html;
+    return "Pending";
 }
 
 
@@ -870,9 +875,13 @@ function parseItems(rawItems) {
 }
 
 
-function toggleReturnButton(orderId) {
-    const textarea = document.getElementById("return-comment-" + orderId);
-    const button = document.getElementById("return-btn-" + orderId);
+function toggleReturnButton(orderId, itemIndex) {
+    const textarea = document.getElementById(
+        "return-comment-" + orderId + "-" + itemIndex
+    );
+    const button = document.getElementById(
+        "return-btn-" + orderId + "-" + itemIndex
+    );
 
     if (!textarea || !button) return;
 
@@ -880,13 +889,15 @@ function toggleReturnButton(orderId) {
 }
 
 
-async function confirmOrder(orderId) {
-    const ok = await showCenterConfirm("Confirm Order #" + orderId + "?");
+async function confirmProduct(orderId, itemIndex) {
+    const ok = await showCenterConfirm(
+        "Confirm this product?"
+    );
 
     if (!ok) return;
 
     const response = await fetch(
-        "/sales/orders/" + orderId + "/confirm",
+        "/sales/orders/" + orderId + "/items/" + itemIndex + "/confirm",
         {
             method: "POST"
         }
@@ -899,13 +910,16 @@ async function confirmOrder(orderId) {
         return;
     }
 
-    showCenterMessage("Order #" + orderId + " confirmed.");
+    showCenterMessage("Product confirmed.");
     loadSalesOrders();
 }
 
 
-async function returnOrder(orderId) {
-    const textarea = document.getElementById("return-comment-" + orderId);
+async function returnProduct(orderId, itemIndex) {
+    const textarea = document.getElementById(
+        "return-comment-" + orderId + "-" + itemIndex
+    );
+
     const comment = textarea ? textarea.value.trim() : "";
 
     if (!comment) {
@@ -913,12 +927,14 @@ async function returnOrder(orderId) {
         return;
     }
 
-    const ok = await showCenterConfirm("Return Order #" + orderId + "?");
+    const ok = await showCenterConfirm(
+        "Return this product?"
+    );
 
     if (!ok) return;
 
     const response = await fetch(
-        "/sales/orders/" + orderId + "/return",
+        "/sales/orders/" + orderId + "/items/" + itemIndex + "/return",
         {
             method: "POST",
             headers: {
@@ -937,8 +953,19 @@ async function returnOrder(orderId) {
         return;
     }
 
-    showCenterMessage("Order #" + orderId + " returned.");
+    showCenterMessage("Product returned.");
     loadSalesOrders();
+}
+
+
+function getCustomerName(order) {
+    return (
+        order.username ||
+        order.customer ||
+        order.customer_name ||
+        order.customer_username ||
+        ""
+    );
 }
 
 

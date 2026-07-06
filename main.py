@@ -261,6 +261,94 @@ def apply_price_multiplier(value, multiplier):
         return value
 
 
+
+
+def safe_load_order_items(raw_items):
+    if not raw_items:
+        return []
+
+    if isinstance(raw_items, list):
+        return raw_items
+
+    try:
+        loaded = json.loads(raw_items)
+        if isinstance(loaded, list):
+            return loaded
+        return []
+    except Exception:
+        return []
+
+
+def normalize_order_items(order):
+    items = safe_load_order_items(order.items)
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+
+        current_status = item.get("item_status")
+
+        if not current_status:
+            if order.status == "Confirmed":
+                current_status = "Confirmed"
+            elif order.status in ["Returned", "Rejected"]:
+                current_status = "Returned"
+            else:
+                current_status = "Pending"
+
+            item["item_status"] = current_status
+
+        if "item_return_comment" not in item:
+            if current_status == "Returned":
+                item["item_return_comment"] = order.return_comment or ""
+            else:
+                item["item_return_comment"] = ""
+
+    return items
+
+
+def recalculate_order_status(order, items):
+    statuses = []
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+
+        statuses.append(item.get("item_status", "Pending"))
+
+    if not statuses:
+        order.status = "Pending"
+        order.return_comment = ""
+        order.items = json.dumps(items)
+        return
+
+    if all(status == "Confirmed" for status in statuses):
+        order.status = "Confirmed"
+    elif all(status == "Returned" for status in statuses):
+        order.status = "Returned"
+    elif any(status == "Pending" for status in statuses):
+        order.status = "Pending"
+    else:
+        # Mixed confirmed + returned, no pending products left.
+        # The order is finished, but item details still show which products were returned.
+        order.status = "Confirmed"
+
+    return_comments = []
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+
+        if item.get("item_status") == "Returned":
+            comment = item.get("item_return_comment", "").strip()
+            if comment:
+                product_name = item.get("name", "Product")
+                return_comments.append(f"{product_name}: {comment}")
+
+    order.return_comment = "; ".join(return_comments)
+    order.items = json.dumps(items)
+
+
 def serialize_product(product, multiplier=1.0):
     return {
         "id": product.id,
@@ -1041,10 +1129,17 @@ def create_order(data: dict):
     if customer and customer.assigned_sales:
         assigned_sales = customer.assigned_sales
 
+    items = data.get("items", [])
+
+    for item in items:
+        if isinstance(item, dict):
+            item["item_status"] = "Pending"
+            item["item_return_comment"] = ""
+
     order = Order(
         username=data["username"],
         sales_username=assigned_sales,
-        items=json.dumps(data["items"]),
+        items=json.dumps(items),
         total=data["total"],
         status="Pending",
         created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -1072,6 +1167,8 @@ def get_sales_orders(sales_username: str):
     result = []
 
     for order in orders:
+        items = normalize_order_items(order)
+
         result.append({
             "id": order.id,
             "username": order.username,
@@ -1081,11 +1178,96 @@ def get_sales_orders(sales_username: str):
             "status": order.status,
             "created_at": order.created_at,
             "return_comment": order.return_comment,
-            "items": order.items
+            "items": json.dumps(items)
         })
 
     db.close()
     return result
+
+
+@app.post("/sales/orders/{order_id}/items/{item_index}/confirm")
+def confirm_order_item(order_id: int, item_index: int):
+    db = SessionLocal()
+
+    order = db.query(Order).filter(
+        Order.id == order_id
+    ).first()
+
+    if not order:
+        db.close()
+        return {
+            "success": False,
+            "message": "Order not found."
+        }
+
+    items = normalize_order_items(order)
+
+    if item_index < 0 or item_index >= len(items):
+        db.close()
+        return {
+            "success": False,
+            "message": "Product item not found."
+        }
+
+    items[item_index]["item_status"] = "Confirmed"
+    items[item_index]["item_return_comment"] = ""
+
+    recalculate_order_status(order, items)
+
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Product confirmed successfully!"
+    }
+
+
+@app.post("/sales/orders/{order_id}/items/{item_index}/return")
+def return_order_item(order_id: int, item_index: int, data: dict):
+    db = SessionLocal()
+
+    order = db.query(Order).filter(
+        Order.id == order_id
+    ).first()
+
+    if not order:
+        db.close()
+        return {
+            "success": False,
+            "message": "Order not found."
+        }
+
+    return_comment = data.get("return_comment", "").strip()
+
+    if not return_comment:
+        db.close()
+        return {
+            "success": False,
+            "message": "Please enter a return comment first."
+        }
+
+    items = normalize_order_items(order)
+
+    if item_index < 0 or item_index >= len(items):
+        db.close()
+        return {
+            "success": False,
+            "message": "Product item not found."
+        }
+
+    items[item_index]["item_status"] = "Returned"
+    items[item_index]["item_return_comment"] = return_comment
+
+    recalculate_order_status(order, items)
+
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Product returned successfully!"
+    }
 
 
 @app.post("/sales/orders/{order_id}/confirm")
@@ -1103,8 +1285,14 @@ def confirm_order(order_id: int):
             "message": "Order not found"
         }
 
-    order.status = "Confirmed"
-    order.return_comment = ""
+    items = normalize_order_items(order)
+
+    for item in items:
+        if isinstance(item, dict):
+            item["item_status"] = "Confirmed"
+            item["item_return_comment"] = ""
+
+    recalculate_order_status(order, items)
 
     db.commit()
     db.close()
@@ -1140,8 +1328,14 @@ def return_order(order_id: int, data: dict):
             "message": "Please enter a return comment first."
         }
 
-    order.status = "Returned"
-    order.return_comment = return_comment
+    items = normalize_order_items(order)
+
+    for item in items:
+        if isinstance(item, dict):
+            item["item_status"] = "Returned"
+            item["item_return_comment"] = return_comment
+
+    recalculate_order_status(order, items)
 
     db.commit()
     db.close()
@@ -1194,13 +1388,15 @@ def get_customer_orders(username: str):
     result = []
 
     for order in orders:
+        items = normalize_order_items(order)
+
         result.append({
             "id": order.id,
             "status": order.status,
             "total": order.total,
             "created_at": order.created_at,
             "return_comment": order.return_comment,
-            "items": order.items
+            "items": json.dumps(items)
         })
 
     db.close()
