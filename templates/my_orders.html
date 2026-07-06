@@ -560,9 +560,7 @@ async function deleteOrder(event, orderId) {
   event.stopPropagation();
 
   const ok = await showCenterConfirm(
-    "Delete Order #" + orderId + "?
-
-This will remove it from your My Orders list."
+    "Delete Order #" + orderId + "?\n\nThis will remove it from your My Orders list."
   );
 
   if (!ok) return;
