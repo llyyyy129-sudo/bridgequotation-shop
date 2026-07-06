@@ -5,9 +5,35 @@
   <title>Login</title>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/auth.css">
+
+  <style>
+    .center-toast {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: #eef4ff;
+      color: #1f3c88;
+      border: 1px solid #bfdbfe;
+      padding: 16px 26px;
+      border-radius: 16px;
+      box-shadow: 0 18px 45px rgba(37, 99, 235, 0.16);
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.55;
+      white-space: pre-line;
+      max-width: min(520px, 86vw);
+      word-break: break-word;
+      text-align: center;
+      display: none;
+      z-index: 99999;
+    }
+  </style>
 </head>
 
 <body>
+
+  <div id="centerToast" class="center-toast"></div>
 
   <main class="auth-shell">
 
@@ -47,13 +73,33 @@
 
 
   <script>
+    function showCenterMessage(message) {
+      const toast = document.getElementById("centerToast");
+
+      if (!toast) {
+        return;
+      }
+
+      toast.innerText = message;
+      toast.style.display = "block";
+
+      if (window.centerToastTimer) {
+        clearTimeout(window.centerToastTimer);
+      }
+
+      window.centerToastTimer = setTimeout(() => {
+        toast.style.display = "none";
+      }, 1700);
+    }
+
+
     function login() {
       const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value.trim();
       const sharedCart = localStorage.getItem("sharedCart");
 
       if (!username || !password) {
-        alert("Please enter username and password.");
+        showCenterMessage("Please enter username and password.");
         return;
       }
 
@@ -86,7 +132,7 @@
             return;
           }
 
-          alert(data.message);
+          showCenterMessage(data.message || "Invalid username or password.");
           return;
         }
 
@@ -116,7 +162,7 @@
       })
       .catch(error => {
         console.error("Login error:", error);
-        alert("Login failed. Please check server logs.");
+        showCenterMessage("Login failed. Please check server logs.");
       });
     }
 
