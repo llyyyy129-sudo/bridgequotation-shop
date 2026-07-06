@@ -61,12 +61,67 @@
         .summary-card {
             background: white;
             border-radius: 18px;
-            padding: 18px 24px;
+            padding: 20px 24px;
             box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
             margin-bottom: 22px;
+        }
+
+        .summary-title {
             color: #1f3c88;
+            font-weight: 900;
+            font-size: 22px;
+            margin-bottom: 16px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(150px, 1fr));
+            gap: 14px;
+        }
+
+        .dashboard-item {
+            border-radius: 16px;
+            padding: 16px 18px;
+            border: 1px solid #e5e7eb;
+            background: #f8fafc;
+        }
+
+        .dashboard-label {
+            color: #6b7280;
+            font-size: 13px;
             font-weight: 800;
-            font-size: 20px;
+            margin-bottom: 8px;
+        }
+
+        .dashboard-number {
+            color: #111827;
+            font-size: 28px;
+            font-weight: 900;
+        }
+
+        .dashboard-total {
+            background: #eef4ff;
+            border-color: #bfdbfe;
+        }
+
+        .dashboard-completed {
+            background: #ecfdf5;
+            border-color: #bbf7d0;
+        }
+
+        .dashboard-not-processed {
+            background: #fff7ed;
+            border-color: #fed7aa;
+        }
+
+        .dashboard-progress {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+        }
+
+        .dashboard-returned {
+            background: #fff1f2;
+            border-color: #fecdd3;
         }
 
         .customer-section {
@@ -139,9 +194,82 @@
         .order-section {
             background: #fbfcff;
             border: 1px solid #e5e7eb;
+            border-left: 8px solid #d1d5db;
             border-radius: 16px;
             margin-bottom: 16px;
             overflow: hidden;
+        }
+
+        .order-completed {
+            background: #f0fdf4;
+            border-left-color: #16a34a;
+        }
+
+        .order-not-processed {
+            background: #fff7ed;
+            border-left-color: #f97316;
+        }
+
+        .order-in-progress {
+            background: #eff6ff;
+            border-left-color: #2563eb;
+        }
+
+        .order-returned {
+            background: #fff1f2;
+            border-left-color: #dc2626;
+        }
+
+        .order-finished-mixed {
+            background: #f5f3ff;
+            border-left-color: #7c3aed;
+        }
+
+        .order-status-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 900;
+            margin-top: 8px;
+        }
+
+        .order-status-completed {
+            background: #dcfce7;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+        }
+
+        .order-status-not-processed {
+            background: #ffedd5;
+            color: #ea580c;
+            border: 1px solid #fed7aa;
+        }
+
+        .order-status-in-progress {
+            background: #dbeafe;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+        }
+
+        .order-status-returned {
+            background: #ffe4e6;
+            color: #be123c;
+            border: 1px solid #fecdd3;
+        }
+
+        .order-status-finished-mixed {
+            background: #ede9fe;
+            color: #6d28d9;
+            border: 1px solid #ddd6fe;
+        }
+
+        .system-order-no {
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 700;
+            margin-top: 4px;
         }
 
         .order-section > summary {
@@ -446,6 +574,10 @@
             .customer-section > summary { font-size: 20px; padding: 18px 20px; }
             .customer-content { padding: 0 18px 18px; }
             .product-header { flex-direction: column; }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -479,8 +611,35 @@
         <button class="logout-btn" onclick="logout()">Logout</button>
     </div>
 
-    <div class="summary-card" id="dashboardSummary">
-        Customer Orders (0)
+    <div class="summary-card">
+        <div class="summary-title">Sales Order Board</div>
+
+        <div class="dashboard-grid">
+            <div class="dashboard-item dashboard-total">
+                <div class="dashboard-label">Total Orders</div>
+                <div class="dashboard-number" id="boardTotalOrders">0</div>
+            </div>
+
+            <div class="dashboard-item dashboard-completed">
+                <div class="dashboard-label">Completed</div>
+                <div class="dashboard-number" id="boardCompletedOrders">0</div>
+            </div>
+
+            <div class="dashboard-item dashboard-not-processed">
+                <div class="dashboard-label">Not Processed</div>
+                <div class="dashboard-number" id="boardNotProcessedOrders">0</div>
+            </div>
+
+            <div class="dashboard-item dashboard-progress">
+                <div class="dashboard-label">In Progress</div>
+                <div class="dashboard-number" id="boardInProgressOrders">0</div>
+            </div>
+
+            <div class="dashboard-item dashboard-returned">
+                <div class="dashboard-label">Returned</div>
+                <div class="dashboard-number" id="boardReturnedOrders">0</div>
+            </div>
+        </div>
     </div>
 
     <div id="customerOrders"></div>
@@ -609,10 +768,8 @@ function renderCustomerGroups(customerGroups) {
 
     container.innerHTML = "";
 
-    document.getElementById("dashboardSummary").innerText =
-        "Customer Orders (" + customerGroups.length + " customers)";
-
     if (!customerGroups || customerGroups.length === 0) {
+        updateDashboardBoard([]);
         container.innerHTML = `
             <div class="customer-section">
                 <div class="empty-message">
@@ -623,8 +780,21 @@ function renderCustomerGroups(customerGroups) {
         return;
     }
 
+    const allOrders = [];
+
+    customerGroups.forEach(group => {
+        group.orders.sort((a, b) => a.id - b.id);
+
+        group.orders.forEach((order, index) => {
+            order.customer_order_no = index + 1;
+            allOrders.push(order);
+        });
+    });
+
+    updateDashboardBoard(allOrders);
+
     customerGroups.forEach((group, index) => {
-        group.orders.sort((a, b) => b.id - a.id);
+        group.orders.sort((a, b) => b.customer_order_no - a.customer_order_no);
 
         container.innerHTML += `
             <details class="customer-section" ${index === 0 ? "open" : ""}>
@@ -649,6 +819,39 @@ function renderCustomerGroups(customerGroups) {
 }
 
 
+function updateDashboardBoard(orders) {
+    const board = {
+        total: orders.length,
+        completed: 0,
+        notProcessed: 0,
+        inProgress: 0,
+        returned: 0
+    };
+
+    orders.forEach(order => {
+        const statusInfo = getOrderStatusInfo(
+            parseItems(order.items),
+            order.status
+        );
+
+        if (statusInfo.key === "completed") {
+            board.completed += 1;
+        } else if (statusInfo.key === "not_processed") {
+            board.notProcessed += 1;
+        } else if (statusInfo.key === "returned") {
+            board.returned += 1;
+        } else {
+            board.inProgress += 1;
+        }
+    });
+
+    document.getElementById("boardTotalOrders").innerText = board.total;
+    document.getElementById("boardCompletedOrders").innerText = board.completed;
+    document.getElementById("boardNotProcessedOrders").innerText = board.notProcessed;
+    document.getElementById("boardInProgressOrders").innerText = board.inProgress;
+    document.getElementById("boardReturnedOrders").innerText = board.returned;
+}
+
 function renderOrderSection(order) {
     const items = parseItems(order.items);
     const pending = [];
@@ -672,11 +875,20 @@ function renderOrderSection(order) {
         }
     });
 
+    const statusInfo = getOrderStatusInfo(items, order.status);
+
     return `
-        <details class="order-section" open>
+        <details class="order-section ${statusInfo.orderClass}" open>
             <summary>
                 <span>
-                    <div class="order-title">Order #${order.id}</div>
+                    <div class="order-title">
+                        Order #${order.customer_order_no || order.id}
+                    </div>
+
+                    <div class="system-order-no">
+                        System Order #${order.id}
+                    </div>
+
                     <div class="order-meta">
                         Total: <b>$${Number(order.total || 0).toFixed(2)}</b><br>
                         Order Time: ${escapeHtml(order.created_at || "Not recorded")}<br>
@@ -684,6 +896,10 @@ function renderOrderSection(order) {
                         ${pending.length} Pending /
                         ${confirmed.length} Confirmed /
                         ${returned.length} Returned
+                    </div>
+
+                    <div class="order-status-pill ${statusInfo.pillClass}">
+                        ${statusInfo.label}
                     </div>
                 </span>
 
@@ -701,6 +917,72 @@ function renderOrderSection(order) {
     `;
 }
 
+
+function getOrderStatusInfo(items, orderStatus) {
+    const info = {
+        total: 0,
+        pending: 0,
+        confirmed: 0,
+        returned: 0
+    };
+
+    items.forEach(item => {
+        info.total += 1;
+
+        const status = getItemStatus(item, orderStatus);
+
+        if (status === "Confirmed") {
+            info.confirmed += 1;
+        } else if (status === "Returned") {
+            info.returned += 1;
+        } else {
+            info.pending += 1;
+        }
+    });
+
+    if (info.total === 0 || info.pending === info.total) {
+        return {
+            key: "not_processed",
+            label: "Not Processed",
+            orderClass: "order-not-processed",
+            pillClass: "order-status-not-processed"
+        };
+    }
+
+    if (info.confirmed === info.total) {
+        return {
+            key: "completed",
+            label: "Completed",
+            orderClass: "order-completed",
+            pillClass: "order-status-completed"
+        };
+    }
+
+    if (info.returned === info.total) {
+        return {
+            key: "returned",
+            label: "Returned",
+            orderClass: "order-returned",
+            pillClass: "order-status-returned"
+        };
+    }
+
+    if (info.pending === 0) {
+        return {
+            key: "finished_mixed",
+            label: "Completed with Returns",
+            orderClass: "order-finished-mixed",
+            pillClass: "order-status-finished-mixed"
+        };
+    }
+
+    return {
+        key: "in_progress",
+        label: "In Progress",
+        orderClass: "order-in-progress",
+        pillClass: "order-status-in-progress"
+    };
+}
 
 function renderProductStatusSection(order, type, title, productItems, openByDefault) {
     const dotClass = {
