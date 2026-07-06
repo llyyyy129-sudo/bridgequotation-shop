@@ -209,6 +209,35 @@
             font-weight: bold;
         }
 
+        .pricing-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 12px;
+        }
+
+        .pricing-input {
+            width: 160px;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid #ccd3df;
+            padding: 0 10px;
+            background: white;
+            font-size: 14px;
+        }
+
+        .level-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 10px;
+            border-radius: 999px;
+            background: #eef4ff;
+            color: #1f3c88;
+            font-weight: 800;
+            margin-left: 6px;
+        }
+
         .assign-box {
             margin-top: 14px;
             background: #f8f9fc;
@@ -275,6 +304,34 @@
 
 
     <div class="section">
+        <h2>Pricing Settings</h2>
+
+        <div>
+            A Class customers see Excel prices directly.
+            B Class customers see Excel prices multiplied by the percentage below.
+        </div>
+
+        <div class="pricing-row">
+            <label><b>B Class Price:</b></label>
+            <input
+                id="bClassPercent"
+                class="pricing-input"
+                type="number"
+                min="100"
+                max="300"
+                step="1"
+                value="120"
+            >
+            <span>%</span>
+
+            <button class="save-btn" onclick="savePricingSetting()">
+                Save Pricing
+            </button>
+        </div>
+    </div>
+
+
+    <div class="section">
         <h2 id="pendingTitle">Pending User Approval (0)</h2>
         <div id="pendingUsers"></div>
     </div>
@@ -317,9 +374,61 @@ if (currentRole !== "admin") {
 
 
 async function loadAdminUsers() {
+    await loadPricingSettings();
     await loadSalesOptions();
     await loadPendingUsers();
     await loadUserGroups();
+}
+
+
+async function loadPricingSettings() {
+    try {
+        const response = await fetch("/admin/pricing");
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById("bClassPercent").value =
+                Number(data.b_percentage || 120);
+        }
+
+    } catch (error) {
+        console.error("Load pricing settings error:", error);
+    }
+}
+
+
+async function savePricingSetting() {
+    const percentage = Number(document.getElementById("bClassPercent").value);
+
+    if (!percentage || percentage < 100) {
+        alert("B Class percentage must be 100 or above.");
+        return;
+    }
+
+    try {
+        const response = await fetch("/admin/pricing", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                b_percentage: percentage
+            })
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            alert(data.message || "Failed to update pricing.");
+            return;
+        }
+
+        showToast(data.message);
+
+    } catch (error) {
+        console.error("Save pricing setting error:", error);
+        alert("Failed to update pricing. Please check server logs.");
+    }
 }
 
 
@@ -432,10 +541,12 @@ function renderCustomerUsers(users) {
                     Company: <b>${escapeHtml(user.company_name || "")}</b><br>
                     Email: <b>${escapeHtml(user.email || "")}</b><br>
                     Role: <b>${escapeHtml(user.role || "")}</b><br>
+                    Customer Level: <span class="level-pill">${escapeHtml(user.customer_level || "A")}</span><br>
                     Assigned Sales: <b>${escapeHtml(user.assigned_sales || "Not assigned")}</b><br>
                     Status: ${formatStatus(user.approval_status)}
                 </div>
 
+                ${renderCustomerLevelBox(user)}
                 ${renderAssignSalesBox(user)}
 
                 <div class="button-row">
@@ -483,6 +594,79 @@ function renderSalesUsers(users) {
             </div>
         `;
     });
+}
+
+
+function renderCustomerLevelBox(user) {
+    if (user.role !== "customer") {
+        return "";
+    }
+
+    if (user.approval_status !== "Approved") {
+        return "";
+    }
+
+    const currentLevel = user.customer_level || "A";
+
+    return `
+        <div class="assign-box">
+            <b>Customer Level</b>
+
+            <div class="assign-row">
+                <select class="sales-select" id="customer-level-${user.id}">
+                    <option value="A" ${currentLevel === "A" ? "selected" : ""}>
+                        A Class - Excel Price
+                    </option>
+                    <option value="B" ${currentLevel === "B" ? "selected" : ""}>
+                        B Class - Adjusted Price
+                    </option>
+                </select>
+
+                <button class="save-btn" onclick="updateCustomerLevel(${user.id})">
+                    Save Level
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+
+async function updateCustomerLevel(userId) {
+    const select = document.getElementById("customer-level-" + userId);
+    const customerLevel = select.value;
+
+    setProcessing(userId, true);
+
+    try {
+        const response = await fetch(
+            "/admin/customers/" + userId + "/level",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    customer_level: customerLevel
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!data.success) {
+            alert(data.message || data.detail || "Level update failed.");
+            setProcessing(userId, false);
+            return;
+        }
+
+        await loadAdminUsers();
+        showToast(data.message);
+
+    } catch (error) {
+        console.error("Update customer level error:", error);
+        alert("Level update failed. Please check server logs.");
+        setProcessing(userId, false);
+    }
 }
 
 

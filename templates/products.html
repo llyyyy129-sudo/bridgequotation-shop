@@ -273,7 +273,7 @@ const container = document.getElementById("list");
 
 loadCustomerInfo();
 
-fetch("/products")
+fetch("/products?username=" + encodeURIComponent(user))
   .then(response => response.json())
   .then(products => {
     allProducts = products;
@@ -295,6 +295,7 @@ function loadCustomerInfo() {
 
         document.getElementById("assignedSales").innerText = assignedSales;
         localStorage.setItem("assigned_sales", assignedSales);
+        localStorage.setItem("customer_level", data.customer_level || "A");
       }
     })
     .catch(error => {

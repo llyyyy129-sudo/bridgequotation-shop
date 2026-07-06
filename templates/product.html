@@ -348,6 +348,7 @@
 <script>
 const params = new URLSearchParams(window.location.search);
 const id = params.get("id");
+const user = localStorage.getItem("user") || "";
 
 function money(value) {
   return Number(value || 0).toLocaleString(undefined, {
@@ -356,7 +357,7 @@ function money(value) {
   });
 }
 
-fetch(`/products/${id}`)
+fetch(`/products/${id}?username=${encodeURIComponent(user)}`)
   .then(response => response.json())
   .then(product => {
 

@@ -46,6 +46,7 @@ class User(Base):
     email = Column(String, default="")
     account_type = Column(String, default="customer")
     approval_status = Column(String, default="Pending")
+    customer_level = Column(String, default="A")
 
 
 class Order(Base):
@@ -58,3 +59,11 @@ class Order(Base):
     total = Column(Float)
     status = Column(String, default="Pending")
     created_at = Column(String, default="")
+
+
+
+class PricingSetting(Base):
+    __tablename__ = "pricing_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    b_multiplier = Column(Float, default=1.2)

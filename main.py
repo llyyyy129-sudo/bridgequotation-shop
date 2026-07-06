@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine, SessionLocal
-from models import Product, User, Order, Base
+from models import Product, User, Order, PricingSetting, Base
 
 from reportlab.lib.pagesizes import A4
 
@@ -81,6 +81,12 @@ def run_migrations():
         "users",
         "approval_status",
         "VARCHAR DEFAULT 'Approved'"
+    )
+
+    add_column_if_missing(
+        "users",
+        "customer_level",
+        "VARCHAR DEFAULT 'A'"
     )
 
     add_column_if_missing(
@@ -183,6 +189,111 @@ def ensure_orange_admin():
 ensure_orange_admin()
 
 
+def ensure_pricing_setting():
+    db = SessionLocal()
+
+    setting = db.query(PricingSetting).filter(
+        PricingSetting.id == 1
+    ).first()
+
+    if not setting:
+        setting = PricingSetting(
+            id=1,
+            b_multiplier=1.2
+        )
+        db.add(setting)
+        db.commit()
+
+    db.close()
+
+
+ensure_pricing_setting()
+
+
+def get_b_multiplier(db):
+    setting = db.query(PricingSetting).filter(
+        PricingSetting.id == 1
+    ).first()
+
+    if not setting:
+        setting = PricingSetting(
+            id=1,
+            b_multiplier=1.2
+        )
+        db.add(setting)
+        db.commit()
+
+    return float(setting.b_multiplier or 1.2)
+
+
+def get_price_multiplier(db, username=None):
+    if not username:
+        return 1.0
+
+    user = db.query(User).filter(
+        User.username == username
+    ).first()
+
+    if not user:
+        return 1.0
+
+    level = (user.customer_level or "A").upper()
+
+    if level == "B":
+        return get_b_multiplier(db)
+
+    return 1.0
+
+
+def apply_price_multiplier(value, multiplier):
+    if value is None:
+        return value
+
+    try:
+        return round(float(value) * float(multiplier), 2)
+    except Exception:
+        return value
+
+
+def serialize_product(product, multiplier=1.0):
+    return {
+        "id": product.id,
+        "name": product.name,
+        "price": apply_price_multiplier(product.price, multiplier),
+        "description": product.description,
+        "image": product.image,
+        "image_2": product.image_2,
+        "image_3": product.image_3,
+        "image_4": product.image_4,
+        "image_5": product.image_5,
+        "image_6": product.image_6,
+        "gallery_images": [
+            image for image in [
+                product.image,
+                product.image_2,
+                product.image_3,
+                product.image_4,
+                product.image_5,
+                product.image_6
+            ]
+            if image and str(image).strip()
+        ],
+        "video": product.video,
+        "packing": product.packing,
+        "moq": product.moq,
+        "material": product.material,
+        "volume": product.volume,
+        "size": product.size,
+        "price_500": apply_price_multiplier(product.price_500, multiplier),
+        "price_1000": apply_price_multiplier(product.price_1000, multiplier),
+        "price_3000": apply_price_multiplier(product.price_3000, multiplier),
+        "price_10000": apply_price_multiplier(product.price_10000, multiplier),
+        "price_50000": apply_price_multiplier(product.price_50000, multiplier),
+        "category": product.category
+    }
+
+
+
 try:
     from seed import seed_products
     seed_products()
@@ -263,86 +374,43 @@ def admin_page():
 # =========================
 
 @app.get("/products")
-def get_products():
+def get_products(username: str = ""):
     db = SessionLocal()
+
+    multiplier = get_price_multiplier(db, username)
     products = db.query(Product).all()
 
-    result = []
-
-    for p in products:
-        result.append({
-            "id": p.id,
-            "name": p.name,
-            "price": p.price,
-            "description": p.description,
-            "image": p.image,
-            "image_2": p.image_2,
-            "image_3": p.image_3,
-            "image_4": p.image_4,
-            "image_5": p.image_5,
-            "image_6": p.image_6,
-            "video": p.video,
-            "packing": p.packing,
-            "price_500": p.price_500,
-            "price_1000": p.price_1000,
-            "price_3000": p.price_3000,
-            "price_10000": p.price_10000,
-            "price_50000": p.price_50000,
-            "category": p.category
-        })
+    result = [
+        serialize_product(product, multiplier)
+        for product in products
+    ]
 
     db.close()
     return result
 
 
 @app.get("/products/{product_id}")
-def get_product(product_id: int):
+def get_product(product_id: int, username: str = ""):
     db = SessionLocal()
-    product = db.query(Product).filter(Product.id == product_id).first()
-    db.close()
 
-    if product:
-        gallery_images = [
-            product.image,
-            product.image_2,
-            product.image_3,
-            product.image_4,
-            product.image_5,
-            product.image_6
-        ]
+    multiplier = get_price_multiplier(db, username)
 
-        gallery_images = [
-            image for image in gallery_images
-            if image and str(image).strip()
-        ]
+    product = db.query(Product).filter(
+        Product.id == product_id
+    ).first()
 
+    if not product:
+        db.close()
         return {
-            "id": product.id,
-            "name": product.name,
-            "price": product.price,
-            "description": product.description,
-            "image": product.image,
-            "image_2": product.image_2,
-            "image_3": product.image_3,
-            "image_4": product.image_4,
-            "image_5": product.image_5,
-            "image_6": product.image_6,
-            "gallery_images": gallery_images,
-            "video": product.video,
-            "moq": product.moq,
-            "material": product.material,
-            "volume": product.volume,
-            "size": product.size,
-            "packing": product.packing,
-            "price_500": product.price_500,
-            "price_1000": product.price_1000,
-            "price_3000": product.price_3000,
-            "price_10000": product.price_10000,
-            "price_50000": product.price_50000,
-            "category": product.category
+            "error": "Product not found"
         }
 
-    return {"error": "Product not found"}
+    result = serialize_product(product, multiplier)
+
+    db.close()
+    return result
+
+
 
 
 # =========================
@@ -417,7 +485,8 @@ def register(user: dict):
         company_name=company_name,
         email=email,
         account_type=account_type,
-        approval_status="Pending"
+        approval_status="Pending",
+        customer_level="A"
     )
 
     db.add(new_user)
@@ -488,7 +557,8 @@ def login(user: dict):
         "account_type": existing.account_type,
         "approval_status": approval_status,
         "company_name": existing.company_name,
-        "email": existing.email
+        "email": existing.email,
+        "customer_level": existing.customer_level
     }
 
     db.close()
@@ -553,7 +623,8 @@ def serialize_user(u):
         "account_type": u.account_type,
         "role": u.role,
         "assigned_sales": u.assigned_sales,
-        "approval_status": u.approval_status
+        "approval_status": u.approval_status,
+        "customer_level": u.customer_level
     }
 
 
@@ -607,6 +678,7 @@ def approve_user(user_id: int):
     else:
         user.role = "customer"
         user.assigned_sales = "BILL"
+        user.customer_level = user.customer_level or "A"
 
     db.commit()
     db.close()
@@ -677,6 +749,120 @@ def get_sales_users():
     db.close()
     return result
 
+
+
+@app.get("/admin/pricing")
+def get_admin_pricing():
+    db = SessionLocal()
+
+    setting = db.query(PricingSetting).filter(
+        PricingSetting.id == 1
+    ).first()
+
+    if not setting:
+        setting = PricingSetting(
+            id=1,
+            b_multiplier=1.2
+        )
+        db.add(setting)
+        db.commit()
+
+    result = {
+        "success": True,
+        "b_multiplier": float(setting.b_multiplier or 1.2),
+        "b_percentage": round(float(setting.b_multiplier or 1.2) * 100, 2)
+    }
+
+    db.close()
+    return result
+
+
+@app.post("/admin/pricing")
+def update_admin_pricing(data: dict):
+    db = SessionLocal()
+
+    try:
+        percentage = float(data.get("b_percentage", 120))
+    except Exception:
+        percentage = 120
+
+    if percentage < 100:
+        db.close()
+        return {
+            "success": False,
+            "message": "B Class percentage cannot be lower than 100%."
+        }
+
+    if percentage > 300:
+        db.close()
+        return {
+            "success": False,
+            "message": "B Class percentage cannot be higher than 300%."
+        }
+
+    setting = db.query(PricingSetting).filter(
+        PricingSetting.id == 1
+    ).first()
+
+    if not setting:
+        setting = PricingSetting(
+            id=1,
+            b_multiplier=percentage / 100
+        )
+        db.add(setting)
+    else:
+        setting.b_multiplier = percentage / 100
+
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": f"B Class price percentage updated to {percentage}%."
+    }
+
+
+@app.post("/admin/customers/{customer_id}/level")
+def update_customer_level(customer_id: int, data: dict):
+    db = SessionLocal()
+
+    customer = db.query(User).filter(
+        User.id == customer_id
+    ).first()
+
+    if not customer:
+        db.close()
+        return {
+            "success": False,
+            "message": "Customer not found."
+        }
+
+    if customer.role != "customer":
+        db.close()
+        return {
+            "success": False,
+            "message": "Only customer users can have customer level."
+        }
+
+    level = data.get("customer_level", "A").strip().upper()
+
+    if level not in ["A", "B"]:
+        db.close()
+        return {
+            "success": False,
+            "message": "Customer level must be A or B."
+        }
+
+    customer_username = customer.username
+    customer.customer_level = level
+
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": f"{customer_username} customer level updated to {level}."
+    }
 
 @app.post("/admin/customers/{customer_id}/assign-sales")
 def assign_sales_to_customer(customer_id: int, data: dict):
@@ -964,7 +1150,8 @@ def get_customer_info(username: str):
         "company_name": user.company_name,
         "email": user.email,
         "assigned_sales": user.assigned_sales,
-        "approval_status": user.approval_status
+        "approval_status": user.approval_status,
+        "customer_level": user.customer_level
     }
 
     db.close()
