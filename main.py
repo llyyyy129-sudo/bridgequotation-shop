@@ -1010,13 +1010,55 @@ async def generate_cart_pdf(data: dict):
         Image
     )
     from reportlab.lib import colors
-    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.utils import ImageReader
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from pathlib import Path as LocalPath
 
     items = data.get("items", [])
 
     customer_name = data.get("customerName", "")
     customer_company = data.get("customerCompany", "")
     customer_email = data.get("customerEmail", "")
+    username = data.get("username", "")
+
+    try:
+        valid_days = int(data.get("validDays", 30))
+    except Exception:
+        valid_days = 30
+
+    if valid_days <= 0:
+        valid_days = 30
+
+    # Get assigned sales contact from the logged-in customer account.
+    sales_name = ""
+    sales_email = ""
+
+    db = SessionLocal()
+
+    try:
+        customer_user = db.query(User).filter(
+            User.username == username
+        ).first()
+
+        assigned_sales = ""
+
+        if customer_user:
+            assigned_sales = customer_user.assigned_sales or ""
+
+        if assigned_sales:
+            sales_user = db.query(User).filter(
+                User.username == assigned_sales
+            ).first()
+
+            sales_name = assigned_sales
+
+            if sales_user:
+                sales_name = sales_user.username or assigned_sales
+                sales_email = sales_user.email or ""
+
+    finally:
+        db.close()
 
     buffer = BytesIO()
 
@@ -1031,6 +1073,21 @@ async def generate_cart_pdf(data: dict):
 
     elements = []
     styles = getSampleStyleSheet()
+
+    normal_style = styles["Normal"]
+
+    small_style = ParagraphStyle(
+        "SmallText",
+        parent=styles["Normal"],
+        fontSize=9,
+        leading=11
+    )
+
+    small_center_style = ParagraphStyle(
+        "SmallCenterText",
+        parent=small_style,
+        alignment=TA_CENTER
+    )
 
     logo = Image(
         "static/image/bg2.jpg",
@@ -1048,35 +1105,50 @@ async def generate_cart_pdf(data: dict):
     )
 
     elements.append(title)
-    elements.append(Spacer(1, 16))
+    elements.append(Spacer(1, 14))
 
-    quote_info = Paragraph(
+    quote_customer_info = Paragraph(
         f"""
         <font size=11>
         <b>Quotation No:</b> BQ-{datetime.now().strftime('%Y%m%d%H%M')}<br/>
         <b>Website:</b> bridgequotation.com<br/>
         <b>Date:</b> {datetime.now().strftime('%Y-%m-%d')}<br/>
-        <b>Valid Until:</b> 30 days
-        </font>
-        """,
-        styles["Normal"]
-    )
+        <b>Valid Until:</b> {valid_days} days<br/><br/>
 
-    elements.append(quote_info)
-    elements.append(Spacer(1, 14))
-
-    customer_info = Paragraph(
-        f"""
-        <font size=11>
         <b>Customer:</b> {customer_name}<br/>
         <b>Company:</b> {customer_company}<br/>
         <b>Email:</b> {customer_email}
         </font>
         """,
-        styles["Normal"]
+        normal_style
     )
 
-    elements.append(customer_info)
+    sales_info = Paragraph(
+        f"""
+        <font size=11>
+        <b>Sales Contact</b><br/><br/>
+        <b>Name:</b> {sales_name or "Not assigned"}<br/>
+        <b>Email:</b> {sales_email or ""}
+        </font>
+        """,
+        normal_style
+    )
+
+    info_table = Table(
+        [[quote_customer_info, sales_info]],
+        colWidths=[330, 180]
+    )
+
+    info_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("BOX", (0, 0), (-1, -1), 0.25, colors.white),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+
+    elements.append(info_table)
     elements.append(Spacer(1, 18))
 
     table_data = [
@@ -1096,37 +1168,78 @@ async def generate_cart_pdf(data: dict):
     def money(value):
         return "${:,.2f}".format(float(value))
 
+    def make_text(value, center=False):
+        if value is None:
+            value = ""
+
+        text = str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+        if center:
+            return Paragraph(text, small_center_style)
+
+        return Paragraph(text, small_style)
+
+    def make_product_image(image_url):
+        if not image_url:
+            return make_text("No Image", center=True)
+
+        image_path = str(image_url)
+
+        if image_path.startswith("/"):
+            image_path = "." + image_path
+
+        local_path = LocalPath(image_path)
+
+        if not local_path.exists():
+            return make_text("No Image", center=True)
+
+        try:
+            reader = ImageReader(str(local_path))
+            img_width, img_height = reader.getSize()
+
+            max_width = 48
+            max_height = 48
+
+            scale = min(max_width / img_width, max_height / img_height)
+
+            draw_width = img_width * scale
+            draw_height = img_height * scale
+
+            product_image = Image(
+                str(local_path),
+                width=draw_width,
+                height=draw_height
+            )
+
+            product_image.hAlign = "CENTER"
+
+            return product_image
+
+        except Exception:
+            return make_text("No Image", center=True)
+
     grand_total = 0
 
     for item in items:
 
-        qty = int(item["quantity"])
-        price = float(item["price"])
+        qty = int(item.get("quantity", 0))
+        price = float(item.get("price", 0))
 
         total = qty * price
         grand_total += total
 
-        image_path = "." + item["image"]
-
-        try:
-            product_image = Image(
-                image_path,
-                width=55,
-                height=55
-            )
-        except Exception:
-            product_image = "No Image"
+        product_image = make_product_image(item.get("image", ""))
 
         table_data.append([
             product_image,
-            item["name"],
-            item.get("moq", ""),
-            item.get("material", ""),
-            item.get("size", ""),
-            item.get("packing_request") or item.get("packing", ""),
-            f"{qty:,}",
-            money(price),
-            money(total)
+            make_text(item.get("name", "")),
+            make_text(item.get("moq", ""), center=True),
+            make_text(item.get("material", ""), center=True),
+            make_text(item.get("size", ""), center=True),
+            make_text(item.get("packing_request") or item.get("packing", ""), center=True),
+            make_text(f"{qty:,}", center=True),
+            make_text(money(price), center=True),
+            make_text(money(total), center=True)
         ])
 
     table_data.append([
@@ -1137,13 +1250,22 @@ async def generate_cart_pdf(data: dict):
         "",
         "",
         "",
-        "Grand Total",
-        money(grand_total)
+        make_text("Grand Total", center=True),
+        make_text(money(grand_total), center=True)
     ])
+
+    row_heights = [26]
+
+    for _ in items:
+        row_heights.append(64)
+
+    row_heights.append(24)
 
     table = Table(
         table_data,
-        colWidths=[50, 95, 42, 55, 45, 75, 38, 55, 65]
+        colWidths=[55, 90, 42, 55, 45, 80, 42, 60, 68],
+        rowHeights=row_heights,
+        repeatRows=1
     )
 
     table.setStyle(TableStyle([
@@ -1151,19 +1273,26 @@ async def generate_cart_pdf(data: dict):
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
 
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
 
-        ("GRID", (0, 0), (-1, -1), 1, colors.grey),
+        ("FONTSIZE", (0, 0), (-1, 0), 8.5),
+        ("FONTSIZE", (0, 1), (-1, -1), 8),
+
+        ("GRID", (0, 0), (-1, -1), 0.6, colors.grey),
 
         ("BACKGROUND", (0, 1), (-1, -2), colors.whitesmoke),
         ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#dbeafe")),
 
-        ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
-
-        ("BOTTOMPADDING", (0, 0), (-1, 0), 10),
-
+        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("ALIGN", (0, 1), (0, -2), "CENTER"),
         ("ALIGN", (2, 1), (-1, -1), "CENTER"),
+
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]))
 
     elements.append(table)

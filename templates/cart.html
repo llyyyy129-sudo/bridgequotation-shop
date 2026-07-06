@@ -121,6 +121,7 @@
   <input id="customerName" placeholder="Customer Name">
   <input id="customerCompany" placeholder="Customer Company">
   <input id="customerEmail" placeholder="Customer Email">
+  <input id="validDays" type="number" min="1" value="30" placeholder="Valid Days">
   <div class="quotation-hint">
     These fields are filled from your registered account. You can still edit them before downloading the PDF quotation.
   </div>
@@ -384,9 +385,11 @@ async function downloadPDF() {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
+      username: localStorage.getItem("user"),
       customerName: document.getElementById("customerName").value,
       customerCompany: document.getElementById("customerCompany").value,
       customerEmail: document.getElementById("customerEmail").value,
+      validDays: document.getElementById("validDays").value || 30,
       items: cart
     })
   });
