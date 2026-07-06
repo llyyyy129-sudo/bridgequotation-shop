@@ -59,6 +59,7 @@ class Order(Base):
     total = Column(Float)
     status = Column(String, default="Pending")
     created_at = Column(String, default="")
+    return_comment = Column(String, default="")
 
 
 

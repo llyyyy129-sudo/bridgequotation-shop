@@ -47,11 +47,18 @@
       flex-wrap: wrap;
     }
 
-    .orders-section {
+    .order-section {
       background: #ffffff;
       border-radius: 22px;
       padding: 24px;
       box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      margin-bottom: 22px;
+    }
+
+    .order-section-title {
+      margin: 0 0 18px;
+      color: #1f3c88;
+      font-size: 22px;
     }
 
     .empty-message {
@@ -94,6 +101,17 @@
     .my-order-time {
       color: #6b7280;
       font-size: 13px;
+    }
+
+    .return-reason {
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #fff1f2;
+      color: #b91c1c;
+      border: 1px solid #fecdd3;
+      font-size: 14px;
+      line-height: 1.5;
     }
 
     .my-order-toggle {
@@ -179,8 +197,19 @@
   </div>
 
 
-  <div class="orders-section">
-    <div id="myOrders"></div>
+  <div class="order-section">
+    <h3 id="pendingTitle" class="order-section-title">🟠 Pending Orders (0)</h3>
+    <div id="pendingOrders"></div>
+  </div>
+
+  <div class="order-section">
+    <h3 id="confirmedTitle" class="order-section-title">🟢 Confirmed Orders (0)</h3>
+    <div id="confirmedOrders"></div>
+  </div>
+
+  <div class="order-section">
+    <h3 id="returnedTitle" class="order-section-title">🔴 Returned Orders (0)</h3>
+    <div id="returnedOrders"></div>
   </div>
 
 </div>
@@ -203,81 +232,118 @@ async function loadMyOrders() {
 
   const orders = await response.json();
 
-  const container = document.getElementById("myOrders");
+  const pendingOrders = orders.filter(order => order.status === "Pending");
+  const confirmedOrders = orders.filter(order => order.status === "Confirmed");
+  const returnedOrders = orders.filter(order =>
+    order.status === "Returned" || order.status === "Rejected"
+  );
 
+  pendingOrders.sort((a, b) => b.id - a.id);
+  confirmedOrders.sort((a, b) => b.id - a.id);
+  returnedOrders.sort((a, b) => b.id - a.id);
+
+  document.getElementById("pendingTitle").innerText =
+    "🟠 Pending Orders (" + pendingOrders.length + ")";
+
+  document.getElementById("confirmedTitle").innerText =
+    "🟢 Confirmed Orders (" + confirmedOrders.length + ")";
+
+  document.getElementById("returnedTitle").innerText =
+    "🔴 Returned Orders (" + returnedOrders.length + ")";
+
+  renderOrderGroup("pendingOrders", pendingOrders, "No pending orders.");
+  renderOrderGroup("confirmedOrders", confirmedOrders, "No confirmed orders.");
+  renderOrderGroup("returnedOrders", returnedOrders, "No returned orders.");
+}
+
+
+function renderOrderGroup(containerId, orders, emptyText) {
+  const container = document.getElementById(containerId);
   container.innerHTML = "";
 
   if (!orders || orders.length === 0) {
     container.innerHTML = `
       <div class="empty-message">
-        No submitted orders yet.
+        ${emptyText}
       </div>
     `;
     return;
   }
 
-  orders.reverse();
-
   orders.forEach(order => {
-    let statusColor = "#ff9800";
-    let statusText = "⏳ Pending";
-
-    if (order.status === "Confirmed") {
-      statusColor = "#4caf50";
-      statusText = "✅ Confirmed";
-    }
-
-    if (order.status === "Rejected") {
-      statusColor = "#f44336";
-      statusText = "❌ Rejected";
-    }
-
-    const orderTime = order.created_at || "Not recorded";
-    const orderItems = parseOrderItems(order.items);
-
-    container.innerHTML += `
-      <details class="my-order-details" id="order-${order.id}">
-        <summary>
-          <div class="my-order-summary">
-            <div class="my-order-main">
-              <b>Order #${order.id}</b>
-              <br>
-              Total: $${Number(order.total).toFixed(2)}
-              <br>
-              Status:
-              <span style="
-                color:${statusColor};
-                font-weight:bold;
-              ">
-                ${statusText}
-              </span>
-              <br>
-              <span class="my-order-time">
-                Order Time: ${escapeHtml(orderTime)}
-              </span>
-            </div>
-
-            <div class="my-order-right">
-              <span class="my-order-toggle">
-                View Order Details ▼
-              </span>
-
-              <button
-                class="delete-order-btn"
-                onclick="deleteOrder(event, ${order.id})"
-              >
-                Delete Order
-              </button>
-            </div>
-          </div>
-        </summary>
-
-        <div class="my-order-items">
-          ${renderOrderItems(orderItems)}
-        </div>
-      </details>
-    `;
+    container.innerHTML += renderOrderCard(order);
   });
+}
+
+
+function renderOrderCard(order) {
+  let statusColor = "#ff9800";
+  let statusText = "⏳ Pending";
+
+  if (order.status === "Confirmed") {
+    statusColor = "#4caf50";
+    statusText = "✅ Confirmed";
+  }
+
+  if (order.status === "Returned" || order.status === "Rejected") {
+    statusColor = "#f44336";
+    statusText = "↩ Returned";
+  }
+
+  const orderTime = order.created_at || "Not recorded";
+  const orderItems = parseOrderItems(order.items);
+  const returnComment = order.return_comment || "";
+
+  return `
+    <details class="my-order-details" id="order-${order.id}">
+      <summary>
+        <div class="my-order-summary">
+          <div class="my-order-main">
+            <b>Order #${order.id}</b>
+            <br>
+            Total: $${Number(order.total).toFixed(2)}
+            <br>
+            Status:
+            <span style="
+              color:${statusColor};
+              font-weight:bold;
+            ">
+              ${statusText}
+            </span>
+            <br>
+            <span class="my-order-time">
+              Order Time: ${escapeHtml(orderTime)}
+            </span>
+
+            ${
+              returnComment
+                ? `<div class="return-reason">
+                     <b>Return Reason:</b> ${escapeHtml(returnComment)}
+                   </div>`
+                : ""
+            }
+          </div>
+
+          <div class="my-order-right">
+            <span class="my-order-toggle">
+              View Order Details ▼
+            </span>
+
+            <button
+              class="delete-order-btn"
+              onclick="deleteOrder(event, ${order.id})"
+            >
+              Delete Order
+            </button>
+          </div>
+        </div>
+      </summary>
+
+      <div class="my-order-items">
+        ${renderOrderItems(orderItems)}
+      </div>
+    </details>
+  `;
 }
 
 

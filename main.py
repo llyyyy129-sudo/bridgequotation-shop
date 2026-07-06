@@ -149,6 +149,12 @@ def run_migrations():
         "VARCHAR DEFAULT ''"
     )
 
+    add_column_if_missing(
+        "orders",
+        "return_comment",
+        "VARCHAR DEFAULT ''"
+    )
+
 
 run_migrations()
 
@@ -1041,7 +1047,8 @@ def create_order(data: dict):
         items=json.dumps(data["items"]),
         total=data["total"],
         status="Pending",
-        created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        return_comment=""
     )
 
     db.add(order)
@@ -1073,6 +1080,7 @@ def get_sales_orders(sales_username: str):
             "total": order.total,
             "status": order.status,
             "created_at": order.created_at,
+            "return_comment": order.return_comment,
             "items": order.items
         })
 
@@ -1096,6 +1104,7 @@ def confirm_order(order_id: int):
         }
 
     order.status = "Confirmed"
+    order.return_comment = ""
 
     db.commit()
     db.close()
@@ -1107,7 +1116,8 @@ def confirm_order(order_id: int):
 
 
 @app.post("/sales/orders/{order_id}/reject")
-def reject_order(order_id: int):
+@app.post("/sales/orders/{order_id}/return")
+def return_order(order_id: int, data: dict):
     db = SessionLocal()
 
     order = db.query(Order).filter(
@@ -1121,14 +1131,24 @@ def reject_order(order_id: int):
             "message": "Order not found"
         }
 
-    order.status = "Rejected"
+    return_comment = data.get("return_comment", "").strip()
+
+    if not return_comment:
+        db.close()
+        return {
+            "success": False,
+            "message": "Please enter a return comment first."
+        }
+
+    order.status = "Returned"
+    order.return_comment = return_comment
 
     db.commit()
     db.close()
 
     return {
         "success": True,
-        "message": "Order rejected successfully!"
+        "message": "Order returned successfully!"
     }
 
 
@@ -1179,6 +1199,7 @@ def get_customer_orders(username: str):
             "status": order.status,
             "total": order.total,
             "created_at": order.created_at,
+            "return_comment": order.return_comment,
             "items": order.items
         })
 
