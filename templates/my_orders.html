@@ -175,10 +175,34 @@
         justify-content: space-between;
       }
     }
-  </style>
+  
+    .center-toast {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(17, 24, 39, 0.92);
+      color: white;
+      padding: 16px 26px;
+      border-radius: 14px;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.28);
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.55;
+      white-space: pre-line;
+      max-width: min(520px, 86vw);
+      word-break: break-word;
+      text-align: center;
+      display: none;
+      z-index: 99999;
+    }
+
+</style>
 </head>
 
 <body>
+
+<div id="centerToast" class="center-toast"></div>
 
 <div class="orders-page">
 
@@ -216,6 +240,27 @@
 
 
 <script>
+
+function showCenterMessage(message) {
+  const toast = document.getElementById("centerToast");
+
+  if (!toast) {
+    return;
+  }
+
+  toast.innerText = message;
+  toast.style.display = "block";
+
+  if (window.centerToastTimer) {
+    clearTimeout(window.centerToastTimer);
+  }
+
+  window.centerToastTimer = setTimeout(() => {
+    toast.style.display = "none";
+  }, 1800);
+}
+
+
 const currentUser = localStorage.getItem("user");
 
 if (!currentUser) {
@@ -428,16 +473,16 @@ async function deleteOrder(event, orderId) {
     const data = await response.json();
 
     if (!data.success) {
-      alert(data.message || "Delete failed.");
+      showCenterMessage(data.message || "Delete failed.");
       return;
     }
 
-    alert(data.message);
+    showCenterMessage(data.message);
     await loadMyOrders();
 
   } catch (error) {
     console.error("Delete order error:", error);
-    alert("Delete failed. Please check server logs.");
+    showCenterMessage("Delete failed. Please check server logs.");
   }
 }
 

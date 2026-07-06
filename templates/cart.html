@@ -155,6 +155,28 @@
     font-weight: 800;
     color: #111827;
   }
+
+    .center-toast {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(17, 24, 39, 0.92);
+      color: white;
+      padding: 16px 26px;
+      border-radius: 14px;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.28);
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.55;
+      white-space: pre-line;
+      max-width: min(520px, 86vw);
+      word-break: break-word;
+      text-align: center;
+      display: none;
+      z-index: 99999;
+    }
+
 </style>
 
 <h2>Shopping Cart</h2>
@@ -187,6 +209,27 @@
 </div>
 
 <script>
+
+function showCenterMessage(message) {
+  const toast = document.getElementById("centerToast");
+
+  if (!toast) {
+    return;
+  }
+
+  toast.innerText = message;
+  toast.style.display = "block";
+
+  if (window.centerToastTimer) {
+    clearTimeout(window.centerToastTimer);
+  }
+
+  window.centerToastTimer = setTimeout(() => {
+    toast.style.display = "none";
+  }, 1800);
+}
+
+
 let cart = JSON.parse(localStorage.getItem("cart")) || [];
 
 const cartContainer = document.getElementById("cart");
@@ -366,7 +409,7 @@ function updateQuantity(index, value) {
   let quantity = parseInt(value);
 
   if (quantity < item.moq || isNaN(quantity)) {
-    alert(`Minimum Order Quantity is ${item.moq}`);
+    showCenterMessage(`Minimum Order Quantity is ${item.moq}`);
     quantity = item.moq;
   }
 
@@ -422,7 +465,7 @@ async function checkout() {
 
   const result = await response.json();
 
-  alert(result.message);
+  showCenterMessage(result.message);
 }
 
 async function downloadPDF() {
@@ -453,7 +496,7 @@ async function downloadPDF() {
 function shareCart() {
 
     if(cart.length === 0){
-        alert("Cart is empty");
+        showCenterMessage("Cart is empty");
         return;
     }
 
@@ -468,7 +511,7 @@ function shareCart() {
 
     navigator.clipboard.writeText(shareLink);
 
-    alert(
+    showCenterMessage(
         "Share link copied!\n\n" +
         shareLink
     );

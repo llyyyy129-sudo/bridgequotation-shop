@@ -325,10 +325,34 @@
         width: 100%;
       }
     }
-  </style>
+  
+    .center-toast {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(17, 24, 39, 0.92);
+      color: white;
+      padding: 16px 26px;
+      border-radius: 14px;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.28);
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.55;
+      white-space: pre-line;
+      max-width: min(520px, 86vw);
+      word-break: break-word;
+      text-align: center;
+      display: none;
+      z-index: 99999;
+    }
+
+</style>
 </head>
 
 <body>
+
+<div id="centerToast" class="center-toast"></div>
 
 <div class="product-detail-page">
   <h2>Product Details</h2>
@@ -346,6 +370,27 @@
 
 
 <script>
+
+function showCenterMessage(message) {
+  const toast = document.getElementById("centerToast");
+
+  if (!toast) {
+    return;
+  }
+
+  toast.innerText = message;
+  toast.style.display = "block";
+
+  if (window.centerToastTimer) {
+    clearTimeout(window.centerToastTimer);
+  }
+
+  window.centerToastTimer = setTimeout(() => {
+    toast.style.display = "none";
+  }, 1800);
+}
+
+
 const params = new URLSearchParams(window.location.search);
 const id = params.get("id");
 const user = localStorage.getItem("user") || "";
@@ -604,7 +649,7 @@ function updatePrice() {
   }
 
   if (quantity < currentProduct.moq) {
-    alert(`Minimum Order Quantity is ${currentProduct.moq} pcs`);
+    showCenterMessage(`Minimum Order Quantity is ${currentProduct.moq} pcs`);
 
     quantityInput.value = currentProduct.moq;
 
@@ -632,7 +677,7 @@ function addToCart() {
   let quantity = parseInt(quantityInput.value);
 
   if (isNaN(quantity) || quantity < currentProduct.moq) {
-    alert(`Minimum Order Quantity is ${currentProduct.moq} pcs`);
+    showCenterMessage(`Minimum Order Quantity is ${currentProduct.moq} pcs`);
 
     quantityInput.value = currentProduct.moq;
 
@@ -672,7 +717,7 @@ function addToCart() {
 
   localStorage.setItem("cart", JSON.stringify(cart));
 
-  alert(`Added to cart!\nUnit Price: $${money(unitPrice)}`);
+  showCenterMessage(`Added to cart!\nUnit Price: $${money(unitPrice)}`);
 }
 
 

@@ -629,7 +629,7 @@ async function confirmOrder(orderId) {
     const data = await response.json();
 
     if (!data.success) {
-        alert(data.message || "Confirm failed.");
+        showCenterMessage(data.message || "Confirm failed.");
         return;
     }
 
@@ -643,7 +643,7 @@ async function returnOrder(orderId) {
     const comment = textarea ? textarea.value.trim() : "";
 
     if (!comment) {
-        alert("Please enter a return comment first.");
+        showCenterMessage("Please enter a return comment first.");
         return;
     }
 
@@ -667,12 +667,17 @@ async function returnOrder(orderId) {
     const data = await response.json();
 
     if (!data.success) {
-        alert(data.message || "Return failed.");
+        showCenterMessage(data.message || "Return failed.");
         return;
     }
 
     showToast("Order #" + orderId + " returned.");
     loadSalesOrders();
+}
+
+
+function showCenterMessage(message) {
+    showToast(message);
 }
 
 
