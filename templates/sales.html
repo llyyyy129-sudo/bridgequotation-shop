@@ -8,15 +8,231 @@
     <style>
         body {
             font-family: "Century Gothic", CenturyGothic, AppleGothic, Arial, sans-serif;
-            background: #f5f6fa;
+            background:
+                radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 32%),
+                linear-gradient(135deg, #eef4ff 0%, #f8fafc 45%, #ffffff 100%);
             margin: 0;
-            padding: 35px;
+            padding: 0;
             color: #222;
+            min-height: 100vh;
         }
 
         .sales-page {
-            max-width: 1150px;
+            max-width: 1240px;
             margin: 0 auto;
+            padding: 28px;
+        }
+
+        .app-nav {
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            border-radius: 22px;
+            padding: 16px 20px;
+            box-shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 22px;
+            backdrop-filter: blur(12px);
+        }
+
+        .brand-block {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            min-width: 0;
+        }
+
+        .brand-logo {
+            width: 142px;
+            height: 46px;
+            border-radius: 14px;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+            flex: 0 0 auto;
+        }
+
+        .brand-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .brand-title {
+            font-size: 19px;
+            font-weight: 900;
+            color: #111827;
+            line-height: 1.2;
+        }
+
+        .brand-subtitle {
+            margin-top: 4px;
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            border: 1px solid #dbeafe;
+            background: #ffffff;
+            color: #1f3c88;
+            border-radius: 13px;
+            padding: 10px 16px;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+        }
+
+        .nav-btn:hover {
+            background: #eef4ff;
+            transform: translateY(-1px);
+        }
+
+        .nav-btn.primary {
+            background: #1f3c88;
+            color: #ffffff;
+            border-color: #1f3c88;
+        }
+
+        .nav-btn.danger {
+            background: #fff1f2;
+            color: #be123c;
+            border-color: #fecdd3;
+        }
+
+        .sales-hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
+            gap: 22px;
+            background:
+                linear-gradient(135deg, rgba(31, 60, 136, 0.96), rgba(37, 99, 235, 0.82)),
+                url('/static/image/bg2.jpg');
+            background-size: cover;
+            background-position: center;
+            color: #ffffff;
+            border-radius: 28px;
+            padding: 34px;
+            box-shadow: 0 20px 50px rgba(31, 60, 136, 0.20);
+            margin-bottom: 24px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .sales-hero::after {
+            content: "";
+            position: absolute;
+            right: -80px;
+            top: -80px;
+            width: 260px;
+            height: 260px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.13);
+        }
+
+        .sales-hero-left,
+        .sales-hero-right {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.30);
+            font-size: 12px;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+        }
+
+        .sales-hero h1 {
+            margin: 0;
+            font-size: clamp(32px, 4vw, 50px);
+            line-height: 1.04;
+            letter-spacing: -1.2px;
+        }
+
+        .hero-copy {
+            margin: 16px 0 20px;
+            max-width: 720px;
+            color: rgba(255, 255, 255, 0.88);
+            font-size: 16px;
+            line-height: 1.75;
+            font-weight: 600;
+        }
+
+        .hero-badges {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.16);
+            border: 1px solid rgba(255, 255, 255, 0.26);
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 900;
+        }
+
+        .hero-sales-line {
+            color: rgba(255, 255, 255, 0.90);
+            font-size: 14px;
+            font-weight: 800;
+            line-height: 1.65;
+        }
+
+        .dot-separator {
+            margin: 0 8px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .hero-card-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .hero-mini-card {
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.26);
+            border-radius: 18px;
+            padding: 16px 18px;
+            backdrop-filter: blur(10px);
+        }
+
+        .hero-mini-title {
+            font-size: 15px;
+            font-weight: 900;
+            margin-bottom: 6px;
+        }
+
+        .hero-mini-text {
+            color: rgba(255, 255, 255, 0.82);
+            font-size: 13px;
+            line-height: 1.55;
+            font-weight: 700;
         }
 
         .top-bar {
@@ -550,6 +766,55 @@
             line-height: 1.5;
         }
 
+        .customer-stat-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 2px;
+        }
+
+        .customer-stat-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 9px;
+            border-radius: 999px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            color: #374151;
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .stat-pending {
+            background: #fff7ed;
+            border-color: #fed7aa;
+            color: #c2410c;
+        }
+
+        .stat-confirmed {
+            background: #ecfdf5;
+            border-color: #bbf7d0;
+            color: #15803d;
+        }
+
+        .stat-returned {
+            background: #fff1f2;
+            border-color: #fecdd3;
+            color: #be123c;
+        }
+
+        .detail-btn {
+            border: none;
+            border-radius: 10px;
+            padding: 10px 18px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #ffffff;
+            background: #1f3c88;
+            box-shadow: 0 8px 18px rgba(31, 60, 136, 0.18);
+        }
+
         .empty-message {
             color: #777;
             background: #f8f9fc;
@@ -706,7 +971,12 @@
         }
 
         @media (max-width: 720px) {
-            body { padding: 18px; }
+            .sales-page { padding: 18px; }
+            .app-nav { align-items: flex-start; flex-direction: column; }
+            .nav-actions { width: 100%; justify-content: flex-start; }
+            .nav-btn { flex: 1 1 130px; }
+            .sales-hero { grid-template-columns: 1fr; padding: 24px; }
+            .brand-logo { width: 126px; }
             .top-bar { align-items: flex-start; flex-direction: column; }
             .customer-section > summary { font-size: 20px; padding: 18px 20px; }
             .customer-content { padding: 0 18px 18px; }
@@ -747,15 +1017,71 @@
 
 <div class="sales-page">
 
-    <div class="top-bar">
-        <div>
-            <h1>Sales Dashboard</h1>
-            <div class="sales-info">
-                Current Sales: <b id="salesName"></b>
+    <div class="app-nav">
+        <div class="brand-block">
+            <div class="brand-logo">
+                <img src="/static/image/bg2.jpg" alt="Bridge Quotation">
+            </div>
+            <div>
+                <div class="brand-title">Bridge Quotation</div>
+                <div class="brand-subtitle">Sales management workspace</div>
             </div>
         </div>
 
-        <button class="logout-btn" onclick="logout()">Logout</button>
+        <div class="nav-actions">
+            <button class="nav-btn primary" onclick="scrollToDashboard()">Dashboard</button>
+            <button class="nav-btn" onclick="goProducts()">Products</button>
+            <button class="nav-btn" onclick="goCart()">Cart</button>
+            <button class="nav-btn danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="sales-hero">
+        <div class="sales-hero-left">
+            <div class="hero-eyebrow">Sales Dashboard</div>
+            <h1>Customer Order Management</h1>
+            <p class="hero-copy">
+                Manage customer quotations, confirm products one by one, return items with clear comments,
+                and create personalized product selections for each assigned customer.
+            </p>
+
+            <div class="hero-badges">
+                <span class="hero-badge">Product-level approval</span>
+                <span class="hero-badge">Customer-specific carts</span>
+                <span class="hero-badge">Clear return reasons</span>
+            </div>
+
+            <div class="hero-sales-line">
+                Current Sales: <b id="salesName"></b>
+                <span class="dot-separator">•</span>
+                Email: <b id="salesEmail">Loading...</b>
+            </div>
+        </div>
+
+        <div class="sales-hero-right">
+            <div class="hero-card-grid">
+                <div class="hero-mini-card">
+                    <div class="hero-mini-title">Personalized Sales Support</div>
+                    <div class="hero-mini-text">
+                        Give every customer faster replies, clearer order follow-up and better service.
+                    </div>
+                </div>
+
+                <div class="hero-mini-card">
+                    <div class="hero-mini-title">Product-by-Product Control</div>
+                    <div class="hero-mini-text">
+                        Confirm available items and return unsuitable products without blocking the whole order.
+                    </div>
+                </div>
+
+                <div class="hero-mini-card">
+                    <div class="hero-mini-title">Quotation Workflow</div>
+                    <div class="hero-mini-text">
+                        Add products for customers, review carts and support quotation decisions from one place.
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="summary-card">
@@ -817,21 +1143,21 @@
 
 
     <div class="summary-card filter-card">
-        <div class="summary-title">Customer Filter</div>
+        <div class="summary-title">Sales Tools</div>
 
         <div class="filters-row">
             <div class="filter-field">
-                <label for="customerSearch">Search Customer</label>
+                <label for="customerSearch">Search Customer / Order / Product</label>
                 <input
                     id="customerSearch"
                     type="text"
-                    placeholder="Search username, company or email..."
+                    placeholder="Search username, company, email, order, product, material, packing, requirement..."
                     oninput="applySalesFilters()"
                 >
             </div>
 
             <div class="filter-field">
-                <label for="customerStatusFilter">Filter</label>
+                <label for="customerStatusFilter">Customer Status Filter</label>
                 <select id="customerStatusFilter" onchange="applySalesFilters()">
                     <option value="all">All Customers</option>
                     <option value="pending">Has Pending Products</option>
@@ -1035,6 +1361,21 @@ function renderCustomerMeta(group) {
 }
 
 
+function renderCustomerStats(group) {
+    const stats = getCustomerProductStats(group);
+
+    return `
+        <div class="customer-stat-row">
+            <span class="customer-stat-pill">Orders: ${(group.orders || []).length}</span>
+            <span class="customer-stat-pill">Products: ${stats.total}</span>
+            <span class="customer-stat-pill stat-pending">Pending: ${stats.pending}</span>
+            <span class="customer-stat-pill stat-confirmed">Confirmed: ${stats.confirmed}</span>
+            <span class="customer-stat-pill stat-returned">Returned: ${stats.returned}</span>
+        </div>
+    `;
+}
+
+
 function applySalesFilters() {
     renderFilteredCustomerGroups();
 }
@@ -1078,11 +1419,39 @@ function customerMatchesSearch(group, searchText) {
 
     const keyword = searchText.toLowerCase();
 
+    const orderSearchText = (group.orders || []).map(order => {
+        const items = parseItems(order.items);
+
+        const itemText = items.map(item => {
+            return [
+                item.name,
+                item.product_name,
+                item.category,
+                item.material,
+                item.size,
+                item.packing,
+                item.customer_requirement,
+                item.item_status,
+                item.item_return_comment
+            ].join(" ");
+        }).join(" ");
+
+        return [
+            order.id,
+            order.status,
+            order.created_at,
+            order.total,
+            order.return_comment,
+            itemText
+        ].join(" ");
+    }).join(" ");
+
     const searchableText = [
         group.customerName,
         group.company_name,
         group.email,
-        group.customer_level
+        group.customer_level,
+        orderSearchText
     ].join(" ").toLowerCase();
 
     return searchableText.includes(keyword);
@@ -1237,6 +1606,7 @@ function renderCustomerGroups(customerGroups) {
                             </span>
                         </span>
                         ${renderCustomerMeta(group)}
+                        ${renderCustomerStats(group)}
                     </span>
                     <span class="summary-arrow">▶</span>
                 </summary>
@@ -1525,6 +1895,13 @@ function renderProductCard(order, item, index, type) {
     const lineTotal = quantity * unitPrice;
     const status = getItemStatus(item, order.status);
     const image = item.image || "";
+    const productId = Number(item.id || item.product_id || 0);
+    const customerName = getCustomerName(order);
+    const detailButton = productId ? `
+        <button class="detail-btn" onclick="viewProductDetail(${productId}, '${escapeForJs(customerName)}')">
+            View Details
+        </button>
+    ` : "";
 
     let pillClass = "pill-pending";
     let statusText = "Pending";
@@ -1553,6 +1930,8 @@ function renderProductCard(order, item, index, type) {
             </div>
 
             <div class="button-row">
+                ${detailButton}
+
                 <button class="confirm-btn" onclick="confirmProduct(${order.id}, ${index})">
                     Confirm Product
                 </button>
@@ -1574,6 +1953,14 @@ function renderProductCard(order, item, index, type) {
             <div class="return-reason">
                 <b>Return Reason:</b>
                 ${escapeHtml(item.item_return_comment)}
+            </div>
+        `;
+    }
+
+    if (type !== "pending" && detailButton) {
+        actionBlock += `
+            <div class="button-row">
+                ${detailButton}
             </div>
         `;
     }
@@ -1756,6 +2143,68 @@ function escapeHtml(value) {
 }
 
 
+function goProducts() {
+    window.location.href = "products.html";
+}
+
+
+function goCart() {
+    window.location.href = "cart.html";
+}
+
+
+function scrollToDashboard() {
+    const firstBoard = document.querySelector(".summary-card");
+
+    if (firstBoard) {
+        firstBoard.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+}
+
+
+async function loadSalesUserInfo() {
+    const emailElement = document.getElementById("salesEmail");
+
+    if (!emailElement || !salesUsername) return;
+
+    try {
+        const response = await fetch(
+            "/customer/info/" + encodeURIComponent(salesUsername)
+        );
+
+        const data = await response.json();
+
+        if (data && data.success) {
+            emailElement.innerText = data.email || "Not available";
+            localStorage.setItem("email", data.email || "");
+            return;
+        }
+    } catch (error) {
+        console.error("Sales info load failed:", error);
+    }
+
+    emailElement.innerText = localStorage.getItem("email") || "Not available";
+}
+
+
+function viewProductDetail(productId, customerName) {
+    if (!productId) {
+        showCenterMessage("Product id is missing.");
+        return;
+    }
+
+    if (customerName) {
+        localStorage.setItem("sales_mode_active", "1");
+        localStorage.setItem("sales_mode_customer", customerName);
+        localStorage.setItem("sales_mode_sales", salesUsername || "");
+    }
+
+    window.location.href =
+        "product.html?id=" + encodeURIComponent(productId) +
+        (customerName ? "&sales_customer=" + encodeURIComponent(customerName) : "");
+}
+
+
 function startSalesCustomerOrder(customerName) {
     if (!customerName) {
         showCenterMessage("Customer name is missing.");
@@ -1801,6 +2250,7 @@ async function logout() {
 }
 
 
+loadSalesUserInfo();
 loadSalesOrders();
 </script>
 
