@@ -165,6 +165,46 @@
             flex-wrap: wrap;
         }
 
+        .customer-title-block {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .customer-main-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .customer-name-text {
+            color: #1f3c88;
+            font-size: 24px;
+            font-weight: 900;
+        }
+
+        .customer-detail-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .customer-detail-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 10px;
+            border-radius: 999px;
+            background: #f8fafc;
+            color: #4b5563;
+            border: 1px solid #e5e7eb;
+            font-size: 13px;
+            font-weight: 800;
+            line-height: 1.25;
+        }
+
         .customer-count {
             display: inline-flex;
             align-items: center;
@@ -789,6 +829,8 @@ async function loadSalesOrders() {
 
     const groupedCustomers = groupOrdersByCustomer(orders);
 
+    await attachCustomerInfo(groupedCustomers);
+
     renderCustomerGroups(groupedCustomers);
 }
 
@@ -812,6 +854,70 @@ function groupOrdersByCustomer(orders) {
     return Object.values(groups).sort((a, b) => {
         return getLatestOrderId(b.orders) - getLatestOrderId(a.orders);
     });
+}
+
+
+async function attachCustomerInfo(customerGroups) {
+    if (!customerGroups || customerGroups.length === 0) return;
+
+    const requests = customerGroups.map(async group => {
+        try {
+            const response = await fetch(
+                "/customer/info/" + encodeURIComponent(group.customerName)
+            );
+
+            const data = await response.json();
+
+            if (data && data.success) {
+                group.company_name = data.company_name || "";
+                group.email = data.email || "";
+                group.customer_level = data.customer_level || "";
+            }
+        } catch (error) {
+            group.company_name = "";
+            group.email = "";
+            group.customer_level = "";
+        }
+    });
+
+    await Promise.all(requests);
+}
+
+
+function renderCustomerMeta(group) {
+    const parts = [];
+
+    if (group.company_name) {
+        parts.push(`
+            <span class="customer-detail-pill">
+                Company: ${escapeHtml(group.company_name)}
+            </span>
+        `);
+    }
+
+    if (group.email) {
+        parts.push(`
+            <span class="customer-detail-pill">
+                Email: ${escapeHtml(group.email)}
+            </span>
+        `);
+    }
+
+    if (group.customer_level) {
+        parts.push(`
+            <span class="customer-detail-pill">
+                Level: ${escapeHtml(group.customer_level)}
+            </span>
+        `);
+    }
+
+    if (parts.length === 0) return "";
+
+    return `
+        <div class="customer-detail-row">
+            ${parts.join("")}
+        </div>
+    `;
 }
 
 
@@ -858,11 +964,17 @@ function renderCustomerGroups(customerGroups) {
         container.innerHTML += `
             <details class="customer-section" ${index === 0 ? "open" : ""}>
                 <summary>
-                    <span class="customer-title-left">
-                        👤 ${escapeHtml(group.customerName)}
-                        <span class="customer-count">
-                            ${group.orders.length} orders
+                    <span class="customer-title-block">
+                        <span class="customer-main-row">
+                            👤
+                            <span class="customer-name-text">
+                                ${escapeHtml(group.customerName)}
+                            </span>
+                            <span class="customer-count">
+                                ${group.orders.length} orders
+                            </span>
                         </span>
+                        ${renderCustomerMeta(group)}
                     </span>
                     <span class="summary-arrow">▶</span>
                 </summary>
