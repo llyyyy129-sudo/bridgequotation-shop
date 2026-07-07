@@ -557,6 +557,71 @@
             padding: 14px;
         }
 
+
+        .filter-card {
+            border: 1px solid #e5e7eb;
+        }
+
+        .filters-row {
+            display: grid;
+            grid-template-columns: minmax(260px, 1.4fr) minmax(220px, 0.9fr) auto;
+            gap: 14px;
+            align-items: end;
+        }
+
+        .filter-field label {
+            display: block;
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 900;
+            margin-bottom: 8px;
+        }
+
+        .filter-field input,
+        .filter-field select {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1.5px solid #d7dce7;
+            border-radius: 13px;
+            padding: 11px 13px;
+            color: #111827;
+            background: #ffffff;
+            font-size: 14px;
+            font-weight: 700;
+            outline: none;
+        }
+
+        .filter-field input:focus,
+        .filter-field select:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+        }
+
+        .filter-actions {
+            display: flex;
+            align-items: end;
+        }
+
+        .reset-filter-btn {
+            border: none;
+            border-radius: 13px;
+            padding: 12px 18px;
+            cursor: pointer;
+            font-weight: 900;
+            color: #ffffff;
+            background: #1f3c88;
+            box-shadow: 0 8px 18px rgba(31, 60, 136, 0.16);
+            white-space: nowrap;
+        }
+
+        .filter-result-text {
+            margin-top: 13px;
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 800;
+            line-height: 1.5;
+        }
+
         .center-toast {
             position: fixed;
             left: 50%;
@@ -648,8 +713,17 @@
             .product-header { flex-direction: column; }
 
             .dashboard-grid,
-            .product-dashboard-grid {
+            .product-dashboard-grid,
+            .filters-row {
                 grid-template-columns: 1fr;
+            }
+
+            .filter-actions {
+                align-items: stretch;
+            }
+
+            .reset-filter-btn {
+                width: 100%;
             }
         }
     </style>
@@ -741,6 +815,43 @@
         </div>
     </div>
 
+
+    <div class="summary-card filter-card">
+        <div class="summary-title">Customer Filter</div>
+
+        <div class="filters-row">
+            <div class="filter-field">
+                <label for="customerSearch">Search Customer</label>
+                <input
+                    id="customerSearch"
+                    type="text"
+                    placeholder="Search username, company or email..."
+                    oninput="applySalesFilters()"
+                >
+            </div>
+
+            <div class="filter-field">
+                <label for="customerStatusFilter">Filter</label>
+                <select id="customerStatusFilter" onchange="applySalesFilters()">
+                    <option value="all">All Customers</option>
+                    <option value="pending">Has Pending Products</option>
+                    <option value="returned">Has Returned Products</option>
+                    <option value="completed">Completed Only</option>
+                </select>
+            </div>
+
+            <div class="filter-actions">
+                <button class="reset-filter-btn" type="button" onclick="resetSalesFilters()">
+                    Reset
+                </button>
+            </div>
+        </div>
+
+        <div id="filterResultText" class="filter-result-text">
+            Showing all customers.
+        </div>
+    </div>
+
     <div id="customerOrders"></div>
 
 </div>
@@ -803,6 +914,8 @@ function showCenterConfirm(message) {
 const salesUsername = localStorage.getItem("user");
 const role = localStorage.getItem("role");
 
+let allSalesCustomerGroups = [];
+
 document.getElementById("salesName").innerText = salesUsername || "Unknown";
 
 if (!salesUsername) {
@@ -831,7 +944,8 @@ async function loadSalesOrders() {
 
     await attachCustomerInfo(groupedCustomers);
 
-    renderCustomerGroups(groupedCustomers);
+    allSalesCustomerGroups = groupedCustomers;
+    renderFilteredCustomerGroups();
 }
 
 
@@ -921,6 +1035,153 @@ function renderCustomerMeta(group) {
 }
 
 
+function applySalesFilters() {
+    renderFilteredCustomerGroups();
+}
+
+
+function resetSalesFilters() {
+    const searchInput = document.getElementById("customerSearch");
+    const statusSelect = document.getElementById("customerStatusFilter");
+
+    if (searchInput) {
+        searchInput.value = "";
+    }
+
+    if (statusSelect) {
+        statusSelect.value = "all";
+    }
+
+    renderFilteredCustomerGroups();
+}
+
+
+function renderFilteredCustomerGroups() {
+    const searchInput = document.getElementById("customerSearch");
+    const statusSelect = document.getElementById("customerStatusFilter");
+
+    const searchText = searchInput ? searchInput.value.trim() : "";
+    const statusFilter = statusSelect ? statusSelect.value : "all";
+
+    const filteredGroups = allSalesCustomerGroups.filter(group => {
+        return customerMatchesSearch(group, searchText) &&
+               customerMatchesStatusFilter(group, statusFilter);
+    });
+
+    renderCustomerGroups(filteredGroups);
+    updateFilterResultText(filteredGroups, allSalesCustomerGroups);
+}
+
+
+function customerMatchesSearch(group, searchText) {
+    if (!searchText) return true;
+
+    const keyword = searchText.toLowerCase();
+
+    const searchableText = [
+        group.customerName,
+        group.company_name,
+        group.email,
+        group.customer_level
+    ].join(" ").toLowerCase();
+
+    return searchableText.includes(keyword);
+}
+
+
+function customerMatchesStatusFilter(group, statusFilter) {
+    if (!statusFilter || statusFilter === "all") return true;
+
+    const stats = getCustomerProductStats(group);
+
+    if (statusFilter === "pending") {
+        return stats.pending > 0;
+    }
+
+    if (statusFilter === "returned") {
+        return stats.returned > 0;
+    }
+
+    if (statusFilter === "completed") {
+        return stats.total > 0 && stats.confirmed === stats.total;
+    }
+
+    return true;
+}
+
+
+function getCustomerProductStats(group) {
+    const stats = {
+        total: 0,
+        pending: 0,
+        confirmed: 0,
+        returned: 0
+    };
+
+    (group.orders || []).forEach(order => {
+        const items = parseItems(order.items);
+
+        items.forEach(item => {
+            const status = getItemStatus(item, order.status);
+
+            stats.total += 1;
+
+            if (status === "Confirmed") {
+                stats.confirmed += 1;
+            } else if (status === "Returned") {
+                stats.returned += 1;
+            } else {
+                stats.pending += 1;
+            }
+        });
+    });
+
+    return stats;
+}
+
+
+function getOrdersFromCustomerGroups(customerGroups) {
+    const orders = [];
+
+    (customerGroups || []).forEach(group => {
+        (group.orders || []).forEach(order => {
+            orders.push(order);
+        });
+    });
+
+    return orders;
+}
+
+
+function updateFilterResultText(filteredGroups, allGroups) {
+    const resultBox = document.getElementById("filterResultText");
+
+    if (!resultBox) return;
+
+    const filteredOrders = getOrdersFromCustomerGroups(filteredGroups);
+    const allOrders = getOrdersFromCustomerGroups(allGroups);
+
+    const filteredProducts = countProductsInOrders(filteredOrders);
+    const allProducts = countProductsInOrders(allOrders);
+
+    resultBox.innerText =
+        "Showing " + filteredGroups.length + " of " + allGroups.length + " customers" +
+        " | Orders: " + filteredOrders.length + " / " + allOrders.length +
+        " | Products: " + filteredProducts + " / " + allProducts;
+}
+
+
+function countProductsInOrders(orders) {
+    let total = 0;
+
+    (orders || []).forEach(order => {
+        total += parseItems(order.items).length;
+    });
+
+    return total;
+}
+
+
 function getLatestOrderId(orders) {
     if (!orders || orders.length === 0) return 0;
 
@@ -935,10 +1196,11 @@ function renderCustomerGroups(customerGroups) {
 
     if (!customerGroups || customerGroups.length === 0) {
         updateDashboardBoard([]);
+        const hasOriginalOrders = allSalesCustomerGroups && allSalesCustomerGroups.length > 0;
         container.innerHTML = `
             <div class="customer-section">
                 <div class="empty-message">
-                    No customer orders.
+                    ${hasOriginalOrders ? "No matching customer orders." : "No customer orders."}
                 </div>
             </div>
         `;
