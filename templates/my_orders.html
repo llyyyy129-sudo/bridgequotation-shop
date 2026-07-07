@@ -6,60 +6,456 @@
   <link rel="stylesheet" href="/static/style.css">
 
   <style>
+    :root {
+      --bridge-blue: #1f3c88;
+      --bridge-blue-2: #2563eb;
+      --bridge-bg: #f3f6fb;
+      --bridge-text: #111827;
+      --bridge-muted: #6b7280;
+      --bridge-border: #e5e7eb;
+      --bridge-card: #ffffff;
+      --bridge-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+      --bridge-soft-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
+      --success: #16a34a;
+      --warning: #ea580c;
+      --danger: #dc2626;
+      --purple: #7c3aed;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      background: #f5f6fa;
-      padding: 38px;
+      margin: 0 !important;
+      padding: 0 !important;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(37, 99, 235, 0.08), transparent 28%),
+        linear-gradient(180deg, #f8fbff 0%, var(--bridge-bg) 55%, #eef2f7 100%);
+      color: var(--bridge-text);
+      font-family: "Century Gothic", CenturyGothic, AppleGothic, Arial, sans-serif;
+    }
+
+    button,
+    input,
+    select {
+      font-family: inherit;
     }
 
     .orders-page {
-      max-width: 1180px;
+      width: min(1480px, calc(100% - 48px));
       margin: 0 auto;
+      padding: 24px 0 56px;
     }
 
-    .orders-header {
-      background: #ffffff;
-      border-radius: 22px;
-      padding: 24px 30px;
+    .shop-navbar {
+      position: sticky;
+      top: 0;
+      z-index: 999;
+      margin-bottom: 22px;
+      padding: 16px 20px;
+      border-radius: 0 0 24px 24px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(16px);
       box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      border: 1px solid rgba(226, 232, 240, 0.8);
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand-block {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 280px;
+    }
+
+    .brand-logo-box {
+      width: 210px;
+      height: 58px;
+      border-radius: 16px;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex: 0 0 auto;
+    }
+
+    .brand-logo-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      padding: 4px 8px;
+    }
+
+    .brand-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .brand-title {
+      color: var(--bridge-blue);
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1.15;
+      white-space: nowrap;
+    }
+
+    .brand-subtitle {
+      color: var(--bridge-muted);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .nav-link {
+      border: none;
+      background: transparent;
+      color: #334155;
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 900;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+
+    .nav-link:hover {
+      background: #eef4ff;
+      color: var(--bridge-blue);
+      transform: translateY(-1px);
+    }
+
+    .nav-link.active {
+      background: linear-gradient(135deg, #1d4ed8, #2563eb);
+      color: #ffffff;
+      box-shadow: 0 12px 26px rgba(37, 99, 235, 0.24);
+    }
+
+    .nav-user-card {
+      min-width: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .nav-user-info {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--bridge-muted);
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .nav-user-info b {
+      color: #111827;
+      font-weight: 900;
+    }
+
+    .sales-contact-block {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+    }
+
+    .sales-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #eef4ff;
+      color: var(--bridge-blue);
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 900;
+      border: 1px solid #dbeafe;
+    }
+
+    .sales-email-line {
+      max-width: 240px;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .logout-small-btn,
+    .cart-nav-btn,
+    .primary-btn,
+    .secondary-btn,
+    .danger-btn,
+    .delete-order-btn {
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      font-weight: 900;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+    }
+
+    .logout-small-btn:hover,
+    .cart-nav-btn:hover,
+    .primary-btn:hover,
+    .secondary-btn:hover,
+    .danger-btn:hover,
+    .delete-order-btn:hover {
+      transform: translateY(-1px);
+      opacity: 0.96;
+    }
+
+    .logout-small-btn {
+      margin: 0;
+      padding: 11px 18px;
+      white-space: nowrap;
+      background: #1f3c88;
+      color: #ffffff;
+      box-shadow: 0 10px 24px rgba(31, 60, 136, 0.22);
+    }
+
+    .cart-nav-btn {
+      position: relative;
+      padding: 11px 18px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #ffffff;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.26);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .cart-count-badge {
+      min-width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #1d4ed8;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 7px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .hero-card {
+      position: relative;
+      overflow: hidden;
+      border-radius: 30px;
+      padding: 34px 36px;
+      margin-bottom: 24px;
+      background:
+        radial-gradient(circle at 90% 10%, rgba(59, 130, 246, 0.22), transparent 26%),
+        linear-gradient(135deg, #ffffff 0%, #f8fbff 42%, #eef4ff 100%);
+      box-shadow: var(--bridge-shadow);
+      border: 1px solid rgba(226, 232, 240, 0.85);
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+      gap: 26px;
+      align-items: center;
+    }
+
+    .hero-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      padding: 8px 13px;
+      border-radius: 999px;
+      background: #e0ecff;
+      color: var(--bridge-blue);
+      font-weight: 900;
+      font-size: 13px;
+      margin-bottom: 16px;
+      border: 1px solid #bfdbfe;
+    }
+
+    .hero-title {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 48px);
+      line-height: 1.05;
+      color: #0f172a;
+      letter-spacing: -0.04em;
+    }
+
+    .hero-text {
+      max-width: 780px;
+      margin: 16px 0 0;
+      color: #475569;
+      font-size: 16px;
+      line-height: 1.75;
+      font-weight: 700;
+    }
+
+    .hero-panel {
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(191, 219, 254, 0.9);
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: 0 20px 48px rgba(37, 99, 235, 0.10);
+    }
+
+    .hero-panel-title {
+      margin: 0 0 14px;
+      color: #1e3a8a;
+      font-size: 17px;
+      font-weight: 900;
+    }
+
+    .hero-feature {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 0;
+      border-top: 1px solid #dbeafe;
+    }
+
+    .hero-feature:first-of-type {
+      border-top: none;
+      padding-top: 0;
+    }
+
+    .feature-dot {
+      width: 32px;
+      height: 32px;
+      border-radius: 12px;
+      background: #dbeafe;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex: 0 0 auto;
+    }
+
+    .feature-title {
+      color: #0f172a;
+      font-weight: 900;
+      margin-bottom: 3px;
+    }
+
+    .feature-text {
+      color: #64748b;
+      font-size: 12px;
+      line-height: 1.5;
+      font-weight: 700;
+    }
+
+    .tools-card,
+    .customer-board,
+    .order-section {
+      background: rgba(255, 255, 255, 0.94);
+      border-radius: 24px;
+      box-shadow: var(--bridge-soft-shadow);
+      border: 1px solid rgba(226, 232, 240, 0.86);
+    }
+
+    .tools-card {
+      padding: 20px;
+      margin-bottom: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       gap: 16px;
       flex-wrap: wrap;
-      margin-bottom: 24px;
     }
 
-    .orders-header h2 {
-      margin: 0;
-      color: #111827;
-      text-align: left;
+    .tools-title {
+      color: var(--bridge-blue);
+      font-size: 18px;
+      font-weight: 900;
+      margin-bottom: 5px;
     }
 
-    .orders-header .sub {
-      margin-top: 8px;
-      color: #6b7280;
-      font-size: 14px;
+    .tools-sub {
+      color: var(--bridge-muted);
+      font-size: 13px;
+      font-weight: 700;
     }
 
-    .orders-actions {
+    .tools-controls {
       display: flex;
       gap: 12px;
       flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .tools-controls input,
+    .tools-controls select {
+      height: 44px;
+      border: 1.5px solid #d7dce7;
+      border-radius: 14px;
+      padding: 0 14px;
+      background: white;
+      outline: none;
+      color: #111827;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .tools-controls input {
+      width: min(320px, 72vw);
+    }
+
+    .tools-controls input:focus,
+    .tools-controls select:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
+
+    .secondary-btn {
+      padding: 11px 16px;
+      background: #eef4ff;
+      color: var(--bridge-blue);
+      border: 1px solid #bfdbfe;
     }
 
     .customer-board {
-      background: #ffffff;
-      border-radius: 22px;
       padding: 22px 24px;
-      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
       margin-bottom: 24px;
     }
 
+    .board-topline {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
     .customer-board-title {
-      margin: 0 0 16px;
-      color: #1f3c88;
+      margin: 0;
+      color: var(--bridge-blue);
       font-size: 22px;
       font-weight: 900;
+    }
+
+    .board-note {
+      color: var(--bridge-muted);
+      font-size: 13px;
+      font-weight: 700;
     }
 
     .customer-board-grid {
@@ -69,23 +465,25 @@
     }
 
     .customer-board-card {
-      border-radius: 16px;
-      padding: 16px 18px;
+      border-radius: 18px;
+      padding: 17px 18px;
       border: 1px solid #e5e7eb;
       background: #f8fafc;
+      min-height: 96px;
     }
 
     .customer-board-label {
       color: #6b7280;
       font-size: 13px;
-      font-weight: 800;
+      font-weight: 900;
       margin-bottom: 8px;
     }
 
     .customer-board-number {
       color: #111827;
-      font-size: 28px;
+      font-size: 30px;
       font-weight: 900;
+      line-height: 1;
     }
 
     .board-total {
@@ -109,10 +507,7 @@
     }
 
     .order-section {
-      background: #ffffff;
-      border-radius: 22px;
       padding: 0;
-      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
       margin-bottom: 22px;
       overflow: hidden;
     }
@@ -120,31 +515,36 @@
     .order-section summary {
       list-style: none;
       cursor: pointer;
-      padding: 24px;
+      padding: 22px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 14px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.96), rgba(248,251,255,0.96));
     }
 
-    .order-section summary::-webkit-details-marker {
+    .order-section summary::-webkit-details-marker,
+    .my-order-details summary::-webkit-details-marker {
       display: none;
     }
 
     .order-section-title {
       margin: 0;
-      color: #1f3c88;
+      color: var(--bridge-blue);
       font-size: 22px;
+      font-weight: 900;
     }
 
-    .section-arrow {
+    .section-arrow,
+    .order-arrow {
       color: #6b7280;
       font-size: 18px;
       transition: transform 0.2s ease;
       flex: 0 0 auto;
     }
 
-    .order-section[open] .section-arrow {
+    .order-section[open] > summary .section-arrow,
+    .my-order-details[open] .order-arrow {
       transform: rotate(90deg);
     }
 
@@ -152,52 +552,135 @@
       padding: 0 24px 24px;
     }
 
-    .empty-message {
-      padding: 18px;
-      border-radius: 14px;
+    .empty-message,
+    .empty-state {
+      padding: 22px;
+      border-radius: 18px;
       background: #f8fafc;
-      color: #6b7280;
+      color: #64748b;
+      border: 1px dashed #cbd5e1;
+      font-weight: 800;
+      line-height: 1.6;
+    }
+
+    .empty-state {
+      text-align: center;
+    }
+
+    .primary-btn {
+      padding: 12px 18px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #ffffff;
+      box-shadow: 0 12px 26px rgba(37, 99, 235, 0.24);
     }
 
     .my-order-details {
       border: 1px solid #e5e7eb;
-      border-radius: 16px;
+      border-radius: 20px;
       background: #ffffff;
       margin-bottom: 14px;
       overflow: hidden;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
     }
 
     .my-order-details summary {
       cursor: pointer;
-      padding: 16px 18px;
+      padding: 18px 20px;
       list-style: none;
     }
 
-    .my-order-details summary::-webkit-details-marker {
-      display: none;
-    }
-
     .my-order-summary {
-      display: flex;
-      justify-content: space-between;
-      gap: 14px;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
       align-items: center;
     }
 
-    .my-order-main {
-      line-height: 1.65;
+    .order-card-main {
+      min-width: 0;
     }
 
-    .my-order-time {
-      color: #6b7280;
+    .order-card-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .order-title {
+      font-size: 18px;
+      font-weight: 900;
+      color: #0f172a;
+    }
+
+    .order-status-badge,
+    .item-status-pill,
+    .mini-pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .order-status-badge {
+      padding: 6px 12px;
       font-size: 13px;
     }
 
-    .my-order-toggle {
-      color: #1f3c88;
-      font-weight: 800;
-      white-space: nowrap;
+    .order-status-pending,
+    .pill-pending {
+      background: #fff7ed;
+      color: #ea580c;
+      border: 1px solid #fed7aa;
+    }
+
+    .order-status-confirmed,
+    .pill-confirmed {
+      background: #ecfdf5;
+      color: #16a34a;
+      border: 1px solid #bbf7d0;
+    }
+
+    .order-status-returned,
+    .pill-returned {
+      background: #fff1f2;
+      color: #dc2626;
+      border: 1px solid #fecdd3;
+    }
+
+    .order-status-mixed {
+      background: #f5f3ff;
+      color: #7c3aed;
+      border: 1px solid #ddd6fe;
+    }
+
+    .order-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      gap: 10px;
+    }
+
+    .order-meta-box {
+      border-radius: 14px;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      padding: 10px 12px;
+    }
+
+    .meta-label {
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 900;
+      margin-bottom: 4px;
+    }
+
+    .meta-value {
+      color: #0f172a;
+      font-size: 14px;
+      font-weight: 900;
+      line-height: 1.35;
     }
 
     .my-order-right {
@@ -205,75 +688,137 @@
       align-items: center;
       gap: 12px;
       flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .my-order-toggle {
+      color: var(--bridge-blue);
+      font-weight: 900;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .delete-order-btn {
-      background: #ef4444;
-    }
-
-    .delete-order-btn:hover {
-      background: #dc2626;
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+      padding: 10px 14px;
+      box-shadow: none;
     }
 
     .my-order-items {
       border-top: 1px solid #e5e7eb;
-      padding: 12px 18px 18px;
+      padding: 18px 20px 20px;
       background: #fafbff;
+      display: grid;
+      gap: 14px;
     }
 
     .order-item-row {
-      padding: 14px 0;
-      border-bottom: 1px solid #e5e7eb;
-      line-height: 1.7;
+      display: grid;
+      grid-template-columns: 96px minmax(0, 1fr);
+      gap: 16px;
+      padding: 15px;
+      border-radius: 18px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      line-height: 1.65;
     }
 
-    .order-item-row:last-child {
-      border-bottom: none;
+    .order-item-image {
+      width: 96px;
+      height: 96px;
+      border-radius: 16px;
+      background: #f1f5f9;
+      object-fit: cover;
+      border: 1px solid #e5e7eb;
+    }
+
+    .order-item-placeholder {
+      width: 96px;
+      height: 96px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #eef4ff, #f8fafc);
+      border: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 900;
+      text-align: center;
     }
 
     .order-item-name {
-      font-weight: 800;
+      font-weight: 900;
       color: #111827;
       font-size: 16px;
+      margin-bottom: 7px;
     }
 
     .item-status-pill {
-      display: inline-flex;
-      align-items: center;
       padding: 5px 10px;
-      border-radius: 999px;
-      font-weight: 900;
       font-size: 13px;
-      margin: 8px 0;
+      margin-bottom: 10px;
     }
 
-    .pill-pending {
-      background: #fff7ed;
-      color: #ea580c;
-      border: 1px solid #fed7aa;
+    .item-spec-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(130px, 1fr));
+      gap: 8px;
+      color: #374151;
+      font-size: 13px;
+      font-weight: 700;
     }
 
-    .pill-confirmed {
-      background: #ecfdf5;
-      color: #16a34a;
-      border: 1px solid #bbf7d0;
+    .item-spec {
+      padding: 8px 10px;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      min-height: 36px;
     }
 
-    .pill-returned {
-      background: #fff1f2;
-      color: #dc2626;
-      border: 1px solid #fecdd3;
+    .item-spec b {
+      color: #0f172a;
+    }
+
+    .requirement-box,
+    .return-reason {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 13px;
+      line-height: 1.5;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .requirement-box {
+      background: #f8fafc;
+      color: #374151;
+      border: 1px solid #e5e7eb;
     }
 
     .return-reason {
-      margin-top: 8px;
-      padding: 10px 12px;
-      border-radius: 12px;
       background: #fff1f2;
       color: #b91c1c;
       border: 1px solid #fecdd3;
-      font-size: 14px;
-      line-height: 1.5;
+    }
+
+    .mini-status-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .mini-pill {
+      padding: 4px 8px;
+      font-size: 12px;
+      border: 1px solid #e5e7eb;
+      background: #f8fafc;
+      color: #475569;
     }
 
     .center-toast {
@@ -359,13 +904,105 @@
       color: #374151;
     }
 
-    @media (max-width: 640px) {
-      body { padding: 18px; }
-      .orders-header { padding: 20px; }
-      .orders-actions button { width: 100%; }
-      .my-order-right { width: 100%; justify-content: space-between; }
+    @media (max-width: 1180px) {
+      .shop-navbar {
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+
+      .nav-links {
+        order: 3;
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .nav-user-card {
+        min-width: 0;
+        flex: 1;
+      }
+
+      .hero-card {
+        grid-template-columns: 1fr;
+      }
+
+      .order-meta-grid {
+        grid-template-columns: repeat(2, minmax(130px, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .orders-page {
+        width: min(100% - 24px, 1480px);
+        padding-top: 12px;
+      }
+
+      .shop-navbar {
+        border-radius: 0 0 20px 20px;
+        padding: 14px;
+      }
+
+      .brand-block {
+        min-width: 0;
+      }
+
+      .brand-logo-box {
+        width: 176px;
+        height: 50px;
+      }
+
+      .brand-copy {
+        display: none;
+      }
+
+      .nav-user-card {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+      }
+
+      .nav-user-info {
+        width: 100%;
+        align-items: flex-start;
+      }
+
+      .sales-contact-block {
+        align-items: flex-start;
+      }
+
+      .hero-card {
+        padding: 24px 20px;
+        border-radius: 24px;
+      }
 
       .customer-board-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .tools-card {
+        align-items: stretch;
+      }
+
+      .tools-controls,
+      .tools-controls input,
+      .tools-controls select,
+      .tools-controls button {
+        width: 100%;
+      }
+
+      .my-order-summary {
+        grid-template-columns: 1fr;
+      }
+
+      .my-order-right {
+        justify-content: space-between;
+      }
+
+      .order-meta-grid,
+      .item-spec-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .order-item-row {
         grid-template-columns: 1fr;
       }
     }
@@ -387,26 +1024,91 @@
   </div>
 </div>
 
-
 <div class="orders-page">
 
-  <div class="orders-header">
-    <div>
-      <h2>My Orders</h2>
-      <div class="sub">
-        Logged in as: <b id="currentUser"></b>
+  <nav class="shop-navbar">
+    <div class="brand-block">
+      <div class="brand-logo-box">
+        <img src="/static/image/bg2.jpg" alt="Bridge Logo">
+      </div>
+
+      <div class="brand-copy">
+        <div class="brand-title">Bridge Quotation</div>
+        <div class="brand-subtitle">Product selection and quotation platform</div>
       </div>
     </div>
 
-    <div class="orders-actions">
-      <button onclick="goCart()">Back to Cart</button>
-      <button onclick="goProducts()">Continue Shopping</button>
+    <div class="nav-links">
+      <button class="nav-link" onclick="goProducts()">Products</button>
+      <button class="nav-link active" onclick="loadMyOrders()">My Orders</button>
     </div>
-  </div>
 
+    <div class="nav-user-card">
+      <div class="nav-user-info">
+        <div>Logged in as: <b id="currentUser"></b></div>
 
-  <div class="customer-board">
-    <h3 class="customer-board-title">Product Status Board</h3>
+        <div class="sales-contact-block">
+          <div class="sales-pill">
+            <span>Sales Contact:</span>
+            <span id="assignedSales">Loading...</span>
+          </div>
+          <div class="sales-email-line" id="assignedSalesEmail">Email: Loading...</div>
+        </div>
+      </div>
+
+      <button class="cart-nav-btn" onclick="goCart()">
+        Cart
+        <span id="cartCountBadge" class="cart-count-badge">0</span>
+      </button>
+      <button class="logout-small-btn" onclick="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <section class="hero-card">
+    <div>
+      <div class="hero-kicker">Customer order center</div>
+
+      <h1 class="hero-title">My Orders</h1>
+
+      <p class="hero-text">
+        Track your submitted quotation requests by order and by product. Each product can be reviewed separately, so confirmed items and returned items are clear at a glance.
+      </p>
+    </div>
+
+    <div class="hero-panel">
+      <h3 class="hero-panel-title">Order service highlights</h3>
+
+      <div class="hero-feature">
+        <span class="feature-dot">✓</span>
+        <div>
+          <div class="feature-title">Product-level status</div>
+          <div class="feature-text">Each item has its own Pending, Confirmed or Returned status.</div>
+        </div>
+      </div>
+
+      <div class="hero-feature">
+        <span class="feature-dot">↩</span>
+        <div>
+          <div class="feature-title">Clear return reasons</div>
+          <div class="feature-text">Returned products show the sales comment directly inside the order.</div>
+        </div>
+      </div>
+
+      <div class="hero-feature">
+        <span class="feature-dot">◎</span>
+        <div>
+          <div class="feature-title">Personalized follow-up</div>
+          <div class="feature-text">Your assigned sales contact remains visible for faster communication.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="customer-board">
+    <div class="board-topline">
+      <h3 class="customer-board-title">Product Status Board</h3>
+      <div class="board-note" id="boardScopeNote">Showing all visible orders</div>
+    </div>
 
     <div class="customer-board-grid">
       <div class="customer-board-card board-total">
@@ -429,8 +1131,27 @@
         <div id="boardReturnedProducts" class="customer-board-number">0</div>
       </div>
     </div>
-  </div>
+  </section>
 
+  <section class="tools-card">
+    <div>
+      <div class="tools-title">Order Tools</div>
+      <div class="tools-sub">Search by order number, product name, material, packing or return reason.</div>
+    </div>
+
+    <div class="tools-controls">
+      <input id="orderSearchInput" placeholder="Search orders or products..." oninput="applyOrderFilters()">
+
+      <select id="orderFilterSelect" onchange="applyOrderFilters()">
+        <option value="All">All Orders</option>
+        <option value="Pending">Pending Orders</option>
+        <option value="Confirmed">Confirmed Orders</option>
+        <option value="Returned">Returned Orders</option>
+      </select>
+
+      <button class="secondary-btn" onclick="resetOrderTools()">Reset</button>
+    </div>
+  </section>
 
   <details class="order-section" open>
     <summary>
@@ -461,7 +1182,6 @@
 
 </div>
 
-
 <script>
 function showCenterMessage(message) {
   const toast = document.getElementById("centerToast");
@@ -479,7 +1199,6 @@ function showCenterMessage(message) {
     toast.style.display = "none";
   }, 1700);
 }
-
 
 function showCenterConfirm(message) {
   return new Promise((resolve) => {
@@ -515,15 +1234,53 @@ function showCenterConfirm(message) {
   });
 }
 
-
 const currentUser = localStorage.getItem("user");
+let allOrdersCache = [];
 
 if (!currentUser) {
   window.location.href = "login.html";
 }
 
-document.getElementById("currentUser").innerText = currentUser;
+document.getElementById("currentUser").innerText = currentUser || "Unknown";
 
+updateCartCount();
+loadCustomerInfo();
+loadMyOrders();
+
+async function loadCustomerInfo() {
+  const fallbackSales = localStorage.getItem("assigned_sales") || "Not assigned";
+  const fallbackEmail = localStorage.getItem("assigned_sales_email") || "";
+
+  document.getElementById("assignedSales").innerText = fallbackSales;
+  document.getElementById("assignedSalesEmail").innerText = fallbackEmail ? "Email: " + fallbackEmail : "Email: Not available";
+
+  if (!currentUser) return;
+
+  try {
+    const response = await fetch("/customer/info/" + encodeURIComponent(currentUser));
+    const data = await response.json();
+
+    if (!data.success) return;
+
+    const assignedSales = data.assigned_sales || "Not assigned";
+    document.getElementById("assignedSales").innerText = assignedSales;
+    localStorage.setItem("assigned_sales", assignedSales);
+
+    if (assignedSales && assignedSales !== "Not assigned") {
+      const salesResponse = await fetch("/customer/info/" + encodeURIComponent(assignedSales));
+      const salesData = await salesResponse.json();
+
+      if (salesData.success) {
+        const salesEmail = salesData.email || "";
+        localStorage.setItem("assigned_sales_email", salesEmail);
+        document.getElementById("assignedSalesEmail").innerText = salesEmail ? "Email: " + salesEmail : "Email: Not available";
+      }
+    }
+
+  } catch (error) {
+    console.error("Customer info error:", error);
+  }
+}
 
 async function loadMyOrders() {
   const response = await fetch(
@@ -541,13 +1298,68 @@ async function loadMyOrders() {
       order.customer_order_no = index + 1;
     });
 
-  updateProductStatusBoard(orders);
+  allOrdersCache = orders;
+  applyOrderFilters();
+}
 
-  const pendingOrders = orders.filter(order => order.status === "Pending");
-  const confirmedOrders = orders.filter(order => order.status === "Confirmed");
-  const returnedOrders = orders.filter(order =>
-    order.status === "Returned" || order.status === "Rejected"
-  );
+function applyOrderFilters() {
+  const keyword = (document.getElementById("orderSearchInput")?.value || "").trim().toLowerCase();
+  const statusFilter = document.getElementById("orderFilterSelect")?.value || "All";
+
+  let filteredOrders = allOrdersCache.filter(order => {
+    const statusInfo = getOrderStatusInfo(order);
+
+    const matchesStatus =
+      statusFilter === "All" ||
+      statusInfo.group === statusFilter;
+
+    if (!matchesStatus) return false;
+
+    if (!keyword) return true;
+
+    const orderItems = parseOrderItems(order.items);
+    const searchableText = [
+      "Order #" + (order.customer_order_no || order.id),
+      order.id,
+      order.status,
+      order.total,
+      order.created_at,
+      order.return_comment,
+      ...orderItems.map(item => [
+        item.name,
+        item.product_name,
+        item.category,
+        item.material,
+        item.size,
+        item.packing,
+        item.customer_requirement,
+        item.item_status,
+        item.item_return_comment
+      ].join(" "))
+    ].join(" ").toLowerCase();
+
+    return searchableText.includes(keyword);
+  });
+
+  updateProductStatusBoard(filteredOrders);
+  renderOrderSections(filteredOrders);
+
+  const isFiltered = keyword || statusFilter !== "All";
+  document.getElementById("boardScopeNote").innerText = isFiltered
+    ? "Showing filtered orders"
+    : "Showing all visible orders";
+}
+
+function resetOrderTools() {
+  document.getElementById("orderSearchInput").value = "";
+  document.getElementById("orderFilterSelect").value = "All";
+  applyOrderFilters();
+}
+
+function renderOrderSections(orders) {
+  const pendingOrders = orders.filter(order => getOrderStatusInfo(order).group === "Pending");
+  const confirmedOrders = orders.filter(order => getOrderStatusInfo(order).group === "Confirmed");
+  const returnedOrders = orders.filter(order => getOrderStatusInfo(order).group === "Returned");
 
   pendingOrders.sort((a, b) => b.customer_order_no - a.customer_order_no);
   confirmedOrders.sort((a, b) => b.customer_order_no - a.customer_order_no);
@@ -562,11 +1374,15 @@ async function loadMyOrders() {
   document.getElementById("returnedTitle").innerText =
     "🔴 Returned Orders (" + returnedOrders.length + ")";
 
-  renderOrderGroup("pendingOrders", pendingOrders, "No pending orders.");
+  if (allOrdersCache.length === 0) {
+    renderOrderGroup("pendingOrders", [], "No orders yet.", true);
+  } else {
+    renderOrderGroup("pendingOrders", pendingOrders, "No pending orders.");
+  }
+
   renderOrderGroup("confirmedOrders", confirmedOrders, "No confirmed orders.");
   renderOrderGroup("returnedOrders", returnedOrders, "No returned orders.");
 }
-
 
 function updateProductStatusBoard(orders) {
   const board = {
@@ -600,18 +1416,24 @@ function updateProductStatusBoard(orders) {
   document.getElementById("boardReturnedProducts").innerText = board.returned;
 }
 
-
-
-function renderOrderGroup(containerId, orders, emptyText) {
+function renderOrderGroup(containerId, orders, emptyText, showShoppingButton = false) {
   const container = document.getElementById(containerId);
   container.innerHTML = "";
 
   if (!orders || orders.length === 0) {
-    container.innerHTML = `
-      <div class="empty-message">
-        ${emptyText}
-      </div>
-    `;
+    container.innerHTML = showShoppingButton
+      ? `
+        <div class="empty-state">
+          <h3>No orders yet.</h3>
+          <p>Your submitted quotation requests will appear here after you create an order from the cart.</p>
+          <button class="primary-btn" onclick="goProducts()">Continue Shopping</button>
+        </div>
+      `
+      : `
+        <div class="empty-message">
+          ${emptyText}
+        </div>
+      `;
     return;
   }
 
@@ -620,62 +1442,61 @@ function renderOrderGroup(containerId, orders, emptyText) {
   });
 }
 
-
 function renderOrderCard(order) {
-  let statusColor = "#ff9800";
-  let statusText = "⏳ Pending";
-
-  if (order.status === "Confirmed") {
-    statusColor = "#4caf50";
-    statusText = "✅ Confirmed";
-  }
-
-  if (order.status === "Returned" || order.status === "Rejected") {
-    statusColor = "#f44336";
-    statusText = "↩ Returned";
-  }
-
   const orderTime = order.created_at || "Not recorded";
   const orderItems = parseOrderItems(order.items);
   const itemSummary = getItemSummary(orderItems, order.status);
+  const statusInfo = getOrderStatusInfo(order);
+  const productCount = orderItems.length;
 
   return `
     <details class="my-order-details" id="order-${order.id}">
       <summary>
         <div class="my-order-summary">
-          <div class="my-order-main">
-            <b>Order #${order.customer_order_no || order.id}</b>
-            <br>
-            Total: $${Number(order.total).toFixed(2)}
-            <br>
-            Status:
-            <span style="
-              color:${statusColor};
-              font-weight:bold;
-            ">
-              ${statusText}
-            </span>
-            <br>
-            Product Status:
-            ${itemSummary.pending} Pending /
-            ${itemSummary.confirmed} Confirmed /
-            ${itemSummary.returned} Returned
-            <br>
-            <span class="my-order-time">
-              Order Time: ${escapeHtml(orderTime)}
-            </span>
+          <div class="order-card-main">
+            <div class="order-card-top">
+              <span class="order-title">Order #${order.customer_order_no || order.id}</span>
+              <span class="order-status-badge ${statusInfo.badgeClass}">${statusInfo.label}</span>
+            </div>
+
+            <div class="order-meta-grid">
+              <div class="order-meta-box">
+                <div class="meta-label">Order Total</div>
+                <div class="meta-value">$${money(order.total)}</div>
+              </div>
+
+              <div class="order-meta-box">
+                <div class="meta-label">Order Time</div>
+                <div class="meta-value">${escapeHtml(orderTime)}</div>
+              </div>
+
+              <div class="order-meta-box">
+                <div class="meta-label">Product Types</div>
+                <div class="meta-value">${productCount}</div>
+              </div>
+
+              <div class="order-meta-box">
+                <div class="meta-label">Product Status</div>
+                <div class="mini-status-row">
+                  <span class="mini-pill">${itemSummary.pending} Pending</span>
+                  <span class="mini-pill">${itemSummary.confirmed} Confirmed</span>
+                  <span class="mini-pill">${itemSummary.returned} Returned</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="my-order-right">
             <span class="my-order-toggle">
-              View Order Details ▼
+              <span class="order-arrow">▶</span>
+              Details
             </span>
 
             <button
               class="delete-order-btn"
               onclick="deleteOrder(event, ${order.id}, ${order.customer_order_no || order.id})"
             >
-              Delete Order
+              Delete
             </button>
           </div>
         </div>
@@ -688,6 +1509,40 @@ function renderOrderCard(order) {
   `;
 }
 
+function getOrderStatusInfo(order) {
+  const items = parseOrderItems(order.items);
+  const summary = getItemSummary(items, order.status);
+
+  if (order.status === "Returned" || order.status === "Rejected") {
+    return {
+      group: "Returned",
+      label: "↩ Returned",
+      badgeClass: "order-status-returned"
+    };
+  }
+
+  if (order.status === "Confirmed") {
+    if (summary.returned > 0 && summary.pending === 0) {
+      return {
+        group: "Confirmed",
+        label: "Completed with Returns",
+        badgeClass: "order-status-mixed"
+      };
+    }
+
+    return {
+      group: "Confirmed",
+      label: "✓ Confirmed",
+      badgeClass: "order-status-confirmed"
+    };
+  }
+
+  return {
+    group: "Pending",
+    label: "⏳ Pending",
+    badgeClass: "order-status-pending"
+  };
+}
 
 function getItemSummary(items, orderStatus) {
   const summary = {
@@ -711,7 +1566,6 @@ function getItemSummary(items, orderStatus) {
   return summary;
 }
 
-
 function parseOrderItems(rawItems) {
   if (!rawItems) return [];
 
@@ -730,10 +1584,9 @@ function parseOrderItems(rawItems) {
   return [];
 }
 
-
 function renderOrderItems(items, orderStatus) {
   if (!items || items.length === 0) {
-    return `<div class="order-item-row">No item details.</div>`;
+    return `<div class="empty-message">No item details.</div>`;
   }
 
   let html = "";
@@ -743,6 +1596,7 @@ function renderOrderItems(items, orderStatus) {
     const unitPrice = Number(item.price || item.unit_price || 0);
     const lineTotal = quantity * unitPrice;
     const status = getItemStatus(item, orderStatus);
+    const image = item.image || "";
 
     let pillClass = "pill-pending";
     let statusText = "Pending";
@@ -759,39 +1613,50 @@ function renderOrderItems(items, orderStatus) {
 
     html += `
       <div class="order-item-row">
-        <div class="order-item-name">
-          ${escapeHtml(item.name || item.product_name || "Product")}
-        </div>
-
-        <div class="item-status-pill ${pillClass}">
-          ${statusText}
-        </div>
-        <br>
-
-        Category: ${escapeHtml(item.category || "")}<br>
-        MOQ: ${escapeHtml(item.moq || "")}<br>
-        Material: ${escapeHtml(item.material || "")}<br>
-        Size: ${escapeHtml(item.size || "")}<br>
-        Packing: ${escapeHtml(item.packing || "")}<br>
-        Customer Requirements: ${escapeHtml(item.customer_requirement || "")}<br>
-        Quantity: ${quantity.toLocaleString()}<br>
-        Unit Price: $${money(unitPrice)}<br>
-        Line Total: $${money(lineTotal)}
-
         ${
-          status === "Returned" && item.item_return_comment
-            ? `<div class="return-reason">
-                 <b>Return Reason:</b> ${escapeHtml(item.item_return_comment)}
-               </div>`
-            : ""
+          image
+            ? `<img src="${escapeAttr(image)}" class="order-item-image" alt="${escapeAttr(item.name || item.product_name || "Product")}">`
+            : `<div class="order-item-placeholder">No Image</div>`
         }
+
+        <div>
+          <div class="order-item-name">
+            ${escapeHtml(item.name || item.product_name || "Product")}
+          </div>
+
+          <div class="item-status-pill ${pillClass}">
+            ${statusText}
+          </div>
+
+          <div class="item-spec-grid">
+            <div class="item-spec"><b>Category:</b> ${escapeHtml(item.category || "")}</div>
+            <div class="item-spec"><b>MOQ:</b> ${escapeHtml(item.moq || "")}</div>
+            <div class="item-spec"><b>Material:</b> ${escapeHtml(item.material || "")}</div>
+            <div class="item-spec"><b>Size:</b> ${escapeHtml(item.size || "")}</div>
+            <div class="item-spec"><b>Packing:</b> ${escapeHtml(item.packing || "")}</div>
+            <div class="item-spec"><b>Quantity:</b> ${quantity.toLocaleString()}</div>
+            <div class="item-spec"><b>Unit Price:</b> $${money(unitPrice)}</div>
+            <div class="item-spec"><b>Line Total:</b> $${money(lineTotal)}</div>
+          </div>
+
+          ${
+            item.customer_requirement
+              ? `<div class="requirement-box"><b>Customer Requirements:</b> ${escapeHtml(item.customer_requirement)}</div>`
+              : ""
+          }
+
+          ${
+            status === "Returned" && item.item_return_comment
+              ? `<div class="return-reason"><b>Return Reason:</b> ${escapeHtml(item.item_return_comment)}</div>`
+              : ""
+          }
+        </div>
       </div>
     `;
   });
 
   return html;
 }
-
 
 function getItemStatus(item, orderStatus) {
   if (item && item.item_status) {
@@ -808,7 +1673,6 @@ function getItemStatus(item, orderStatus) {
 
   return "Pending";
 }
-
 
 async function deleteOrder(event, orderId, displayOrderNo) {
   event.preventDefault();
@@ -843,6 +1707,7 @@ async function deleteOrder(event, orderId, displayOrderNo) {
 
     showCenterMessage("Order #" + displayOrderNo + " has been deleted.");
     await loadMyOrders();
+    updateCartCount();
 
   } catch (error) {
     console.error("Delete order error:", error);
@@ -850,6 +1715,20 @@ async function deleteOrder(event, orderId, displayOrderNo) {
   }
 }
 
+function updateCartCount() {
+  const badge = document.getElementById("cartCountBadge");
+  if (!badge) return;
+
+  let cart = [];
+
+  try {
+    cart = JSON.parse(localStorage.getItem("cart")) || [];
+  } catch (error) {
+    cart = [];
+  }
+
+  badge.innerText = cart.length;
+}
 
 function money(value) {
   return Number(value || 0).toLocaleString(undefined, {
@@ -857,7 +1736,6 @@ function money(value) {
     maximumFractionDigits: 2
   });
 }
-
 
 function escapeHtml(value) {
   return String(value || "")
@@ -868,18 +1746,48 @@ function escapeHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
+function escapeAttr(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
 
 function goCart() {
   window.location.href = "cart.html";
 }
 
-
 function goProducts() {
   window.location.href = "products.html";
 }
 
+async function logout() {
+  const ok = await showCenterConfirm(
+    "Logout?\n\nAre you sure you want to log out?"
+  );
 
-loadMyOrders();
+  if (!ok) return;
+
+  localStorage.removeItem("user");
+  localStorage.removeItem("role");
+  localStorage.removeItem("assigned_sales");
+  localStorage.removeItem("assigned_sales_email");
+  localStorage.removeItem("company_name");
+  localStorage.removeItem("email");
+  localStorage.removeItem("customer_level");
+  localStorage.removeItem("sales_mode_active");
+  localStorage.removeItem("sales_mode_customer");
+  localStorage.removeItem("sales_mode_sales");
+  localStorage.removeItem("sales_mode_customer_company");
+  localStorage.removeItem("sales_mode_customer_email");
+
+  showCenterMessage("You have been logged out.");
+
+  setTimeout(() => {
+    window.location.href = "login.html";
+  }, 900);
+}
 </script>
 
 </body>
