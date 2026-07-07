@@ -167,6 +167,13 @@
       font-weight: 900;
     }
 
+    .sales-contact-block {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+    }
+
     .sales-pill {
       display: inline-flex;
       align-items: center;
@@ -178,6 +185,16 @@
       font-size: 13px;
       font-weight: 900;
       border: 1px solid #dbeafe;
+    }
+
+    .sales-email-line {
+      max-width: 240px;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .logout-small-btn,
@@ -303,11 +320,11 @@
 
     .hero-text {
       margin: 18px 0 0;
-      color: rgba(255, 255, 255, 0.88);
-      max-width: 660px;
-      font-size: 16px;
-      line-height: 1.7;
-      font-weight: 700;
+      color: rgba(255, 255, 255, 0.90);
+      max-width: 680px;
+      font-size: 17px;
+      line-height: 1.75;
+      font-weight: 800;
     }
 
     .hero-actions {
@@ -370,15 +387,25 @@
     }
 
     .hero-stat-number {
-      font-size: 28px;
+      font-size: 25px;
       font-weight: 900;
       margin-bottom: 6px;
+      letter-spacing: -0.3px;
     }
 
     .hero-stat-label {
       font-size: 13px;
-      color: rgba(255, 255, 255, 0.85);
+      line-height: 1.55;
+      color: rgba(255, 255, 255, 0.88);
       font-weight: 800;
+    }
+
+    .hero-contact-line {
+      display: block;
+      margin-top: 4px;
+      color: #ffffff;
+      font-weight: 900;
+      word-break: break-word;
     }
 
     .sales-mode-banner {
@@ -949,8 +976,13 @@
         justify-content: space-between;
       }
 
-      .nav-user-info {
+      .nav-user-info,
+      .sales-contact-block {
         align-items: flex-start;
+      }
+
+      .sales-email-line {
+        max-width: 100%;
       }
 
       .hero-card {
@@ -1077,9 +1109,12 @@
       <div class="nav-user-info">
         <div>Logged in as: <b id="currentUser"></b></div>
 
-        <div class="sales-pill">
-          <span>Sales Contact:</span>
-          <span id="assignedSales">Loading...</span>
+        <div class="sales-contact-block">
+          <div class="sales-pill">
+            <span>Sales Contact:</span>
+            <span id="assignedSales">Loading...</span>
+          </div>
+          <div class="sales-email-line" id="assignedSalesEmail">Email: Loading...</div>
         </div>
       </div>
 
@@ -1100,30 +1135,33 @@
       </h1>
 
       <p class="hero-text">
-        Select products, add them to your cart, generate quotation PDFs and submit orders to your assigned sales contact.
+        A buyer-focused quotation platform for reviewing selected products, comparing clear product details and working directly with your assigned sales contact.
       </p>
 
       <div class="hero-note-row">
-        <span>Browse products below</span>
-        <span>Export PDF quotation from cart</span>
-        <span>Submit orders to your sales contact</span>
+        <span>Quotation-ready product data</span>
+        <span>Organized B2B product catalog</span>
+        <span>Direct sales follow-up</span>
       </div>
     </div>
 
     <div class="hero-side">
       <div class="hero-stat-card">
-        <div class="hero-stat-number">Fast</div>
-        <div class="hero-stat-label">Product selection and quotation</div>
+        <div class="hero-stat-number">Selected Catalog</div>
+        <div class="hero-stat-label">Products organized with MOQ, material, packing and quotation details.</div>
       </div>
 
       <div class="hero-stat-card">
-        <div class="hero-stat-number">PDF</div>
-        <div class="hero-stat-label">Quotation export from cart</div>
+        <div class="hero-stat-number">Quotation Ready</div>
+        <div class="hero-stat-label">Clean product data prepared for faster buyer decisions and PDF quotations.</div>
       </div>
 
       <div class="hero-stat-card">
-        <div class="hero-stat-number">Sales</div>
-        <div class="hero-stat-label">Direct order support</div>
+        <div class="hero-stat-number">Assigned Sales</div>
+        <div class="hero-stat-label">
+          <span id="heroSalesName" class="hero-contact-line">Loading...</span>
+          <span id="heroSalesEmail" class="hero-contact-line">Email: Loading...</span>
+        </div>
       </div>
     </div>
   </section>
@@ -1326,12 +1364,75 @@ function setupSalesModeBanner() {
 }
 
 
+function setSalesContactDisplay(name, email) {
+  const displayName = name || "Not assigned";
+  const displayEmail = email || "Not available";
+
+  const assignedSalesElement = document.getElementById("assignedSales");
+  const assignedSalesEmailElement = document.getElementById("assignedSalesEmail");
+  const heroSalesNameElement = document.getElementById("heroSalesName");
+  const heroSalesEmailElement = document.getElementById("heroSalesEmail");
+
+  if (assignedSalesElement) {
+    assignedSalesElement.innerText = displayName;
+  }
+
+  if (assignedSalesEmailElement) {
+    assignedSalesEmailElement.innerText = "Email: " + displayEmail;
+  }
+
+  if (heroSalesNameElement) {
+    heroSalesNameElement.innerText = displayName;
+  }
+
+  if (heroSalesEmailElement) {
+    heroSalesEmailElement.innerText = "Email: " + displayEmail;
+  }
+}
+
+
+function loadSalesContactDetail(salesUsername) {
+  if (!salesUsername || salesUsername === "Not assigned") {
+    setSalesContactDisplay("Not assigned", "");
+    return;
+  }
+
+  const cachedEmailKey = "sales_email_" + salesUsername;
+  const cachedEmail = localStorage.getItem(cachedEmailKey) || "";
+
+  setSalesContactDisplay(salesUsername, cachedEmail);
+
+  fetch("/customer/info/" + encodeURIComponent(salesUsername))
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        const salesEmail = data.email || "";
+
+        if (salesEmail) {
+          localStorage.setItem(cachedEmailKey, salesEmail);
+          localStorage.setItem("assigned_sales_email", salesEmail);
+        }
+
+        setSalesContactDisplay(salesUsername, salesEmail);
+      }
+    })
+    .catch(error => {
+      console.error("Sales contact info error:", error);
+      setSalesContactDisplay(salesUsername, cachedEmail);
+    });
+}
+
+
 function loadCustomerInfo() {
   const fallbackSales = localStorage.getItem("assigned_sales") || "Not assigned";
+  const fallbackSalesEmail = localStorage.getItem("assigned_sales_email") || "";
   const infoUsername = salesModeActive ? salesModeCustomer : user;
 
-  document.getElementById("assignedSales").innerText =
-    salesModeActive ? user : fallbackSales;
+  if (salesModeActive) {
+    loadSalesContactDetail(user);
+  } else {
+    setSalesContactDisplay(fallbackSales, fallbackSalesEmail);
+  }
 
   fetch("/customer/info/" + encodeURIComponent(infoUsername))
     .then(response => response.json())
@@ -1340,20 +1441,24 @@ function loadCustomerInfo() {
         const assignedSales = data.assigned_sales || "Not assigned";
 
         if (salesModeActive) {
-          document.getElementById("assignedSales").innerText = user;
           localStorage.setItem("sales_mode_customer_company", data.company_name || "");
           localStorage.setItem("sales_mode_customer_email", data.email || "");
+          loadSalesContactDetail(user);
         } else {
-          document.getElementById("assignedSales").innerText = assignedSales;
           localStorage.setItem("assigned_sales", assignedSales);
           localStorage.setItem("customer_level", data.customer_level || "A");
+          loadSalesContactDetail(assignedSales);
         }
       }
     })
     .catch(error => {
       console.error("Customer info error:", error);
-      document.getElementById("assignedSales").innerText =
-        salesModeActive ? user : fallbackSales;
+
+      if (salesModeActive) {
+        loadSalesContactDetail(user);
+      } else {
+        setSalesContactDisplay(fallbackSales, fallbackSalesEmail);
+      }
     });
 }
 
@@ -1461,6 +1566,7 @@ async function logout() {
   localStorage.removeItem("user");
   localStorage.removeItem("role");
   localStorage.removeItem("assigned_sales");
+  localStorage.removeItem("assigned_sales_email");
   localStorage.removeItem("company_name");
   localStorage.removeItem("email");
   localStorage.removeItem("sales_mode_active");
@@ -1520,11 +1626,11 @@ function filterProducts() {
 
   filtered.sort((a, b) => {
     if (sortValue === "price_low") {
-      return getPriceNumber(a.price) - getPriceNumber(b.price);
+      return getDisplayUnitPrice(a) - getDisplayUnitPrice(b);
     }
 
     if (sortValue === "price_high") {
-      return getPriceNumber(b.price) - getPriceNumber(a.price);
+      return getDisplayUnitPrice(b) - getDisplayUnitPrice(a);
     }
 
     if (sortValue === "name_az") {
@@ -1613,6 +1719,12 @@ function getTierPrice(quantity, product) {
   }
 
   return getPriceNumber(unitPrice);
+}
+
+
+function getDisplayUnitPrice(product) {
+  const displayQuantity = Math.max(parseInt(product.moq || 1), 1);
+  return getTierPrice(displayQuantity, product);
 }
 
 
@@ -1716,6 +1828,7 @@ function renderProducts(products) {
     const image = p.image || "";
     const moq = p.moq || "N/A";
     const material = p.material || "N/A";
+    const displayUnitPrice = getDisplayUnitPrice(p);
 
     div.innerHTML = `
       <div class="product-media">
@@ -1735,8 +1848,8 @@ function renderProducts(products) {
 
         <div class="product-price-row">
           <div class="product-price">
-            Price<br>
-            <strong>${formatMoney(p.price)}</strong>
+            Unit Price<br>
+            <strong>${formatMoney(displayUnitPrice)}</strong>
           </div>
         </div>
 
