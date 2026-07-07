@@ -1474,8 +1474,9 @@ async def generate_cart_pdf(data: dict):
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.utils import ImageReader
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
     from pathlib import Path as LocalPath
+    from datetime import timedelta
 
     items = data.get("items", [])
 
@@ -1483,6 +1484,7 @@ async def generate_cart_pdf(data: dict):
     customer_company = data.get("customerCompany", "")
     customer_email = data.get("customerEmail", "")
     username = data.get("username", "")
+    sales_username_from_cart = data.get("salesUsername", "")
 
     try:
         valid_days = int(data.get("validDays", 30))
@@ -1492,31 +1494,35 @@ async def generate_cart_pdf(data: dict):
     if valid_days <= 0:
         valid_days = 30
 
-    # Get assigned sales contact from the logged-in customer account.
-    sales_name = ""
+    quote_date = datetime.now()
+    valid_until_date = quote_date + timedelta(days=valid_days)
+
+    quotation_no = "BQ-" + quote_date.strftime("%Y%m%d%H%M")
+
+    # Get assigned sales contact.
+    # Normal customer flow: use the customer's assigned_sales.
+    # Sales-mode flow: cart.html sends salesUsername, so use that sales account first.
+    sales_name = sales_username_from_cart or ""
     sales_email = ""
 
     db = SessionLocal()
 
     try:
-        customer_user = db.query(User).filter(
-            User.username == username
-        ).first()
-
-        assigned_sales = ""
-
-        if customer_user:
-            assigned_sales = customer_user.assigned_sales or ""
-
-        if assigned_sales:
-            sales_user = db.query(User).filter(
-                User.username == assigned_sales
+        if not sales_name:
+            customer_user = db.query(User).filter(
+                User.username == username
             ).first()
 
-            sales_name = assigned_sales
+            if customer_user:
+                sales_name = customer_user.assigned_sales or ""
+
+        if sales_name:
+            sales_user = db.query(User).filter(
+                User.username == sales_name
+            ).first()
 
             if sales_user:
-                sales_name = sales_user.username or assigned_sales
+                sales_name = sales_user.username or sales_name
                 sales_email = sales_user.email or ""
 
     finally:
@@ -1529,20 +1535,65 @@ async def generate_cart_pdf(data: dict):
         pagesize=A4,
         rightMargin=24,
         leftMargin=24,
-        topMargin=24,
-        bottomMargin=24
+        topMargin=22,
+        bottomMargin=22
     )
 
     elements = []
     styles = getSampleStyleSheet()
 
-    normal_style = styles["Normal"]
+    brand_blue = colors.HexColor("#1f3c88")
+    action_blue = colors.HexColor("#2563eb")
+    light_blue = colors.HexColor("#eef4ff")
+    soft_gray = colors.HexColor("#f8fafc")
+    border_gray = colors.HexColor("#dbe3ef")
+    dark_text = colors.HexColor("#111827")
+    muted_text = colors.HexColor("#4b5563")
+
+    title_style = ParagraphStyle(
+        "BridgeTitle",
+        parent=styles["Title"],
+        fontName="Helvetica-Bold",
+        fontSize=22,
+        leading=26,
+        textColor=brand_blue,
+        alignment=TA_RIGHT,
+        spaceAfter=0
+    )
+
+    subtitle_style = ParagraphStyle(
+        "BridgeSubtitle",
+        parent=styles["Normal"],
+        fontSize=9,
+        leading=12,
+        textColor=muted_text,
+        alignment=TA_RIGHT
+    )
+
+    section_title_style = ParagraphStyle(
+        "SectionTitle",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=10,
+        leading=13,
+        textColor=brand_blue,
+        spaceAfter=6
+    )
+
+    normal_style = ParagraphStyle(
+        "NormalClean",
+        parent=styles["Normal"],
+        fontSize=9,
+        leading=12,
+        textColor=dark_text
+    )
 
     small_style = ParagraphStyle(
         "SmallText",
         parent=styles["Normal"],
-        fontSize=9,
-        leading=11
+        fontSize=7.8,
+        leading=10,
+        textColor=dark_text
     )
 
     small_center_style = ParagraphStyle(
@@ -1551,98 +1602,57 @@ async def generate_cart_pdf(data: dict):
         alignment=TA_CENTER
     )
 
-    logo = Image(
-        "static/image/bg2.jpg",
-        width=420,
-        height=70
-    )
-    logo.hAlign = "CENTER"
-
-    elements.append(logo)
-    elements.append(Spacer(1, 18))
-
-    title = Paragraph(
-        "<font size=24><b>QUOTATION</b></font>",
-        styles["Title"]
+    small_right_style = ParagraphStyle(
+        "SmallRightText",
+        parent=small_style,
+        alignment=TA_RIGHT
     )
 
-    elements.append(title)
-    elements.append(Spacer(1, 14))
-
-    quote_customer_info = Paragraph(
-        f"""
-        <font size=11>
-        <b>Quotation No:</b> BQ-{datetime.now().strftime('%Y%m%d%H%M')}<br/>
-        <b>Website:</b> bridgequotation.com<br/>
-        <b>Date:</b> {datetime.now().strftime('%Y-%m-%d')}<br/>
-        <b>Valid Until:</b> {valid_days} days<br/><br/>
-
-        <b>Customer:</b> {customer_name}<br/>
-        <b>Company:</b> {customer_company}<br/>
-        <b>Email:</b> {customer_email}
-        </font>
-        """,
-        normal_style
+    note_style = ParagraphStyle(
+        "NoteText",
+        parent=styles["Normal"],
+        fontSize=8,
+        leading=11,
+        textColor=muted_text
     )
 
-    sales_info = Paragraph(
-        f"""
-        <font size=11>
-        <b>Sales Contact</b><br/><br/>
-        <b>Name:</b> {sales_name or "Not assigned"}<br/>
-        <b>Email:</b> {sales_email or ""}
-        </font>
-        """,
-        normal_style
-    )
-
-    info_table = Table(
-        [[quote_customer_info, sales_info]],
-        colWidths=[330, 180]
-    )
-
-    info_table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("BOX", (0, 0), (-1, -1), 0.25, colors.white),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-    ]))
-
-    elements.append(info_table)
-    elements.append(Spacer(1, 18))
-
-    table_data = [
-        [
-            "Image",
-            "Product",
-            "MOQ",
-            "Material",
-            "Size",
-            "Packing",
-            "Qty",
-            "Unit Price",
-            "Amount"
-        ]
-    ]
-
-    def money(value):
-        return "${:,.2f}".format(float(value))
-
-    def make_text(value, center=False, raw_html=False):
+    def escape_pdf_text(value):
         if value is None:
             value = ""
 
-        if raw_html:
-            text = str(value)
-        else:
-            text = str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        text = str(value)
 
+        return (
+            text
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\n", "<br/>")
+        )
+
+    def make_text(value, center=False, right=False):
         if center:
-            return Paragraph(text, small_center_style)
+            return Paragraph(escape_pdf_text(value), small_center_style)
 
-        return Paragraph(text, small_style)
+        if right:
+            return Paragraph(escape_pdf_text(value), small_right_style)
+
+        return Paragraph(escape_pdf_text(value), small_style)
+
+    def money(value):
+        try:
+            return "${:,.2f}".format(float(value or 0))
+        except Exception:
+            return "$0.00"
+
+    def safe_number(value, default=0):
+        try:
+            return float(value or default)
+        except Exception:
+            return float(default)
+
+    def make_info_line(label, value):
+        return f"<b>{escape_pdf_text(label)}:</b> {escape_pdf_text(value)}"
 
     def make_product_image(image_url):
         if not image_url:
@@ -1662,18 +1672,15 @@ async def generate_cart_pdf(data: dict):
             reader = ImageReader(str(local_path))
             img_width, img_height = reader.getSize()
 
-            max_width = 48
-            max_height = 48
+            max_width = 44
+            max_height = 44
 
             scale = min(max_width / img_width, max_height / img_height)
 
-            draw_width = img_width * scale
-            draw_height = img_height * scale
-
             product_image = Image(
                 str(local_path),
-                width=draw_width,
-                height=draw_height
+                width=img_width * scale,
+                height=img_height * scale
             )
 
             product_image.hAlign = "CENTER"
@@ -1683,100 +1690,231 @@ async def generate_cart_pdf(data: dict):
         except Exception:
             return make_text("No Image", center=True)
 
+    # Header
+    logo_path = LocalPath("static/image/bg2.jpg")
+
+    if logo_path.exists():
+        logo = Image(
+            str(logo_path),
+            width=230,
+            height=40
+        )
+        logo.hAlign = "LEFT"
+        logo_cell = logo
+    else:
+        logo_cell = Paragraph(
+            "<b>BRIDGE QUOTATION</b>",
+            ParagraphStyle(
+                "TextLogo",
+                parent=styles["Normal"],
+                fontName="Helvetica-Bold",
+                fontSize=16,
+                textColor=brand_blue
+            )
+        )
+
+    title_block = [
+        Paragraph("QUOTATION", title_style),
+        Paragraph("Product selection and quotation platform", subtitle_style)
+    ]
+
+    header_table = Table(
+        [[logo_cell, title_block]],
+        colWidths=[250, 285]
+    )
+
+    header_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LINEBELOW", (0, 0), (-1, -1), 1.2, brand_blue),
+    ]))
+
+    elements.append(header_table)
+    elements.append(Spacer(1, 14))
+
+    # Quote and contact information
+    quote_info = Paragraph(
+        "<b>Quotation Details</b><br/><br/>"
+        + make_info_line("Quotation No", quotation_no)
+        + "<br/>"
+        + make_info_line("Website", "bridgequotation.com")
+        + "<br/>"
+        + make_info_line("Date", quote_date.strftime("%Y-%m-%d"))
+        + "<br/>"
+        + make_info_line("Valid Until", valid_until_date.strftime("%Y-%m-%d"))
+        + f" ({valid_days} days)",
+        normal_style
+    )
+
+    customer_info = Paragraph(
+        "<b>Customer Information</b><br/><br/>"
+        + make_info_line("Customer", customer_name)
+        + "<br/>"
+        + make_info_line("Company", customer_company)
+        + "<br/>"
+        + make_info_line("Email", customer_email),
+        normal_style
+    )
+
+    sales_info = Paragraph(
+        "<b>Sales Contact</b><br/><br/>"
+        + make_info_line("Name", sales_name or "Not assigned")
+        + "<br/>"
+        + make_info_line("Email", sales_email or ""),
+        normal_style
+    )
+
+    info_table = Table(
+        [[quote_info, customer_info, sales_info]],
+        colWidths=[178, 178, 178]
+    )
+
+    info_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), soft_gray),
+        ("BOX", (0, 0), (-1, -1), 0.8, border_gray),
+        ("INNERGRID", (0, 0), (-1, -1), 0.6, border_gray),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 10),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+    ]))
+
+    elements.append(info_table)
+    elements.append(Spacer(1, 16))
+
+    elements.append(Paragraph("Product Quotation", section_title_style))
+
+    table_data = [
+        [
+            make_text("Image", center=True),
+            make_text("Product", center=True),
+            make_text("MOQ", center=True),
+            make_text("Material", center=True),
+            make_text("Size", center=True),
+            make_text("Packing", center=True),
+            make_text("Qty", center=True),
+            make_text("Unit Price", center=True),
+            make_text("Amount", center=True)
+        ]
+    ]
+
     grand_total = 0
+    total_quantity = 0
 
     for item in items:
 
-        qty = int(item.get("quantity", 0))
-        price = float(item.get("price", 0))
-
+        qty = int(safe_number(item.get("quantity", 0)))
+        price = safe_number(item.get("price", 0))
         total = qty * price
+
+        total_quantity += qty
         grand_total += total
 
         product_image = make_product_image(item.get("image", ""))
 
+        product_name = item.get("name", "Product")
         requirement = item.get("customer_requirement", "")
 
-        product_text = item.get("name", "")
+        product_lines = f"<b>{escape_pdf_text(product_name)}</b>"
 
         if requirement:
-            product_text = f"{product_text}<br/><font size='7' color='gray'>Req: {requirement}</font>"
+            product_lines += (
+                "<br/><font size='6.8' color='#4b5563'>"
+                + "Req: "
+                + escape_pdf_text(requirement)
+                + "</font>"
+            )
 
         table_data.append([
             product_image,
-            make_text(product_text, raw_html=True),
+            Paragraph(product_lines, small_style),
             make_text(item.get("moq", ""), center=True),
             make_text(item.get("material", ""), center=True),
             make_text(item.get("size", ""), center=True),
             make_text(item.get("packing", ""), center=True),
             make_text(f"{qty:,}", center=True),
-            make_text(money(price), center=True),
-            make_text(money(total), center=True)
+            make_text(money(price), right=True),
+            make_text(money(total), right=True)
         ])
 
     table_data.append([
         "",
+        Paragraph("<b>Grand Total</b>", small_right_style),
         "",
         "",
         "",
         "",
+        make_text(f"{total_quantity:,}", center=True),
         "",
-        "",
-        make_text("Grand Total", center=True),
-        make_text(money(grand_total), center=True)
+        Paragraph(f"<b>{money(grand_total)}</b>", small_right_style)
     ])
 
-    row_heights = [26]
-
-    for _ in items:
-        row_heights.append(64)
-
-    row_heights.append(24)
-
-    table = Table(
+    product_table = Table(
         table_data,
-        colWidths=[55, 90, 42, 55, 45, 80, 42, 60, 68],
-        rowHeights=row_heights,
+        colWidths=[48, 110, 38, 52, 48, 62, 42, 58, 70],
         repeatRows=1
     )
 
-    table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2563eb")),
+    product_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), brand_blue),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
 
-        ("FONTSIZE", (0, 0), (-1, 0), 8.5),
-        ("FONTSIZE", (0, 1), (-1, -1), 8),
+        ("BACKGROUND", (0, 1), (-1, -2), colors.white),
+        ("BACKGROUND", (0, -1), (-1, -1), light_blue),
 
-        ("GRID", (0, 0), (-1, -1), 0.6, colors.grey),
-
-        ("BACKGROUND", (0, 1), (-1, -2), colors.whitesmoke),
-        ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#dbeafe")),
+        ("BOX", (0, 0), (-1, -1), 0.8, border_gray),
+        ("INNERGRID", (0, 0), (-1, -1), 0.5, border_gray),
 
         ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-        ("ALIGN", (0, 1), (0, -2), "CENTER"),
-        ("ALIGN", (2, 1), (-1, -1), "CENTER"),
+        ("ALIGN", (0, 1), (0, -1), "CENTER"),
+        ("ALIGN", (2, 1), (6, -1), "CENTER"),
+        ("ALIGN", (7, 1), (8, -1), "RIGHT"),
 
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
 
-        ("LEFTPADDING", (0, 0), (-1, -1), 4),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
     ]))
 
-    elements.append(table)
-    elements.append(Spacer(1, 28))
+    elements.append(product_table)
+    elements.append(Spacer(1, 18))
+
+    notes_title = Paragraph("Notes", section_title_style)
+
+    notes = Paragraph(
+        "1. Prices are valid within the quotation period shown above.<br/>"
+        "2. Final price is subject to confirmed quantity, packing details and product availability.<br/>"
+        "3. Customized packing, artwork, shipping marks and other special requirements should be confirmed before production.<br/>"
+        "4. This quotation is generated from bridgequotation.com.",
+        note_style
+    )
+
+    notes_table = Table(
+        [[notes_title], [notes]],
+        colWidths=[535]
+    )
+
+    notes_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), soft_gray),
+        ("BOX", (0, 0), (-1, -1), 0.8, border_gray),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+    ]))
+
+    elements.append(notes_table)
+    elements.append(Spacer(1, 14))
 
     footer = Paragraph(
-        """
-        <font size=10 color='gray'>
-        Thank you for your inquiry.<br/>
-        Generated by bridgequotation.com
-        </font>
-        """,
+        "<font size=8 color='#6b7280'>Thank you for your inquiry. Generated by bridgequotation.com.</font>",
         styles["Normal"]
     )
 
@@ -1790,7 +1928,7 @@ async def generate_cart_pdf(data: dict):
         buffer,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": "attachment; filename=quotation.pdf"
+            "Content-Disposition": "attachment; filename=bridge_quotation.pdf"
         }
     )
 
