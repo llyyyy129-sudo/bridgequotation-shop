@@ -731,7 +731,7 @@
 
     <div class="nav-links">
       <button class="nav-link" onclick="goBack()">Products</button>
-      <button class="nav-link" onclick="goMyOrders()">My Orders</button>
+      <button id="ordersNavBtn" class="nav-link" onclick="goMyOrders()">My Orders</button>
       <button class="nav-link active" onclick="window.location.href='cart.html'">Cart</button>
     </div>
 
@@ -868,6 +868,13 @@ function showCenterMessage(message) {
 
 const currentUser = localStorage.getItem("user") || "";
 const currentRole = localStorage.getItem("role") || "";
+
+if (currentRole === "sales") {
+  const ordersNavBtn = document.getElementById("ordersNavBtn");
+  if (ordersNavBtn) {
+    ordersNavBtn.innerText = "Sales Dashboard";
+  }
+}
 
 document.getElementById("navUserName").innerText = currentUser || "Unknown";
 
@@ -1244,6 +1251,11 @@ function goBack() {
     return;
   }
 
+  if (currentRole === "sales") {
+    window.location.href = "sales.html";
+    return;
+  }
+
   window.location.href = "products.html";
 }
 
@@ -1252,7 +1264,7 @@ function backToSalesDashboard() {
 }
 
 function goMyOrders() {
-  if (salesModeActive) {
+  if (currentRole === "sales" || salesModeActive) {
     window.location.href = "sales.html";
     return;
   }
@@ -1261,6 +1273,16 @@ function goMyOrders() {
 }
 
 async function checkout() {
+  if (currentRole === "sales" && !salesModeActive) {
+    showCenterMessage("Please choose a customer from Sales Dashboard before creating an order.");
+
+    setTimeout(() => {
+      window.location.href = "sales.html";
+    }, 900);
+
+    return;
+  }
+
   if (cart.length === 0) {
     showCenterMessage("Cart is empty.");
     return;

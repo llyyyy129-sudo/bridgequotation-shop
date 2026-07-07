@@ -1108,7 +1108,7 @@
 
     <div class="nav-links">
       <button class="nav-link active" onclick="scrollToProducts()">Products</button>
-      <button class="nav-link" onclick="goMyOrders()">My Orders</button>
+      <button id="ordersNavBtn" class="nav-link" onclick="goMyOrders()">My Orders</button>
     </div>
 
     <div class="nav-user-card">
@@ -1302,6 +1302,13 @@ let currentCategory = "All";
 
 const user = localStorage.getItem("user");
 const role = localStorage.getItem("role") || "";
+
+if (role === "sales") {
+  const ordersNavBtn = document.getElementById("ordersNavBtn");
+  if (ordersNavBtn) {
+    ordersNavBtn.innerText = "Sales Dashboard";
+  }
+}
 
 const urlParams = new URLSearchParams(window.location.search);
 const urlSalesCustomer = urlParams.get("sales_customer");
@@ -1528,6 +1535,16 @@ window.addEventListener("focus", updateCartCount);
 
 
 function goCart() {
+  if (role === "sales" && !salesModeActive) {
+    showCenterMessage("Please select a customer from Sales Dashboard first.");
+
+    setTimeout(() => {
+      window.location.href = "sales.html";
+    }, 900);
+
+    return;
+  }
+
   window.location.href = "cart.html";
 }
 
@@ -1732,6 +1749,16 @@ function getDisplayUnitPrice(product) {
 
 
 function quickAddToCart(productId) {
+  if (role === "sales" && !salesModeActive) {
+    showCenterMessage("Please choose a customer from Sales Dashboard before adding products.");
+
+    setTimeout(() => {
+      window.location.href = "sales.html";
+    }, 900);
+
+    return;
+  }
+
   const product = allProducts.find(item => Number(item.id) === Number(productId));
 
   if (!product) {

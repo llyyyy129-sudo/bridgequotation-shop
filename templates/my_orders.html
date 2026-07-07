@@ -1040,7 +1040,7 @@
 
     <div class="nav-links">
       <button class="nav-link" onclick="goProducts()">Products</button>
-      <button class="nav-link active" onclick="loadMyOrders()">My Orders</button>
+      <button id="ordersNavBtn" class="nav-link active" onclick="loadMyOrders()">My Orders</button>
     </div>
 
     <div class="nav-user-card">
@@ -1235,10 +1235,15 @@ function showCenterConfirm(message) {
 }
 
 const currentUser = localStorage.getItem("user");
+const currentRole = localStorage.getItem("role") || "";
 let allOrdersCache = [];
 
 if (!currentUser) {
   window.location.href = "login.html";
+}
+
+if (currentRole === "sales") {
+  window.location.href = "sales.html";
 }
 
 document.getElementById("currentUser").innerText = currentUser || "Unknown";
@@ -1755,10 +1760,20 @@ function escapeAttr(value) {
 }
 
 function goCart() {
+  if (currentRole === "sales") {
+    window.location.href = "sales.html";
+    return;
+  }
+
   window.location.href = "cart.html";
 }
 
 function goProducts() {
+  if (currentRole === "sales") {
+    window.location.href = "sales.html";
+    return;
+  }
+
   window.location.href = "products.html";
 }
 

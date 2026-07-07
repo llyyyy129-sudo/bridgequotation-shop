@@ -789,7 +789,7 @@
 
     <div class="nav-center">
       <button class="nav-pill" onclick="goBack()">Products</button>
-      <button class="nav-pill" onclick="goMyOrders()">My Orders</button>
+      <button id="ordersNavBtn" class="nav-pill" onclick="goMyOrders()">My Orders</button>
     </div>
 
     <div class="nav-right">
@@ -890,6 +890,13 @@ const params = new URLSearchParams(window.location.search);
 const id = params.get("id");
 const user = localStorage.getItem("user") || "";
 const role = localStorage.getItem("role") || "";
+
+if (role === "sales") {
+  const ordersNavBtn = document.getElementById("ordersNavBtn");
+  if (ordersNavBtn) {
+    ordersNavBtn.innerText = "Sales Dashboard";
+  }
+}
 
 const urlParamsForSales = new URLSearchParams(window.location.search);
 const urlSalesCustomer = urlParamsForSales.get("sales_customer");
@@ -1242,6 +1249,16 @@ function updatePrice() {
 }
 
 function addToCart() {
+  if (role === "sales" && !salesModeActive) {
+    showCenterMessage("Please choose a customer from Sales Dashboard before adding products.");
+
+    setTimeout(() => {
+      window.location.href = "sales.html";
+    }, 900);
+
+    return;
+  }
+
   const cartKey = getCartKey();
   let cart = JSON.parse(localStorage.getItem(cartKey)) || [];
 
@@ -1305,11 +1322,16 @@ function goBack() {
     return;
   }
 
+  if (role === "sales") {
+    window.location.href = "sales.html";
+    return;
+  }
+
   window.location.href = "products.html";
 }
 
 function goMyOrders() {
-  if (salesModeActive) {
+  if (role === "sales" || salesModeActive) {
     window.location.href = "sales.html";
     return;
   }
@@ -1318,6 +1340,16 @@ function goMyOrders() {
 }
 
 function goCart() {
+  if (role === "sales" && !salesModeActive) {
+    showCenterMessage("Please select a customer from Sales Dashboard first.");
+
+    setTimeout(() => {
+      window.location.href = "sales.html";
+    }, 900);
+
+    return;
+  }
+
   window.location.href = "cart.html";
 }
 
