@@ -210,10 +210,28 @@
     }
 
     .cart-nav-btn {
+      position: relative;
       padding: 11px 18px;
       background: linear-gradient(135deg, #2563eb, #1d4ed8);
       color: #ffffff;
       box-shadow: 0 10px 24px rgba(37, 99, 235, 0.26);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .cart-count-badge {
+      min-width: 22px;
+      height: 22px;
+      padding: 0 7px;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #1d4ed8;
+      font-size: 12px;
+      line-height: 22px;
+      font-weight: 900;
+      text-align: center;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
     }
 
     .hero-card {
@@ -297,6 +315,25 @@
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
+    }
+
+    .hero-note-row {
+      margin-top: 26px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .hero-note-row span {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      color: rgba(255, 255, 255, 0.92);
+      font-size: 13px;
+      font-weight: 900;
     }
 
     .primary-hero-btn,
@@ -436,6 +473,25 @@
       color: var(--bridge-blue);
       font-weight: 900;
       box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+    }
+
+    .filter-status-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .result-count-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 14px;
+      background: #eef4ff;
+      border: 1px solid #dbeafe;
+      border-radius: 999px;
+      color: var(--bridge-blue);
+      font-size: 13px;
+      font-weight: 900;
     }
 
     .search-row {
@@ -981,7 +1037,10 @@
         </div>
       </div>
 
-      <button class="cart-nav-btn" onclick="goCart()">Cart</button>
+      <button class="cart-nav-btn" onclick="goCart()">
+        Cart
+        <span id="cartCountBadge" class="cart-count-badge">0</span>
+      </button>
       <button class="logout-small-btn" onclick="logout()">Logout</button>
     </div>
   </nav>
@@ -998,8 +1057,10 @@
         Select products, add them to your cart, generate quotation PDFs and submit orders to your assigned sales contact.
       </p>
 
-      <div class="hero-actions">
-        <button class="primary-hero-btn" onclick="scrollToProducts()">Start Quotation</button>
+      <div class="hero-note-row">
+        <span>Browse products below</span>
+        <span>Export PDF quotation from cart</span>
+        <span>Submit orders to your sales contact</span>
       </div>
     </div>
 
@@ -1046,9 +1107,15 @@
         <span>Search by product name or choose a category.</span>
       </div>
 
-      <div class="current-category-title">
-        Current Category:
-        <span id="currentCategoryLabel">All</span>
+      <div class="filter-status-row">
+        <div class="current-category-title">
+          Current Category:
+          <span id="currentCategoryLabel">All</span>
+        </div>
+
+        <div class="result-count-pill" id="resultCountLabel">
+          0 products
+        </div>
       </div>
     </div>
 
@@ -1172,6 +1239,7 @@ const container = document.getElementById("list");
 
 setupSalesModeBanner();
 loadCustomerInfo();
+updateCartCount();
 
 fetch("/products?username=" + encodeURIComponent(productPriceUsername))
   .then(response => response.json())
@@ -1247,6 +1315,49 @@ function view(id) {
 
   window.location.href = "product.html?id=" + id;
 }
+
+
+function getCartItemsFromStorage() {
+  const candidateKeys = [
+    "cart",
+    "cartItems",
+    "shoppingCart"
+  ];
+
+  for (const key of candidateKeys) {
+    try {
+      const raw = localStorage.getItem(key);
+
+      if (!raw) {
+        continue;
+      }
+
+      const parsed = JSON.parse(raw);
+
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    } catch (error) {
+      console.warn("Cart count parse skipped:", key, error);
+    }
+  }
+
+  return [];
+}
+
+
+function updateCartCount() {
+  const badge = document.getElementById("cartCountBadge");
+
+  if (!badge) return;
+
+  const cartItems = getCartItemsFromStorage();
+  badge.innerText = cartItems.length;
+}
+
+
+window.addEventListener("storage", updateCartCount);
+window.addEventListener("focus", updateCartCount);
 
 
 function goCart() {
@@ -1422,8 +1533,18 @@ function escapeHtml(value) {
 }
 
 
+function updateResultCount(count) {
+  const label = document.getElementById("resultCountLabel");
+
+  if (!label) return;
+
+  label.innerText = count === 1 ? "1 product" : count + " products";
+}
+
+
 function renderProducts(products) {
   container.innerHTML = "";
+  updateResultCount(products ? products.length : 0);
 
   if (!products || products.length === 0) {
     container.innerHTML = `
