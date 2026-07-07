@@ -494,6 +494,25 @@
       font-weight: 900;
     }
 
+    .sort-select {
+      height: 38px;
+      border-radius: 999px;
+      border: 1px solid #dbeafe;
+      background: #ffffff;
+      color: var(--bridge-blue);
+      padding: 0 36px 0 14px;
+      font-size: 13px;
+      font-weight: 900;
+      outline: none;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+    }
+
+    .sort-select:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.10);
+    }
+
     .search-row {
       display: grid;
       grid-template-columns: minmax(250px, 420px) minmax(0, 1fr);
@@ -746,19 +765,41 @@
       text-overflow: ellipsis;
     }
 
-    .product-card button {
+    .product-action-row {
       margin-top: auto;
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .product-card .quick-add-btn,
+    .product-card .details-btn {
       width: 100%;
-      border: none;
       border-radius: 16px;
-      padding: 14px 18px;
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
-      color: #ffffff;
-      font-size: 15px;
+      padding: 14px 14px;
+      font-size: 14px;
       font-weight: 900;
       cursor: pointer;
-      box-shadow: 0 14px 28px rgba(37, 99, 235, 0.22);
       transition: all 0.18s ease;
+    }
+
+    .product-card .quick-add-btn {
+      border: none;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #ffffff;
+      box-shadow: 0 14px 28px rgba(37, 99, 235, 0.22);
+    }
+
+    .product-card .details-btn {
+      border: 1.5px solid #dbeafe;
+      background: #ffffff;
+      color: var(--bridge-blue);
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+    }
+
+    .product-card .details-btn:hover {
+      background: #eef4ff;
     }
 
     .empty-products {
@@ -981,6 +1022,11 @@
         grid-template-columns: 1fr;
       }
 
+
+      .product-action-row {
+        grid-template-columns: 1fr;
+      }
+
       .nav-user-card {
         flex-wrap: wrap;
       }
@@ -1108,6 +1154,13 @@
       </div>
 
       <div class="filter-status-row">
+        <select id="sortSelect" class="sort-select" onchange="filterProducts()">
+          <option value="recommended">Sort: Recommended</option>
+          <option value="price_low">Price: Low to High</option>
+          <option value="price_high">Price: High to Low</option>
+          <option value="name_az">Name: A to Z</option>
+        </select>
+
         <div class="current-category-title">
           Current Category:
           <span id="currentCategoryLabel">All</span>
@@ -1317,32 +1370,38 @@ function view(id) {
 }
 
 
+function getCartKey() {
+  if (salesModeActive && salesModeCustomer) {
+    return "sales_cart_" + salesModeCustomer;
+  }
+
+  return "cart";
+}
+
+
 function getCartItemsFromStorage() {
-  const candidateKeys = [
-    "cart",
-    "cartItems",
-    "shoppingCart"
-  ];
+  try {
+    const raw = localStorage.getItem(getCartKey());
 
-  for (const key of candidateKeys) {
-    try {
-      const raw = localStorage.getItem(key);
-
-      if (!raw) {
-        continue;
-      }
-
-      const parsed = JSON.parse(raw);
-
-      if (Array.isArray(parsed)) {
-        return parsed;
-      }
-    } catch (error) {
-      console.warn("Cart count parse skipped:", key, error);
+    if (!raw) {
+      return [];
     }
+
+    const parsed = JSON.parse(raw);
+
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+  } catch (error) {
+    console.warn("Cart count parse skipped:", error);
   }
 
   return [];
+}
+
+
+function saveCartItems(cart) {
+  localStorage.setItem(getCartKey(), JSON.stringify(cart));
 }
 
 
@@ -1442,6 +1501,9 @@ function updateActiveCategory() {
 
 function filterProducts() {
   const keyword = document.getElementById("searchInput").value.toLowerCase().trim();
+  const sortValue = document.getElementById("sortSelect")
+    ? document.getElementById("sortSelect").value
+    : "recommended";
 
   const filtered = allProducts.filter(p => {
     const name = (p.name || "").toLowerCase();
@@ -1454,6 +1516,22 @@ function filterProducts() {
       category === currentCategory.toLowerCase();
 
     return matchName && matchCategory;
+  });
+
+  filtered.sort((a, b) => {
+    if (sortValue === "price_low") {
+      return getPriceNumber(a.price) - getPriceNumber(b.price);
+    }
+
+    if (sortValue === "price_high") {
+      return getPriceNumber(b.price) - getPriceNumber(a.price);
+    }
+
+    if (sortValue === "name_az") {
+      return String(a.name || "").localeCompare(String(b.name || ""));
+    }
+
+    return 0;
   });
 
   renderProducts(filtered);
@@ -1506,6 +1584,79 @@ function getProductSlogan(product, index) {
 function getSloganColor(index) {
   const colors = ["", "blue", "green", "purple"];
   return colors[index % colors.length];
+}
+
+
+function getPriceNumber(value) {
+  const number = Number(value || 0);
+  return Number.isNaN(number) ? 0 : number;
+}
+
+
+function getTierPrice(quantity, product) {
+  let unitPrice = product.price_500 || product.price;
+
+  if (quantity >= 50000 && product.price_50000) {
+    unitPrice = product.price_50000;
+  }
+  else if (quantity >= 10000 && product.price_10000) {
+    unitPrice = product.price_10000;
+  }
+  else if (quantity >= 3000 && product.price_3000) {
+    unitPrice = product.price_3000;
+  }
+  else if (quantity >= 1000 && product.price_1000) {
+    unitPrice = product.price_1000;
+  }
+  else if (quantity >= 500 && product.price_500) {
+    unitPrice = product.price_500;
+  }
+
+  return getPriceNumber(unitPrice);
+}
+
+
+function quickAddToCart(productId) {
+  const product = allProducts.find(item => Number(item.id) === Number(productId));
+
+  if (!product) {
+    showCenterMessage("Product not found. Please refresh the page.");
+    return;
+  }
+
+  const quantity = Math.max(parseInt(product.moq || 1), 1);
+  const unitPrice = getTierPrice(quantity, product);
+  const cart = getCartItemsFromStorage();
+
+  const existing = cart.find(item => Number(item.id) === Number(product.id));
+
+  if (existing) {
+    existing.quantity = Number(existing.quantity || 0) + quantity;
+    existing.price = getTierPrice(existing.quantity, product);
+    existing.packing = product.packing || existing.packing || "";
+    existing.customer_requirement = existing.customer_requirement || "";
+    existing.order_customer = salesModeActive ? salesModeCustomer : user;
+    existing.created_by_sales = salesModeActive ? user : "";
+  } else {
+    cart.push({
+      ...product,
+      quantity: quantity,
+      price: unitPrice,
+      packing: product.packing || "",
+      customer_requirement: "",
+      order_customer: salesModeActive ? salesModeCustomer : user,
+      created_by_sales: salesModeActive ? user : ""
+    });
+  }
+
+  saveCartItems(cart);
+  updateCartCount();
+
+  showCenterMessage(
+    "Added to cart.\n" +
+    "MOQ: " + quantity.toLocaleString() + " pcs\n" +
+    "Unit Price: " + formatMoney(unitPrice)
+  );
 }
 
 
@@ -1605,7 +1756,15 @@ function renderProducts(products) {
           </div>
         </div>
 
-        <button onclick="view(${Number(p.id || 0)})">View Details</button>
+        <div class="product-action-row">
+          <button class="quick-add-btn" onclick="quickAddToCart(${Number(p.id || 0)})">
+            Add MOQ to Cart
+          </button>
+
+          <button class="details-btn" onclick="view(${Number(p.id || 0)})">
+            Details
+          </button>
+        </div>
       </div>
     `;
 
