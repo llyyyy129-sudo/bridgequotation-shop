@@ -1262,6 +1262,19 @@ function renderCustomerGroups(customerGroups) {
             </details>
         `;
     });
+
+    // Make sure every order starts collapsed, even after browser refresh/cache.
+    collapseAllOrderSections();
+}
+
+
+function collapseAllOrderSections() {
+    document
+        .querySelectorAll("#customerOrders .order-section")
+        .forEach(orderSection => {
+            orderSection.open = false;
+            orderSection.removeAttribute("open");
+        });
 }
 
 
