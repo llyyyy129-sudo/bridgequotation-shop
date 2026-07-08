@@ -633,6 +633,83 @@
             font-weight: 900;
         }
 
+
+
+        .product-toolbar-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin: 10px 0 14px;
+        }
+
+        .product-toolbar-summary .product-result-text {
+            margin: 0;
+        }
+
+        .page-size-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 900;
+        }
+
+        .page-size-box select {
+            height: 38px;
+            border: 1.5px solid #d7dce7;
+            border-radius: 999px;
+            padding: 0 12px;
+            color: #111827;
+            background: #ffffff;
+            font-size: 13px;
+            font-weight: 800;
+            outline: none;
+        }
+
+        .pagination-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 12px 0;
+            padding: 12px 14px;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            background: #f8fafc;
+        }
+
+        .pagination-info {
+            color: #4b5563;
+            font-size: 13px;
+            font-weight: 900;
+        }
+
+        .pagination-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .pagination-actions button {
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: #eef4ff;
+            color: #1f3c88;
+            border: 1px solid #bfdbfe;
+            box-shadow: none;
+        }
+
+        .pagination-actions button.active-page {
+            background: #2563eb;
+            color: #ffffff;
+            border-color: #2563eb;
+        }
+
         .product-list-grid {
             display: grid;
             grid-template-columns: 1fr;
@@ -853,6 +930,8 @@
             .user-meta-grid,
             .product-panel-tools,
             .product-form-grid { grid-template-columns: 1fr; }
+            .product-toolbar-summary,
+            .pagination-row { align-items: stretch; flex-direction: column; }
             .product-form-grid .wide-field,
             .product-form-grid .full-field { grid-column: 1 / -1; }
             .nav-actions { justify-content: flex-start; }
@@ -1067,11 +1146,24 @@
             </div>
         </details>
 
-        <div id="productResultText" class="product-result-text">Showing all products.</div>
+        <div class="product-toolbar-summary">
+            <div id="productResultText" class="product-result-text">Showing all products.</div>
+            <div class="page-size-box">
+                <span>Rows per page</span>
+                <select id="productPageSize" onchange="changeProductPageSize()">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+        </div>
+        <div id="productPagerTop" class="pagination-row"></div>
         <div id="adminProductList" class="product-list-grid"></div>
+        <div id="productPagerBottom" class="pagination-row"></div>
     </details>
 
-    <details class="user-section" open>
+    <details class="user-section">
         <summary>
             <span id="pendingTitle" class="section-title">Pending User Approval (0)</span>
             <span class="section-arrow">▶</span>
@@ -1079,7 +1171,7 @@
         <div id="pendingUsers" class="user-list"></div>
     </details>
 
-    <details class="user-section" open>
+    <details class="user-section">
         <summary>
             <span id="customerUsersTitle" class="section-title">Customer Users (0)</span>
             <span class="section-arrow">▶</span>
@@ -1162,6 +1254,8 @@ let salesUsersCache = [];
 let filteredUsersCache = [];
 let allProductsCache = [];
 let filteredProductsCache = [];
+let productCurrentPage = 1;
+let productPageSize = 20;
 
 document.getElementById("adminName").innerText = currentUser || "Unknown";
 
@@ -1264,6 +1358,7 @@ function applyProductFilters() {
         return matchesSearch && matchesStatus;
     });
 
+    productCurrentPage = 1;
     renderAdminProducts();
 }
 
@@ -1290,21 +1385,107 @@ function renderAdminProducts() {
         title.innerText = "Product Management (" + allProductsCache.length + ")";
     }
 
-    if (result) {
-        result.innerText =
-            "Showing " + filteredProductsCache.length + " of " + allProductsCache.length + " products.";
-    }
-
     if (!list) return;
 
-    if (!filteredProductsCache || filteredProductsCache.length === 0) {
+    const total = filteredProductsCache ? filteredProductsCache.length : 0;
+    const totalPages = Math.max(1, Math.ceil(total / productPageSize));
+
+    if (productCurrentPage > totalPages) productCurrentPage = totalPages;
+    if (productCurrentPage < 1) productCurrentPage = 1;
+
+    const startIndex = total === 0 ? 0 : (productCurrentPage - 1) * productPageSize;
+    const endIndex = Math.min(startIndex + productPageSize, total);
+    const pageProducts = total === 0 ? [] : filteredProductsCache.slice(startIndex, endIndex);
+
+    if (result) {
+        if (total === 0) {
+            result.innerText = "No matching products. Total products: " + allProductsCache.length + ".";
+        } else {
+            result.innerText =
+                "Showing " + (startIndex + 1) + "-" + endIndex +
+                " of " + total + " matching products. Total products: " + allProductsCache.length + ".";
+        }
+    }
+
+    renderProductPagination(total, totalPages, startIndex, endIndex);
+
+    if (total === 0) {
         list.innerHTML = `<div class="empty-message">No matching products.</div>`;
         return;
     }
 
-    list.innerHTML = filteredProductsCache
+    list.innerHTML = pageProducts
         .map(product => renderAdminProductCard(product))
         .join("");
+}
+
+function renderProductPagination(total, totalPages, startIndex, endIndex) {
+    const top = document.getElementById("productPagerTop");
+    const bottom = document.getElementById("productPagerBottom");
+
+    const html = buildProductPaginationHtml(total, totalPages, startIndex, endIndex);
+
+    if (top) top.innerHTML = html;
+    if (bottom) bottom.innerHTML = html;
+}
+
+function buildProductPaginationHtml(total, totalPages, startIndex, endIndex) {
+    if (!total || total <= productPageSize) {
+        return `<div class="pagination-info">All matching products are shown on this page.</div>`;
+    }
+
+    const pageButtons = [];
+    const firstPage = Math.max(1, productCurrentPage - 2);
+    const lastPage = Math.min(totalPages, productCurrentPage + 2);
+
+    if (firstPage > 1) {
+        pageButtons.push(`<button type="button" onclick="changeProductPage(1)">1</button>`);
+        if (firstPage > 2) pageButtons.push(`<button type="button" disabled>...</button>`);
+    }
+
+    for (let page = firstPage; page <= lastPage; page++) {
+        pageButtons.push(`
+            <button type="button" class="${page === productCurrentPage ? "active-page" : ""}" onclick="changeProductPage(${page})">
+                ${page}
+            </button>
+        `);
+    }
+
+    if (lastPage < totalPages) {
+        if (lastPage < totalPages - 1) pageButtons.push(`<button type="button" disabled>...</button>`);
+        pageButtons.push(`<button type="button" onclick="changeProductPage(${totalPages})">${totalPages}</button>`);
+    }
+
+    return `
+        <div class="pagination-info">
+            Page ${productCurrentPage} of ${totalPages} · Products ${startIndex + 1}-${endIndex} of ${total}
+        </div>
+        <div class="pagination-actions">
+            <button type="button" onclick="changeProductPage(${productCurrentPage - 1})" ${productCurrentPage <= 1 ? "disabled" : ""}>Previous</button>
+            ${pageButtons.join("")}
+            <button type="button" onclick="changeProductPage(${productCurrentPage + 1})" ${productCurrentPage >= totalPages ? "disabled" : ""}>Next</button>
+        </div>
+    `;
+}
+
+function changeProductPage(page) {
+    const total = filteredProductsCache ? filteredProductsCache.length : 0;
+    const totalPages = Math.max(1, Math.ceil(total / productPageSize));
+
+    productCurrentPage = Math.max(1, Math.min(Number(page) || 1, totalPages));
+    renderAdminProducts();
+
+    const section = document.getElementById("productManagementSection");
+    if (section) {
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+}
+
+function changeProductPageSize() {
+    const selector = document.getElementById("productPageSize");
+    productPageSize = selector ? Number(selector.value) || 20 : 20;
+    productCurrentPage = 1;
+    renderAdminProducts();
 }
 
 function renderAdminProductCard(product) {
