@@ -136,6 +136,11 @@ def run_migrations():
         "VARCHAR DEFAULT ''"
     )
 
+    add_column_if_missing(
+        "products",
+        "slogan",
+        "VARCHAR DEFAULT ''"
+    )
 
     add_column_if_missing(
         "products",
@@ -367,6 +372,7 @@ def serialize_product(product, multiplier=1.0):
         "name": product.name,
         "price": apply_price_multiplier(product.price, multiplier),
         "description": product.description,
+        "slogan": getattr(product, "slogan", "") or "",
         "image": product.image,
         "image_2": product.image_2,
         "image_3": product.image_3,
@@ -1206,6 +1212,7 @@ def product_payload_to_values(data: dict):
     return {
         "name": str(data.get("name", "") or "").strip(),
         "description": str(data.get("description", "") or "").strip(),
+        "slogan": str(data.get("slogan", "") or "").strip(),
         "image": str(data.get("image", "") or "").strip(),
         "image_2": str(data.get("image_2", "") or "").strip(),
         "image_3": str(data.get("image_3", "") or "").strip(),

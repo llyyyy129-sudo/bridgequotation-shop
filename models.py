@@ -9,6 +9,7 @@ class Product(Base):
     name = Column(String)
     price = Column(Integer)
     description = Column(String)
+    slogan = Column(String, default="")
     image = Column(String)
 
     image_2 = Column(String, default="")

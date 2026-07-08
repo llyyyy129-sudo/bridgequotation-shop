@@ -1335,6 +1335,7 @@ async function loadAdminUsers() {
 const PRODUCT_FIELDS = [
     { key: "name", label: "Product Name", type: "text", required: true, className: "wide-field" },
     { key: "category", label: "Category", type: "text" },
+    { key: "slogan", label: "Product Slogan / Badge", type: "text", className: "wide-field" },
     { key: "moq", label: "MOQ", type: "number" },
     { key: "material", label: "Material", type: "text" },
     { key: "volume", label: "Volume", type: "text" },
@@ -1561,6 +1562,7 @@ function renderAdminProductCard(product) {
                         <div class="admin-product-sub">
                             Category: ${escapeHtml(product.category || "Not set")}<br>
                             MOQ: ${escapeHtml(product.moq || "")} | Material: ${escapeHtml(product.material || "")} | Packing: ${escapeHtml(product.packing || "")}
+                            ${product.slogan ? `<br>Slogan: ${escapeHtml(product.slogan)}` : ""}
                         </div>
                     </div>
                 </div>
