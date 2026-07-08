@@ -1310,6 +1310,13 @@ if (role === "sales") {
   }
 }
 
+if (role === "admin") {
+  const ordersNavBtn = document.getElementById("ordersNavBtn");
+  if (ordersNavBtn) {
+    ordersNavBtn.innerText = "Admin Dashboard";
+  }
+}
+
 const urlParams = new URLSearchParams(window.location.search);
 const urlSalesCustomer = urlParams.get("sales_customer");
 
@@ -1550,6 +1557,11 @@ function goCart() {
 
 
 function goMyOrders() {
+  if (role === "admin") {
+    window.location.href = "admin.html";
+    return;
+  }
+
   if (role === "sales") {
     window.location.href = "sales.html";
     return;

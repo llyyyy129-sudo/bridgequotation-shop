@@ -898,6 +898,17 @@ if (role === "sales") {
   }
 }
 
+if (role === "admin") {
+  const ordersNavBtn = document.getElementById("ordersNavBtn");
+  if (ordersNavBtn) {
+    ordersNavBtn.innerText = "Admin Dashboard";
+  }
+
+  document.querySelectorAll(".top-back-btn, .secondary-action").forEach(button => {
+    button.innerText = "Back to Admin";
+  });
+}
+
 const urlParamsForSales = new URLSearchParams(window.location.search);
 const urlSalesCustomer = urlParamsForSales.get("sales_customer");
 
@@ -1322,6 +1333,11 @@ function goBack() {
     return;
   }
 
+  if (role === "admin") {
+    window.location.href = "admin.html";
+    return;
+  }
+
   if (role === "sales") {
     window.location.href = "sales.html";
     return;
@@ -1331,6 +1347,11 @@ function goBack() {
 }
 
 function goMyOrders() {
+  if (role === "admin") {
+    window.location.href = "admin.html";
+    return;
+  }
+
   if (role === "sales" || salesModeActive) {
     window.location.href = "sales.html";
     return;

@@ -660,6 +660,58 @@
             border-bottom: 1px solid #e5e7eb;
         }
 
+
+        details.admin-product-card > summary.admin-product-header {
+            list-style: none;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        details.admin-product-card > summary.admin-product-header::-webkit-details-marker {
+            display: none;
+        }
+
+        .admin-product-header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .product-expand-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 92px;
+            border-radius: 999px;
+            padding: 6px 10px;
+            background: #eef4ff;
+            color: #1f3c88;
+            border: 1px solid #bfdbfe;
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .product-expand-pill::before {
+            content: "▶";
+            margin-right: 6px;
+            font-size: 11px;
+            transition: transform 0.18s ease;
+        }
+
+        details.admin-product-card[open] .product-expand-pill::before {
+            content: "▼";
+        }
+
+        details.admin-product-card[open] .product-expand-pill .closed-text {
+            display: none;
+        }
+
+        details.admin-product-card:not([open]) .product-expand-pill .open-text {
+            display: none;
+        }
+
         .admin-product-left {
             display: flex;
             gap: 14px;
@@ -1263,8 +1315,8 @@ function renderAdminProductCard(product) {
         : `<span class="product-status-pill product-inactive-pill">Hidden</span>`;
 
     return `
-        <div class="admin-product-card ${active ? "" : "inactive-product"}" id="product-card-${product.id}">
-            <div class="admin-product-header">
+        <details class="admin-product-card ${active ? "" : "inactive-product"}" id="product-card-${product.id}">
+            <summary class="admin-product-header">
                 <div class="admin-product-left">
                     ${previewImage
                         ? `<img class="admin-product-image" src="${escapeAttr(previewImage)}" alt="Product image">`
@@ -1282,8 +1334,14 @@ function renderAdminProductCard(product) {
                     </div>
                 </div>
 
-                ${statusPill}
-            </div>
+                <div class="admin-product-header-right">
+                    ${statusPill}
+                    <span class="product-expand-pill">
+                        <span class="closed-text">Edit</span>
+                        <span class="open-text">Close</span>
+                    </span>
+                </div>
+            </summary>
 
             <div class="admin-product-body">
                 <div class="product-form-grid">
@@ -1299,7 +1357,7 @@ function renderAdminProductCard(product) {
                     <button class="dark-btn" onclick="deleteAdminProduct(${product.id})">Delete Product</button>
                 </div>
             </div>
-        </div>
+        </details>
     `;
 }
 
