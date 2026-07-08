@@ -2,109 +2,405 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Admin User Approval</title>
+    <title>Admin Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
 
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: "Century Gothic", CenturyGothic, AppleGothic, Arial, sans-serif;
-            background: #f5f6fa;
+            background: #f4f6fb;
             margin: 0;
-            padding: 35px;
-            color: #222;
+            padding: 0;
+            color: #111827;
         }
 
-        .admin-page {
-            max-width: 1100px;
+        .admin-shell {
+            max-width: 1240px;
             margin: 0 auto;
+            padding: 26px;
         }
 
-        .top-bar {
-            background: white;
-            border-radius: 14px;
-            padding: 22px 28px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        .admin-nav {
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid #e5e7eb;
+            border-radius: 22px;
+            padding: 16px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 28px;
+            gap: 18px;
+            box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+            margin-bottom: 22px;
         }
 
-        .top-bar h1 {
-            margin: 0;
-            color: #1f3c88;
-            font-size: 30px;
-        }
-
-        .admin-info {
-            margin-top: 8px;
-            color: #666;
-            font-size: 14px;
-        }
-
-        .top-actions {
+        .brand-box {
             display: flex;
-            gap: 10px;
             align-items: center;
+            gap: 14px;
+            min-width: 0;
         }
 
-        .my-password-btn {
+        .brand-logo {
+            width: 138px;
+            height: 44px;
+            object-fit: contain;
+            border-radius: 10px;
+            background: #ffffff;
+        }
+
+        .brand-title {
+            font-size: 20px;
+            font-weight: 900;
+            color: #111827;
+            line-height: 1.25;
+        }
+
+        .brand-subtitle {
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 700;
+            margin-top: 3px;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .nav-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 12px;
+            border-radius: 999px;
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            color: #4b5563;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        button {
+            border: none;
+            border-radius: 13px;
+            padding: 10px 16px;
+            cursor: pointer;
+            font-weight: 900;
+            font-family: inherit;
+            transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: 0.62;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .primary-btn {
             background: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 18px;
-            cursor: pointer;
-            font-weight: bold;
+            color: #ffffff;
+            box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
         }
 
-        .logout-btn {
-            background: #1f3c88;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 18px;
-            cursor: pointer;
-            font-weight: bold;
+        .dark-btn {
+            background: #111827;
+            color: #ffffff;
+            box-shadow: 0 10px 22px rgba(17, 24, 39, 0.16);
         }
 
-        .section {
-            background: white;
-            border-radius: 16px;
-            padding: 24px 28px;
-            margin-bottom: 26px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-        }
-
-        .section h2 {
-            margin-top: 0;
+        .soft-btn {
+            background: #eef4ff;
             color: #1f3c88;
+            border: 1px solid #bfdbfe;
+            box-shadow: none;
+        }
+
+        .success-btn {
+            background: #16a34a;
+            color: #ffffff;
+            box-shadow: 0 10px 22px rgba(22, 163, 74, 0.15);
+        }
+
+        .danger-btn {
+            background: #ef4444;
+            color: #ffffff;
+            box-shadow: 0 10px 22px rgba(239, 68, 68, 0.15);
+        }
+
+        .warning-btn {
+            background: #f97316;
+            color: #ffffff;
+            box-shadow: 0 10px 22px rgba(249, 115, 22, 0.15);
+        }
+
+        .hero-card {
+            background:
+                radial-gradient(circle at top right, rgba(37, 99, 235, 0.16), transparent 34%),
+                linear-gradient(135deg, #ffffff 0%, #eef4ff 100%);
+            border: 1px solid #dbeafe;
+            border-radius: 26px;
+            padding: 28px;
+            box-shadow: 0 18px 46px rgba(15, 23, 42, 0.10);
+            display: grid;
+            grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.85fr);
+            gap: 24px;
+            align-items: stretch;
+            margin-bottom: 22px;
+        }
+
+        .hero-kicker {
+            display: inline-flex;
+            align-items: center;
+            padding: 7px 12px;
+            border-radius: 999px;
+            background: #ffffff;
+            color: #1f3c88;
+            border: 1px solid #bfdbfe;
+            font-size: 13px;
+            font-weight: 900;
+            margin-bottom: 14px;
+        }
+
+        .hero-title {
+            font-size: 32px;
+            line-height: 1.16;
+            margin: 0 0 12px;
+            color: #0f172a;
+            font-weight: 900;
+        }
+
+        .hero-text {
+            color: #4b5563;
+            line-height: 1.7;
+            max-width: 780px;
+            margin: 0;
+            font-size: 15px;
+        }
+
+        .hero-feature-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        .hero-feature {
+            background: rgba(255, 255, 255, 0.84);
+            border: 1px solid #dbeafe;
+            border-radius: 18px;
+            padding: 15px 16px;
+        }
+
+        .hero-feature b {
+            display: block;
+            color: #111827;
+            margin-bottom: 5px;
+        }
+
+        .hero-feature span {
+            color: #6b7280;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(140px, 1fr));
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+
+        .summary-card {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 18px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.07);
+        }
+
+        .summary-label {
+            color: #6b7280;
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 9px;
+        }
+
+        .summary-number {
+            color: #111827;
+            font-size: 29px;
+            font-weight: 900;
+        }
+
+        .card-blue { background: #eef4ff; border-color: #bfdbfe; }
+        .card-orange { background: #fff7ed; border-color: #fed7aa; }
+        .card-green { background: #ecfdf5; border-color: #bbf7d0; }
+        .card-red { background: #fff1f2; border-color: #fecdd3; }
+        .card-purple { background: #f5f3ff; border-color: #ddd6fe; }
+        .card-slate { background: #f8fafc; border-color: #e5e7eb; }
+
+        .panel {
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 24px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+            margin-bottom: 22px;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+
+        .panel-title {
+            color: #1f3c88;
+            font-size: 22px;
+            font-weight: 900;
+            margin: 0;
+        }
+
+        .panel-desc {
+            color: #6b7280;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-top: 6px;
+        }
+
+        .pricing-row,
+        .filter-grid,
+        .profile-grid {
+            display: grid;
+            gap: 14px;
+            align-items: end;
+        }
+
+        .pricing-row {
+            grid-template-columns: minmax(180px, 240px) auto 1fr;
+        }
+
+        .filter-grid {
+            grid-template-columns: minmax(260px, 1.5fr) minmax(180px, 0.7fr) minmax(180px, 0.7fr) auto;
+        }
+
+        .profile-grid {
+            grid-template-columns: minmax(220px, 1fr) minmax(260px, 1fr) auto;
+        }
+
+        .field label {
+            display: block;
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 900;
+            margin-bottom: 8px;
+        }
+
+        .field input,
+        .field select,
+        .profile-input,
+        .sales-select,
+        .pricing-input {
+            width: 100%;
+            height: 42px;
+            border: 1.5px solid #d7dce7;
+            border-radius: 13px;
+            padding: 0 12px;
+            color: #111827;
+            background: #ffffff;
+            font-size: 14px;
+            font-weight: 700;
+            outline: none;
+        }
+
+        .field input:focus,
+        .field select:focus,
+        .profile-input:focus,
+        .sales-select:focus,
+        .pricing-input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+        }
+
+        .filter-result-text {
+            margin-top: 13px;
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 800;
         }
 
         details.user-section {
-            background: white;
-            border-radius: 16px;
-            padding: 24px 28px;
-            margin-bottom: 26px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            background: #ffffff;
+            border-radius: 24px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+            margin-bottom: 20px;
+            overflow: hidden;
         }
 
-        details.user-section summary {
+        details.user-section > summary {
+            list-style: none;
             cursor: pointer;
-            font-size: 22px;
-            font-weight: bold;
+            padding: 22px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+        }
+
+        details.user-section > summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .section-title {
             color: #1f3c88;
+            font-size: 22px;
+            font-weight: 900;
+        }
+
+        .section-arrow {
+            color: #6b7280;
+            font-size: 18px;
+            transition: transform 0.2s ease;
+        }
+
+        details[open] > summary .section-arrow {
+            transform: rotate(90deg);
         }
 
         .user-list {
-            margin-top: 22px;
+            padding: 0 24px 24px;
+        }
+
+        .empty-message {
+            color: #6b7280;
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 16px;
+            line-height: 1.6;
         }
 
         .user-card {
-            border: 1px solid #e2e5ec;
-            border-radius: 12px;
-            padding: 18px 20px;
-            background: #fafbff;
+            border: 1px solid #e5e7eb;
+            border-radius: 18px;
+            padding: 18px;
+            background: #fbfcff;
             margin-bottom: 16px;
             transition: opacity 0.2s ease, transform 0.2s ease;
         }
@@ -114,156 +410,111 @@
             transform: scale(0.99);
         }
 
-        .user-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 10px;
+        .user-card-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            margin-bottom: 13px;
         }
 
-        .user-info {
-            line-height: 1.8;
-            font-size: 15px;
+        .user-title {
+            font-size: 18px;
+            font-weight: 900;
+            color: #111827;
+        }
+
+        .user-sub {
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 800;
+            margin-top: 4px;
+        }
+
+        .pill-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 900;
+            border: 1px solid #e5e7eb;
+            background: #ffffff;
+            color: #374151;
+        }
+
+        .status-approved { background: #ecfdf5; color: #16a34a; border-color: #bbf7d0; }
+        .status-pending { background: #fff7ed; color: #ea580c; border-color: #fed7aa; }
+        .status-rejected { background: #fff1f2; color: #dc2626; border-color: #fecdd3; }
+        .role-customer { background: #eef4ff; color: #1f3c88; border-color: #bfdbfe; }
+        .role-sales { background: #f5f3ff; color: #6d28d9; border-color: #ddd6fe; }
+
+        .user-meta-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(180px, 1fr));
+            gap: 12px;
+            margin: 14px 0;
+        }
+
+        .meta-box {
+            border-radius: 15px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            padding: 12px 13px;
+            min-width: 0;
+        }
+
+        .meta-label {
+            color: #6b7280;
+            font-size: 12px;
+            font-weight: 900;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .meta-value {
+            color: #111827;
+            font-size: 14px;
+            font-weight: 800;
+            word-break: break-word;
+        }
+
+        .edit-box,
+        .assign-box {
+            margin-top: 14px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 15px;
+        }
+
+        .edit-title {
+            color: #111827;
+            font-weight: 900;
+            margin-bottom: 12px;
+        }
+
+        .assign-row,
+        .button-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
         }
 
         .button-row {
             margin-top: 14px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
         }
 
-        .approve-btn {
-            background: #4caf50;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 18px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .reject-btn {
-            background: #f44336;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 18px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .password-btn {
-            background: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 18px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .delete-btn {
-            background: #111827;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 18px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .save-btn {
-            background: #1f3c88;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 9px 16px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        button:disabled {
-            opacity: 0.65;
-            cursor: not-allowed;
-        }
-
-        .empty-message {
-            color: #777;
-            background: #f8f9fc;
-            border-radius: 10px;
-            padding: 16px;
-        }
-
-        .status-approved {
-            color: #4caf50;
-            font-weight: bold;
-        }
-
-        .status-pending {
-            color: #ff9800;
-            font-weight: bold;
-        }
-
-        .status-rejected {
-            color: #f44336;
-            font-weight: bold;
-        }
-
-        .pricing-row {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            align-items: center;
-            margin-top: 12px;
-        }
-
-        .pricing-input {
-            width: 160px;
-            height: 40px;
-            border-radius: 8px;
-            border: 1px solid #ccd3df;
-            padding: 0 10px;
-            background: white;
-            font-size: 14px;
-        }
-
-        .level-pill {
-            display: inline-flex;
-            align-items: center;
-            padding: 5px 10px;
-            border-radius: 999px;
-            background: #eef4ff;
-            color: #1f3c88;
-            font-weight: 800;
-            margin-left: 6px;
-        }
-
-        .assign-box {
-            margin-top: 14px;
-            background: #f8f9fc;
-            border: 1px solid #e2e5ec;
-            border-radius: 10px;
-            padding: 14px;
-        }
-
-        .assign-row {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
-            margin-top: 8px;
-        }
-
-        .sales-select {
-            min-width: 220px;
-            height: 40px;
-            border-radius: 8px;
-            border: 1px solid #ccd3df;
-            padding: 0 10px;
-            background: white;
-            font-size: 14px;
-        }
-    
         .center-toast {
             position: fixed;
             left: 50%;
@@ -323,123 +574,219 @@
             flex-wrap: wrap;
         }
 
-        .center-confirm-ok,
-        .center-confirm-cancel {
-            min-width: 104px;
-            border: none;
-            border-radius: 12px;
-            padding: 10px 18px;
-            font-weight: 800;
-            cursor: pointer;
-            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+        @media (max-width: 980px) {
+            .admin-shell { padding: 18px; }
+            .admin-nav { align-items: flex-start; flex-direction: column; }
+            .hero-card { grid-template-columns: 1fr; }
+            .summary-grid { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
+            .filter-grid,
+            .pricing-row,
+            .profile-grid,
+            .user-meta-grid { grid-template-columns: 1fr; }
+            .nav-actions { justify-content: flex-start; }
         }
 
-        .center-confirm-ok {
-            background: #2563eb;
-            color: #ffffff;
+        @media (max-width: 560px) {
+            .summary-grid { grid-template-columns: 1fr; }
+            .brand-box { align-items: flex-start; flex-direction: column; }
+            .brand-logo { width: 160px; }
+            .nav-actions button { width: 100%; }
+            .nav-actions { width: 100%; }
         }
-
-        .center-confirm-cancel {
-            background: #f3f4f6;
-            color: #374151;
-        }
-
     </style>
 </head>
 
 <body>
-
-<div class="admin-page">
-
-    <div class="top-bar">
-        <div>
-            <h1>Admin Dashboard</h1>
-            <div class="admin-info">
-                Current Admin: <b id="adminName"></b>
-            </div>
-        </div>
-
-        <div class="top-actions">
-            <button class="my-password-btn" onclick="changeMyPassword()">
-                Change My Password
-            </button>
-
-            <button class="logout-btn" onclick="logout()">Logout</button>
-        </div>
-    </div>
-
-
-    <div class="section">
-        <h2>Pricing Settings</h2>
-
-        <div>
-            A Class customers see Excel prices directly.
-            B Class customers see Excel prices multiplied by the percentage below.
-        </div>
-
-        <div class="pricing-row">
-            <label><b>B Class Price:</b></label>
-            <input
-                id="bClassPercent"
-                class="pricing-input"
-                type="number"
-                min="100"
-                max="300"
-                step="1"
-                value="120"
-            >
-            <span>%</span>
-
-            <button class="save-btn" onclick="savePricingSetting()">
-                Save Pricing
-            </button>
-        </div>
-    </div>
-
-
-    <div class="section">
-        <h2 id="pendingTitle">Pending User Approval (0)</h2>
-        <div id="pendingUsers"></div>
-    </div>
-
-
-    <details class="user-section">
-        <summary id="customerUsersTitle">Customer Users (0)</summary>
-        <div id="customerUsers" class="user-list"></div>
-    </details>
-
-
-    <details class="user-section">
-        <summary id="salesUsersTitle">Sales Users (0)</summary>
-        <div id="salesUsers" class="user-list"></div>
-    </details>
-
-</div>
 
 <div id="centerToast" class="center-toast"></div>
 
 <div id="centerConfirmOverlay" class="center-confirm-overlay">
     <div class="center-confirm-box">
         <div id="centerConfirmMessage" class="center-confirm-message"></div>
-
         <div class="center-confirm-actions">
-            <button id="centerConfirmOk" class="center-confirm-ok" type="button">Confirm</button>
-            <button id="centerConfirmCancel" class="center-confirm-cancel" type="button">Cancel</button>
+            <button id="centerConfirmOk" class="primary-btn" type="button">Confirm</button>
+            <button id="centerConfirmCancel" class="soft-btn" type="button">Cancel</button>
         </div>
     </div>
 </div>
 
-<script>
+<div class="admin-shell">
 
+    <div class="admin-nav">
+        <div class="brand-box">
+            <img class="brand-logo" src="/static/image/bg2.jpg" alt="Bridge Logo">
+            <div>
+                <div class="brand-title">Admin Dashboard</div>
+                <div class="brand-subtitle">User approval, pricing control and sales assignment</div>
+            </div>
+        </div>
+
+        <div class="nav-actions">
+            <span class="nav-pill">Current Admin: <b id="adminName"></b></span>
+            <button class="soft-btn" onclick="goProducts()">Products</button>
+            <button class="soft-btn" onclick="changeMyPassword()">Change My Password</button>
+            <button class="dark-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="hero-card">
+        <div>
+            <div class="hero-kicker">Bridge Admin Control Center</div>
+            <h1 class="hero-title">Manage users, sales contacts and pricing from one place.</h1>
+            <p class="hero-text">
+                Approve new accounts, assign customers to the correct sales contact, control A/B customer pricing,
+                and keep company and email information accurate for quotations and sales follow-up.
+            </p>
+        </div>
+
+        <div class="hero-feature-grid">
+            <div class="hero-feature">
+                <b>Customer Access Control</b>
+                <span>Approve, reject, classify and delete customer accounts.</span>
+            </div>
+            <div class="hero-feature">
+                <b>Personalized Sales Service</b>
+                <span>Edit sales email information and assign each customer to the right sales user.</span>
+            </div>
+            <div class="hero-feature">
+                <b>Price Level Management</b>
+                <span>Control B Class customer pricing without changing the Excel source price.</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="summary-grid">
+        <div class="summary-card card-blue">
+            <div class="summary-label">Total Users</div>
+            <div id="boardTotalUsers" class="summary-number">0</div>
+        </div>
+        <div class="summary-card card-orange">
+            <div class="summary-label">Pending</div>
+            <div id="boardPendingUsers" class="summary-number">0</div>
+        </div>
+        <div class="summary-card card-green">
+            <div class="summary-label">Approved</div>
+            <div id="boardApprovedUsers" class="summary-number">0</div>
+        </div>
+        <div class="summary-card card-red">
+            <div class="summary-label">Rejected</div>
+            <div id="boardRejectedUsers" class="summary-number">0</div>
+        </div>
+        <div class="summary-card card-slate">
+            <div class="summary-label">Customers</div>
+            <div id="boardCustomerUsers" class="summary-number">0</div>
+        </div>
+        <div class="summary-card card-purple">
+            <div class="summary-label">Sales Users</div>
+            <div id="boardSalesUsers" class="summary-number">0</div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <div>
+                <h2 class="panel-title">Pricing Settings</h2>
+                <div class="panel-desc">
+                    A Class customers see the original Excel price. B Class customers see the Excel price multiplied by this percentage.
+                </div>
+            </div>
+        </div>
+
+        <div class="pricing-row">
+            <div class="field">
+                <label for="bClassPercent">B Class Price Percentage</label>
+                <input id="bClassPercent" class="pricing-input" type="number" min="100" max="300" step="1" value="120">
+            </div>
+
+            <div style="font-weight:900;color:#1f3c88;padding-bottom:11px;">%</div>
+
+            <div>
+                <button class="primary-btn" onclick="savePricingSetting()">Save Pricing</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <div>
+                <h2 class="panel-title">User Search & Filter</h2>
+                <div class="panel-desc">
+                    Search by username, company, email, role, customer level or assigned sales.
+                </div>
+            </div>
+        </div>
+
+        <div class="filter-grid">
+            <div class="field">
+                <label for="adminSearch">Search</label>
+                <input id="adminSearch" type="text" placeholder="Search users, company, email, sales..." oninput="applyAdminFilters()">
+            </div>
+
+            <div class="field">
+                <label for="adminRoleFilter">Role</label>
+                <select id="adminRoleFilter" onchange="applyAdminFilters()">
+                    <option value="all">All Roles</option>
+                    <option value="customer">Customers</option>
+                    <option value="sales">Sales Users</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="adminStatusFilter">Status</label>
+                <select id="adminStatusFilter" onchange="applyAdminFilters()">
+                    <option value="all">All Status</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                </select>
+            </div>
+
+            <div>
+                <button class="dark-btn" onclick="resetAdminFilters()">Reset</button>
+            </div>
+        </div>
+
+        <div id="filterResultText" class="filter-result-text">Showing all users.</div>
+    </div>
+
+    <details class="user-section" open>
+        <summary>
+            <span id="pendingTitle" class="section-title">Pending User Approval (0)</span>
+            <span class="section-arrow">▶</span>
+        </summary>
+        <div id="pendingUsers" class="user-list"></div>
+    </details>
+
+    <details class="user-section" open>
+        <summary>
+            <span id="customerUsersTitle" class="section-title">Customer Users (0)</span>
+            <span class="section-arrow">▶</span>
+        </summary>
+        <div id="customerUsers" class="user-list"></div>
+    </details>
+
+    <details class="user-section">
+        <summary>
+            <span id="salesUsersTitle" class="section-title">Sales Users (0)</span>
+            <span class="section-arrow">▶</span>
+        </summary>
+        <div id="salesUsers" class="user-list"></div>
+    </details>
+
+    <details class="user-section">
+        <summary>
+            <span id="rejectedUsersTitle" class="section-title">Rejected Users (0)</span>
+            <span class="section-arrow">▶</span>
+        </summary>
+        <div id="rejectedUsers" class="user-list"></div>
+    </details>
+
+</div>
+
+<script>
 function showCenterMessage(message) {
     const toast = document.getElementById("centerToast");
-
-    if (!toast) {
-        return;
-    }
+    if (!toast) return;
 
     toast.innerText = message;
     toast.style.display = "block";
@@ -452,7 +799,6 @@ function showCenterMessage(message) {
         toast.style.display = "none";
     }, 1700);
 }
-
 
 function showCenterConfirm(message) {
     return new Promise((resolve) => {
@@ -481,19 +827,17 @@ function showCenterConfirm(message) {
         cancelButton.onclick = () => close(false);
 
         overlay.onclick = (event) => {
-            if (event.target === overlay) {
-                close(false);
-            }
+            if (event.target === overlay) close(false);
         };
     });
 }
-
 
 const currentUser = localStorage.getItem("user");
 const currentRole = localStorage.getItem("role");
 
 let allUsersCache = [];
 let salesUsersCache = [];
+let filteredUsersCache = [];
 
 document.getElementById("adminName").innerText = currentUser || "Unknown";
 
@@ -511,14 +855,11 @@ if (currentRole !== "admin") {
     }, 900);
 }
 
-
 async function loadAdminUsers() {
     await loadPricingSettings();
     await loadSalesOptions();
-    await loadPendingUsers();
     await loadUserGroups();
 }
-
 
 async function loadPricingSettings() {
     try {
@@ -529,12 +870,10 @@ async function loadPricingSettings() {
             document.getElementById("bClassPercent").value =
                 Number(data.b_percentage || 120);
         }
-
     } catch (error) {
         console.error("Load pricing settings error:", error);
     }
 }
-
 
 async function savePricingSetting() {
     const percentage = Number(document.getElementById("bClassPercent").value);
@@ -544,15 +883,16 @@ async function savePricingSetting() {
         return;
     }
 
+    if (percentage > 300) {
+        showCenterMessage("B Class percentage cannot be higher than 300%.");
+        return;
+    }
+
     try {
         const response = await fetch("/admin/pricing", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                b_percentage: percentage
-            })
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ b_percentage: percentage })
         });
 
         const data = await response.json();
@@ -563,212 +903,427 @@ async function savePricingSetting() {
         }
 
         showToast(data.message);
-
     } catch (error) {
         console.error("Save pricing setting error:", error);
         showCenterMessage("Failed to update pricing. Please check server logs.");
     }
 }
 
-
 async function loadSalesOptions() {
-    const response = await fetch("/admin/sales-users");
-    salesUsersCache = await response.json();
-}
-
-
-async function loadPendingUsers() {
-    const response = await fetch("/admin/users/pending");
-    const users = await response.json();
-
-    const visibleUsers = users.filter(user => user.username !== "orange");
-
-    document.getElementById("pendingTitle").innerText =
-        "Pending User Approval (" + visibleUsers.length + ")";
-
-    const container = document.getElementById("pendingUsers");
-    container.innerHTML = "";
-
-    if (visibleUsers.length === 0) {
-        container.innerHTML = `
-            <div class="empty-message">
-                No pending users.
-            </div>
-        `;
-        return;
+    try {
+        const response = await fetch("/admin/sales-users");
+        salesUsersCache = await response.json();
+    } catch (error) {
+        console.error("Load sales users error:", error);
+        salesUsersCache = [];
     }
-
-    visibleUsers.forEach(user => {
-        container.innerHTML += `
-            <div class="user-card" id="user-card-${user.id}">
-                <div class="user-title">
-                    User #${user.id} - ${escapeHtml(user.username)}
-                </div>
-
-                <div class="user-info">
-                    Account Type: <b>${formatAccountType(user.account_type)}</b><br>
-                    Company: <b>${escapeHtml(user.company_name || "")}</b><br>
-                    Email: <b>${escapeHtml(user.email || "")}</b><br>
-                    Role After Approval: <b>${escapeHtml(user.role || "")}</b><br>
-                    Status: <span class="status-pending">${escapeHtml(user.approval_status || "")}</span>
-                </div>
-
-                <div class="button-row">
-                    <button class="approve-btn" onclick="approveUser(${user.id})">
-                        Approve
-                    </button>
-
-                    <button class="reject-btn" onclick="rejectUser(${user.id})">
-                        Reject
-                    </button>
-
-                    ${renderDeleteButton(user)}
-                </div>
-            </div>
-        `;
-    });
 }
-
 
 async function loadUserGroups() {
     const response = await fetch("/admin/users");
     const users = await response.json();
 
     allUsersCache = users.filter(user => user.username !== "orange");
+    updateAdminBoard(allUsersCache);
+    applyAdminFilters();
+}
 
-    const customerUsers = allUsersCache.filter(user =>
-        user.role === "customer" || user.account_type === "customer"
+function updateAdminBoard(users) {
+    const board = {
+        total: users.length,
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+        customers: 0,
+        sales: 0
+    };
+
+    users.forEach(user => {
+        const status = user.approval_status || "Approved";
+        const role = user.role || "";
+        const accountType = user.account_type || "";
+
+        if (status === "Pending") board.pending += 1;
+        else if (status === "Rejected") board.rejected += 1;
+        else board.approved += 1;
+
+        if (role === "customer" || accountType === "customer") board.customers += 1;
+        if (role === "sales" || accountType === "employee") board.sales += 1;
+    });
+
+    document.getElementById("boardTotalUsers").innerText = board.total;
+    document.getElementById("boardPendingUsers").innerText = board.pending;
+    document.getElementById("boardApprovedUsers").innerText = board.approved;
+    document.getElementById("boardRejectedUsers").innerText = board.rejected;
+    document.getElementById("boardCustomerUsers").innerText = board.customers;
+    document.getElementById("boardSalesUsers").innerText = board.sales;
+}
+
+function applyAdminFilters() {
+    const searchText = (document.getElementById("adminSearch")?.value || "").trim().toLowerCase();
+    const roleFilter = document.getElementById("adminRoleFilter")?.value || "all";
+    const statusFilter = document.getElementById("adminStatusFilter")?.value || "all";
+
+    filteredUsersCache = allUsersCache.filter(user => {
+        return userMatchesSearch(user, searchText) &&
+               userMatchesRole(user, roleFilter) &&
+               userMatchesStatus(user, statusFilter);
+    });
+
+    renderUserSections(filteredUsersCache);
+    updateFilterResultText(filteredUsersCache);
+}
+
+function resetAdminFilters() {
+    document.getElementById("adminSearch").value = "";
+    document.getElementById("adminRoleFilter").value = "all";
+    document.getElementById("adminStatusFilter").value = "all";
+    applyAdminFilters();
+}
+
+function userMatchesSearch(user, searchText) {
+    if (!searchText) return true;
+
+    const searchable = [
+        user.id,
+        user.username,
+        user.company_name,
+        user.email,
+        user.role,
+        user.account_type,
+        user.approval_status,
+        user.customer_level,
+        user.assigned_sales
+    ].join(" ").toLowerCase();
+
+    return searchable.includes(searchText);
+}
+
+function userMatchesRole(user, roleFilter) {
+    if (!roleFilter || roleFilter === "all") return true;
+
+    if (roleFilter === "customer") {
+        return user.role === "customer" || user.account_type === "customer";
+    }
+
+    if (roleFilter === "sales") {
+        return user.role === "sales" || user.account_type === "employee";
+    }
+
+    return true;
+}
+
+function userMatchesStatus(user, statusFilter) {
+    if (!statusFilter || statusFilter === "all") return true;
+    return (user.approval_status || "Approved") === statusFilter;
+}
+
+function updateFilterResultText(users) {
+    const box = document.getElementById("filterResultText");
+    if (!box) return;
+
+    box.innerText =
+        "Showing " + users.length + " of " + allUsersCache.length + " users.";
+}
+
+function renderUserSections(users) {
+    const pendingUsers = users.filter(user => user.approval_status === "Pending");
+    const rejectedUsers = users.filter(user => user.approval_status === "Rejected");
+    const customerUsers = users.filter(user =>
+        (user.role === "customer" || user.account_type === "customer") &&
+        user.approval_status !== "Pending" &&
+        user.approval_status !== "Rejected"
+    );
+    const salesUsers = users.filter(user =>
+        (user.role === "sales" || user.account_type === "employee") &&
+        user.approval_status !== "Pending" &&
+        user.approval_status !== "Rejected"
     );
 
-    const salesUsers = allUsersCache.filter(user =>
-        user.role === "sales" || user.account_type === "employee"
-    );
-
+    document.getElementById("pendingTitle").innerText =
+        "Pending User Approval (" + pendingUsers.length + ")";
     document.getElementById("customerUsersTitle").innerText =
         "Customer Users (" + customerUsers.length + ")";
-
     document.getElementById("salesUsersTitle").innerText =
         "Sales Users (" + salesUsers.length + ")";
+    document.getElementById("rejectedUsersTitle").innerText =
+        "Rejected Users (" + rejectedUsers.length + ")";
 
-    renderCustomerUsers(customerUsers);
-    renderSalesUsers(salesUsers);
+    renderUserList("pendingUsers", pendingUsers, "No pending users.");
+    renderUserList("customerUsers", customerUsers, "No customer users.");
+    renderUserList("salesUsers", salesUsers, "No sales users.");
+    renderUserList("rejectedUsers", rejectedUsers, "No rejected users.");
 }
 
-
-function renderCustomerUsers(users) {
-    const container = document.getElementById("customerUsers");
+function renderUserList(containerId, users, emptyText) {
+    const container = document.getElementById(containerId);
     container.innerHTML = "";
 
-    if (users.length === 0) {
-        container.innerHTML = `
-            <div class="empty-message">
-                No customer users.
-            </div>
-        `;
+    if (!users || users.length === 0) {
+        container.innerHTML = `<div class="empty-message">${emptyText}</div>`;
         return;
     }
 
     users.forEach(user => {
-        container.innerHTML += `
-            <div class="user-card" id="all-user-card-${user.id}">
-                <div class="user-title">
-                    User #${user.id} - ${escapeHtml(user.username)}
-                </div>
-
-                <div class="user-info">
-                    Account Type: <b>${formatAccountType(user.account_type)}</b><br>
-                    Company: <b>${escapeHtml(user.company_name || "")}</b><br>
-                    Email: <b>${escapeHtml(user.email || "")}</b><br>
-                    Role: <b>${escapeHtml(user.role || "")}</b><br>
-                    Customer Level: <span class="level-pill">${escapeHtml(user.customer_level || "A")}</span><br>
-                    Assigned Sales: <b>${escapeHtml(user.assigned_sales || "Not assigned")}</b><br>
-                    Status: ${formatStatus(user.approval_status)}
-                </div>
-
-                ${renderCustomerLevelBox(user)}
-                ${renderAssignSalesBox(user)}
-
-                <div class="button-row">
-                    ${renderChangePasswordButton(user)}
-                    ${renderDeleteButton(user)}
-                </div>
-            </div>
-        `;
+        container.innerHTML += renderUserCard(user);
     });
 }
 
-
-function renderSalesUsers(users) {
-    const container = document.getElementById("salesUsers");
-    container.innerHTML = "";
-
-    if (users.length === 0) {
-        container.innerHTML = `
-            <div class="empty-message">
-                No sales users.
-            </div>
-        `;
-        return;
-    }
-
-    users.forEach(user => {
-        container.innerHTML += `
-            <div class="user-card" id="all-user-card-${user.id}">
-                <div class="user-title">
-                    User #${user.id} - ${escapeHtml(user.username)}
-                </div>
-
-                <div class="user-info">
-                    Account Type: <b>${formatAccountType(user.account_type)}</b><br>
-                    Company: <b>${escapeHtml(user.company_name || "")}</b><br>
-                    Email: <b>${escapeHtml(user.email || "")}</b><br>
-                    Role: <b>${escapeHtml(user.role || "")}</b><br>
-                    Status: ${formatStatus(user.approval_status)}
-                </div>
-
-                <div class="button-row">
-                    ${renderChangePasswordButton(user)}
-                    ${renderDeleteButton(user)}
-                </div>
-            </div>
-        `;
-    });
-}
-
-
-function renderCustomerLevelBox(user) {
-    if (user.role !== "customer") {
-        return "";
-    }
-
-    if (user.approval_status !== "Approved") {
-        return "";
-    }
-
-    const currentLevel = user.customer_level || "A";
+function renderUserCard(user) {
+    const status = user.approval_status || "Approved";
+    const role = user.role || "";
+    const accountType = user.account_type || "";
+    const isCustomer = role === "customer" || accountType === "customer";
+    const isSales = role === "sales" || accountType === "employee";
 
     return `
-        <div class="assign-box">
-            <b>Customer Level</b>
+        <div class="user-card" id="all-user-card-${user.id}">
+            <div class="user-card-header">
+                <div>
+                    <div class="user-title">${escapeHtml(user.username)}</div>
+                    <div class="user-sub">User #${user.id}</div>
+                </div>
 
-            <div class="assign-row">
-                <select class="sales-select" id="customer-level-${user.id}">
-                    <option value="A" ${currentLevel === "A" ? "selected" : ""}>
-                        A Class - Excel Price
-                    </option>
-                    <option value="B" ${currentLevel === "B" ? "selected" : ""}>
-                        B Class - Adjusted Price
-                    </option>
-                </select>
+                <div class="pill-row">
+                    ${formatStatusPill(status)}
+                    <span class="pill ${isCustomer ? "role-customer" : isSales ? "role-sales" : ""}">
+                        ${escapeHtml(formatRoleLabel(user))}
+                    </span>
+                    <span class="pill">${escapeHtml(formatAccountType(accountType))}</span>
+                </div>
+            </div>
 
-                <button class="save-btn" onclick="updateCustomerLevel(${user.id})">
-                    Save Level
-                </button>
+            <div class="user-meta-grid">
+                <div class="meta-box">
+                    <div class="meta-label">Company</div>
+                    <div class="meta-value">${escapeHtml(user.company_name || "Not set")}</div>
+                </div>
+
+                <div class="meta-box">
+                    <div class="meta-label">Email</div>
+                    <div class="meta-value">${escapeHtml(user.email || "Not set")}</div>
+                </div>
+
+                <div class="meta-box">
+                    <div class="meta-label">Assigned Sales</div>
+                    <div class="meta-value">${escapeHtml(user.assigned_sales || "Not assigned")}</div>
+                </div>
+
+                <div class="meta-box">
+                    <div class="meta-label">Customer Level</div>
+                    <div class="meta-value">${escapeHtml(user.customer_level || "A")}</div>
+                </div>
+
+                <div class="meta-box">
+                    <div class="meta-label">Role</div>
+                    <div class="meta-value">${escapeHtml(role || "Not set")}</div>
+                </div>
+
+                <div class="meta-box">
+                    <div class="meta-label">Status</div>
+                    <div class="meta-value">${escapeHtml(status)}</div>
+                </div>
+            </div>
+
+            ${renderProfileEditBox(user)}
+            ${renderCustomerLevelBox(user)}
+            ${renderAssignSalesBox(user)}
+            ${renderActionButtons(user)}
+        </div>
+    `;
+}
+
+function renderProfileEditBox(user) {
+    return `
+        <div class="edit-box">
+            <div class="edit-title">Edit Company & Email</div>
+
+            <div class="profile-grid">
+                <div class="field">
+                    <label for="company-${user.id}">Company</label>
+                    <input
+                        id="company-${user.id}"
+                        class="profile-input"
+                        type="text"
+                        value="${escapeAttr(user.company_name || "")}" 
+                        placeholder="Company name"
+                    >
+                </div>
+
+                <div class="field">
+                    <label for="email-${user.id}">Email</label>
+                    <input
+                        id="email-${user.id}"
+                        class="profile-input"
+                        type="email"
+                        value="${escapeAttr(user.email || "")}" 
+                        placeholder="Email address"
+                    >
+                </div>
+
+                <div>
+                    <button class="primary-btn" onclick="saveUserProfile(${user.id})">
+                        Save Profile
+                    </button>
+                </div>
             </div>
         </div>
     `;
 }
 
+function renderCustomerLevelBox(user) {
+    if (user.role !== "customer" || user.approval_status !== "Approved") return "";
+
+    const currentLevel = user.customer_level || "A";
+
+    return `
+        <div class="assign-box">
+            <div class="edit-title">Customer Level</div>
+            <div class="assign-row">
+                <select class="sales-select" id="customer-level-${user.id}">
+                    <option value="A" ${currentLevel === "A" ? "selected" : ""}>A Class - Excel Price</option>
+                    <option value="B" ${currentLevel === "B" ? "selected" : ""}>B Class - Adjusted Price</option>
+                </select>
+
+                <button class="primary-btn" onclick="updateCustomerLevel(${user.id})">Save Level</button>
+            </div>
+        </div>
+    `;
+}
+
+function renderAssignSalesBox(user) {
+    if (user.role !== "customer" || user.approval_status !== "Approved") return "";
+
+    if (!salesUsersCache || salesUsersCache.length === 0) {
+        return `
+            <div class="assign-box">
+                <div class="edit-title">Assign Sales</div>
+                <div style="color:#777;">No approved sales users available.</div>
+            </div>
+        `;
+    }
+
+    const options = salesUsersCache.map(sales => {
+        const selected = sales.username === user.assigned_sales ? "selected" : "";
+        const salesLabel = sales.email
+            ? `${sales.username} - ${sales.email}`
+            : sales.username;
+
+        return `
+            <option value="${escapeAttr(sales.username)}" ${selected}>
+                ${escapeHtml(salesLabel)}
+            </option>
+        `;
+    }).join("");
+
+    return `
+        <div class="assign-box">
+            <div class="edit-title">Assign Sales</div>
+            <div class="assign-row">
+                <select class="sales-select" id="assign-sales-${user.id}">
+                    <option value="">Choose sales</option>
+                    ${options}
+                </select>
+
+                <button class="primary-btn" onclick="assignSales(${user.id})">Save Assignment</button>
+            </div>
+        </div>
+    `;
+}
+
+function renderActionButtons(user) {
+    const status = user.approval_status || "Approved";
+    const buttons = [];
+
+    if (status === "Pending" || status === "Rejected") {
+        buttons.push(`
+            <button class="success-btn" onclick="approveUser(${user.id})">
+                Approve
+            </button>
+        `);
+    }
+
+    if (status !== "Rejected") {
+        buttons.push(`
+            <button class="warning-btn" onclick="rejectUser(${user.id})">
+                Reject
+            </button>
+        `);
+    }
+
+    if (status === "Approved") {
+        buttons.push(renderChangePasswordButton(user));
+    }
+
+    buttons.push(renderDeleteButton(user));
+
+    return `<div class="button-row">${buttons.join("")}</div>`;
+}
+
+function renderChangePasswordButton(user) {
+    if (user.approval_status !== "Approved") return "";
+
+    return `
+        <button class="soft-btn" onclick="changePassword(${user.id}, '${escapeForJs(user.username)}')">
+            Change Password
+        </button>
+    `;
+}
+
+function renderDeleteButton(user) {
+    if (user.username === "orange") return "";
+
+    return `
+        <button class="dark-btn" onclick="deleteUser(${user.id}, '${escapeForJs(user.username)}')">
+            Delete Account
+        </button>
+    `;
+}
+
+async function saveUserProfile(userId) {
+    const companyInput = document.getElementById("company-" + userId);
+    const emailInput = document.getElementById("email-" + userId);
+
+    const companyName = companyInput ? companyInput.value.trim() : "";
+    const email = emailInput ? emailInput.value.trim() : "";
+
+    if (email && !email.includes("@")) {
+        showCenterMessage("Please enter a valid email address.");
+        return;
+    }
+
+    setProcessing(userId, true);
+
+    try {
+        const response = await fetch(
+            "/admin/users/" + userId + "/profile",
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    company_name: companyName,
+                    email: email
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!data.success) {
+            showCenterMessage(data.message || data.detail || "Profile update failed.");
+            setProcessing(userId, false);
+            return;
+        }
+
+        await loadAdminUsers();
+        showToast(data.message);
+
+    } catch (error) {
+        console.error("Save profile error:", error);
+        showCenterMessage("Profile update failed. Please check server logs.");
+        setProcessing(userId, false);
+    }
+}
 
 async function updateCustomerLevel(userId) {
     const select = document.getElementById("customer-level-" + userId);
@@ -781,12 +1336,8 @@ async function updateCustomerLevel(userId) {
             "/admin/customers/" + userId + "/level",
             {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    customer_level: customerLevel
-                })
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ customer_level: customerLevel })
             }
         );
 
@@ -808,193 +1359,6 @@ async function updateCustomerLevel(userId) {
     }
 }
 
-
-function renderAssignSalesBox(user) {
-    if (user.role !== "customer") {
-        return "";
-    }
-
-    if (user.approval_status !== "Approved") {
-        return "";
-    }
-
-    if (!salesUsersCache || salesUsersCache.length === 0) {
-        return `
-            <div class="assign-box">
-                <b>Assign Sales</b><br>
-                <span style="color:#777;">No approved sales users available.</span>
-            </div>
-        `;
-    }
-
-    let options = salesUsersCache.map(sales => {
-        const selected = sales.username === user.assigned_sales ? "selected" : "";
-
-        return `
-            <option value="${escapeHtml(sales.username)}" ${selected}>
-                ${escapeHtml(sales.username)}
-            </option>
-        `;
-    }).join("");
-
-    return `
-        <div class="assign-box">
-            <b>Assign Sales</b>
-
-            <div class="assign-row">
-                <select class="sales-select" id="assign-sales-${user.id}">
-                    <option value="">Choose sales</option>
-                    ${options}
-                </select>
-
-                <button class="save-btn" onclick="assignSales(${user.id})">
-                    Save Assignment
-                </button>
-            </div>
-        </div>
-    `;
-}
-
-
-function renderChangePasswordButton(user) {
-    if (user.approval_status !== "Approved") {
-        return "";
-    }
-
-    return `
-        <button class="password-btn" onclick="changePassword(${user.id}, '${escapeForJs(user.username)}')">
-            Change Password
-        </button>
-    `;
-}
-
-
-function renderDeleteButton(user) {
-    if (user.username === "orange") {
-        return "";
-    }
-
-    return `
-        <button class="delete-btn" onclick="deleteUser(${user.id}, '${escapeForJs(user.username)}')">
-            Delete Account
-        </button>
-    `;
-}
-
-
-function formatAccountType(type) {
-    if (type === "employee") {
-        return "Employee";
-    }
-
-    return "Customer";
-}
-
-
-function formatStatus(status) {
-    if (status === "Approved") {
-        return `<span class="status-approved">Approved</span>`;
-    }
-
-    if (status === "Rejected") {
-        return `<span class="status-rejected">Rejected</span>`;
-    }
-
-    return `<span class="status-pending">Pending</span>`;
-}
-
-
-function setProcessing(userId, processing) {
-    const cards = [
-        document.getElementById("user-card-" + userId),
-        document.getElementById("all-user-card-" + userId)
-    ];
-
-    cards.forEach(card => {
-        if (!card) return;
-
-        if (processing) {
-            card.classList.add("processing");
-        } else {
-            card.classList.remove("processing");
-        }
-
-        const buttons = card.querySelectorAll("button");
-        buttons.forEach(button => {
-            button.disabled = processing;
-        });
-    });
-}
-
-
-async function approveUser(userId) {
-    const ok = await showCenterConfirm("Approve this user?");
-
-    if (!ok) return;
-
-    setProcessing(userId, true);
-
-    try {
-        const response = await fetch(
-            "/admin/users/" + userId + "/approve",
-            {
-                method: "POST"
-            }
-        );
-
-        const data = await response.json();
-
-        if (!data.success) {
-            showCenterMessage(data.message || data.detail || "Operation failed. Please check server logs.");
-            setProcessing(userId, false);
-            return;
-        }
-
-        await loadAdminUsers();
-        showToast(data.message);
-
-    } catch (error) {
-        console.error("Approve error:", error);
-        showCenterMessage("Approve failed. Please check server logs.");
-        setProcessing(userId, false);
-    }
-}
-
-
-async function rejectUser(userId) {
-    const ok = await showCenterConfirm("Reject this user?");
-
-    if (!ok) return;
-
-    setProcessing(userId, true);
-
-    try {
-        const response = await fetch(
-            "/admin/users/" + userId + "/reject",
-            {
-                method: "POST"
-            }
-        );
-
-        const data = await response.json();
-
-        if (!data.success) {
-            showCenterMessage(data.message || data.detail || "Operation failed. Please check server logs.");
-            setProcessing(userId, false);
-            return;
-        }
-
-        await loadAdminUsers();
-        showToast(data.message);
-
-    } catch (error) {
-        console.error("Reject error:", error);
-        showCenterMessage("Reject failed. Please check server logs.");
-        setProcessing(userId, false);
-    }
-}
-
-
 async function assignSales(userId) {
     const select = document.getElementById("assign-sales-" + userId);
     const salesUsername = select.value;
@@ -1011,12 +1375,8 @@ async function assignSales(userId) {
             "/admin/customers/" + userId + "/assign-sales",
             {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    sales_username: salesUsername
-                })
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sales_username: salesUsername })
             }
         );
 
@@ -1038,10 +1398,67 @@ async function assignSales(userId) {
     }
 }
 
+async function approveUser(userId) {
+    const ok = await showCenterConfirm("Approve this user?");
+    if (!ok) return;
+
+    setProcessing(userId, true);
+
+    try {
+        const response = await fetch("/admin/users/" + userId + "/approve", {
+            method: "POST"
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            showCenterMessage(data.message || data.detail || "Operation failed. Please check server logs.");
+            setProcessing(userId, false);
+            return;
+        }
+
+        await loadAdminUsers();
+        showToast(data.message);
+
+    } catch (error) {
+        console.error("Approve error:", error);
+        showCenterMessage("Approve failed. Please check server logs.");
+        setProcessing(userId, false);
+    }
+}
+
+async function rejectUser(userId) {
+    const ok = await showCenterConfirm("Reject this user?");
+    if (!ok) return;
+
+    setProcessing(userId, true);
+
+    try {
+        const response = await fetch("/admin/users/" + userId + "/reject", {
+            method: "POST"
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            showCenterMessage(data.message || data.detail || "Operation failed. Please check server logs.");
+            setProcessing(userId, false);
+            return;
+        }
+
+        await loadAdminUsers();
+        showToast(data.message);
+
+    } catch (error) {
+        console.error("Reject error:", error);
+        showCenterMessage("Reject failed. Please check server logs.");
+        setProcessing(userId, false);
+    }
+}
 
 async function changePassword(userId, username) {
     const newPassword = prompt(
-        "Enter new password for: " + username + "\\n\\nPassword must be at least 6 characters."
+        "Enter new password for: " + username + "\n\nPassword must be at least 6 characters."
     );
 
     if (newPassword === null) return;
@@ -1065,12 +1482,8 @@ async function changePassword(userId, username) {
             "/admin/users/" + userId + "/change-password",
             {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    password: password
-                })
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ password: password })
             }
         );
 
@@ -1092,7 +1505,6 @@ async function changePassword(userId, username) {
     }
 }
 
-
 async function deleteUser(userId, username) {
     const ok = await showCenterConfirm(
         "Delete account: " + username + "?\n\nThis will remove this user from the user list."
@@ -1103,12 +1515,9 @@ async function deleteUser(userId, username) {
     setProcessing(userId, true);
 
     try {
-        const response = await fetch(
-            "/admin/users/" + userId + "/delete",
-            {
-                method: "POST"
-            }
-        );
+        const response = await fetch("/admin/users/" + userId + "/delete", {
+            method: "POST"
+        });
 
         const data = await response.json();
 
@@ -1128,10 +1537,8 @@ async function deleteUser(userId, username) {
     }
 }
 
-
 async function changeMyPassword() {
     const currentPassword = prompt("Enter your current password:");
-
     if (currentPassword === null) return;
 
     if (!currentPassword.trim()) {
@@ -1140,7 +1547,6 @@ async function changeMyPassword() {
     }
 
     const newPassword = prompt("Enter your new password. Password must be at least 6 characters:");
-
     if (newPassword === null) return;
 
     if (!newPassword.trim()) {
@@ -1158,9 +1564,7 @@ async function changeMyPassword() {
             "/change-password",
             {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     username: currentUser,
                     current_password: currentPassword.trim(),
@@ -1177,7 +1581,7 @@ async function changeMyPassword() {
         }
 
         showCenterMessage(data.message);
-        logout();
+        setTimeout(() => logout(), 900);
 
     } catch (error) {
         console.error("Change my password error:", error);
@@ -1185,18 +1589,48 @@ async function changeMyPassword() {
     }
 }
 
+function setProcessing(userId, processing) {
+    const card = document.getElementById("all-user-card-" + userId);
+    if (!card) return;
+
+    if (processing) {
+        card.classList.add("processing");
+    } else {
+        card.classList.remove("processing");
+    }
+
+    card.querySelectorAll("button, input, select").forEach(element => {
+        element.disabled = processing;
+    });
+}
+
+function formatAccountType(type) {
+    if (type === "employee") return "Employee";
+    return "Customer";
+}
+
+function formatRoleLabel(user) {
+    if (user.role === "sales") return "Sales";
+    if (user.role === "customer") return "Customer";
+    if (user.role === "admin") return "Admin";
+    return user.role || "User";
+}
+
+function formatStatusPill(status) {
+    if (status === "Approved") {
+        return `<span class="pill status-approved">Approved</span>`;
+    }
+
+    if (status === "Rejected") {
+        return `<span class="pill status-rejected">Rejected</span>`;
+    }
+
+    return `<span class="pill status-pending">Pending</span>`;
+}
 
 function showToast(message) {
     showCenterMessage(message);
 }
-
-
-function escapeForJs(value) {
-    return String(value || "")
-        .replace(/\\/g, "\\\\")
-        .replace(/'/g, "\\'");
-}
-
 
 function escapeHtml(value) {
     return String(value || "")
@@ -1207,6 +1641,24 @@ function escapeHtml(value) {
         .replace(/'/g, "&#039;");
 }
 
+function escapeAttr(value) {
+    return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+}
+
+function escapeForJs(value) {
+    return String(value || "")
+        .replace(/\\/g, "\\\\")
+        .replace(/'/g, "\\'")
+        .replace(/"/g, "&quot;");
+}
+
+function goProducts() {
+    window.location.href = "products.html";
+}
 
 function logout() {
     localStorage.removeItem("user");
@@ -1214,9 +1666,11 @@ function logout() {
     localStorage.removeItem("assigned_sales");
     localStorage.removeItem("company_name");
     localStorage.removeItem("email");
+    localStorage.removeItem("sales_mode_active");
+    localStorage.removeItem("sales_mode_customer");
+    localStorage.removeItem("sales_mode_sales");
     window.location.href = "login.html";
 }
-
 
 loadAdminUsers();
 </script>
