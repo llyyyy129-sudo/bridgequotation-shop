@@ -1409,47 +1409,31 @@ async function uploadProductMedia(prefix, key, input, mediaType) {
         }
     }
 
+    if (hiddenInput) {
+        hiddenInput.value = "";
+    }
+
     if (statusBox) {
-        statusBox.innerText = "Uploading...";
+        statusBox.innerText = "Uploading 0%...";
     }
 
     try {
-        const fileData = await readFileAsDataURL(file);
-
-        const response = await fetch("/admin/product-media-upload", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                filename: file.name,
-                media_type: mediaType || "image",
-                file_data: fileData
-            })
-        });
-
-        let data = null;
-
-        try {
-            data = await response.json();
-        } catch (jsonError) {
-            showCenterMessage("Upload failed. Server did not return JSON. Please check Railway logs.");
-            if (statusBox) statusBox.innerText = "Upload failed";
-            input.value = "";
-            return;
-        }
-
-        if (!response.ok || !data.success) {
-            if (statusBox) {
-                statusBox.innerText = "Upload failed";
+        const uploadResult = await uploadFileInChunks(
+            file,
+            mediaType || "image",
+            percent => {
+                if (statusBox) {
+                    statusBox.innerText = "Uploading " + percent + "%...";
+                }
             }
-            showCenterMessage(data.message || "Upload failed.");
-            input.value = "";
-            return;
+        );
+
+        if (!uploadResult || !uploadResult.url) {
+            throw new Error("Upload finished but no file URL was returned.");
         }
 
         if (hiddenInput) {
-            hiddenInput.value = data.url || "";
+            hiddenInput.value = uploadResult.url;
         }
 
         if (statusBox) {
@@ -1463,9 +1447,68 @@ async function uploadProductMedia(prefix, key, input, mediaType) {
         if (statusBox) {
             statusBox.innerText = "Upload failed";
         }
-        showCenterMessage("Upload failed. Please check server logs.");
+        showCenterMessage(error.message || "Upload failed. Please check server logs.");
         input.value = "";
     }
+}
+
+async function uploadFileInChunks(file, mediaType, onProgress) {
+    const chunkSize = 384 * 1024;
+    const totalChunks = Math.max(1, Math.ceil(file.size / chunkSize));
+    const uploadId =
+        Date.now().toString(36) +
+        "_" +
+        Math.random().toString(36).slice(2, 12);
+
+    let finalResult = null;
+
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const start = chunkIndex * chunkSize;
+        const end = Math.min(file.size, start + chunkSize);
+        const chunk = file.slice(start, end);
+        const chunkData = await readFileAsDataURL(chunk);
+
+        const response = await fetch("/admin/product-media-upload-chunk", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                upload_id: uploadId,
+                filename: file.name,
+                media_type: mediaType || "image",
+                chunk_index: chunkIndex,
+                total_chunks: totalChunks,
+                chunk_data: chunkData
+            })
+        });
+
+        const rawText = await response.text();
+        let data = null;
+
+        try {
+            data = rawText ? JSON.parse(rawText) : null;
+        } catch (jsonError) {
+            throw new Error(
+                "Upload failed. Server returned non-JSON response: " +
+                rawText.slice(0, 180)
+            );
+        }
+
+        if (!response.ok || !data || !data.success) {
+            throw new Error(
+                (data && (data.message || data.detail)) ||
+                ("Upload failed. HTTP " + response.status)
+            );
+        }
+
+        const percent = Math.round(((chunkIndex + 1) / totalChunks) * 100);
+        if (onProgress) onProgress(percent);
+
+        finalResult = data;
+    }
+
+    return finalResult;
 }
 
 function readFileAsDataURL(file) {
