@@ -408,6 +408,28 @@ except Exception as e:
     print("Seed products skipped:", e)
 
 
+def sync_product_id_sequence():
+    try:
+        if "postgresql" not in str(engine.url):
+            return
+
+        with engine.connect() as conn:
+            conn.execute(text("""
+                SELECT setval(
+                    pg_get_serial_sequence('products', 'id'),
+                    COALESCE((SELECT MAX(id) FROM products), 1),
+                    true
+                );
+            """))
+            conn.commit()
+            print("Product id sequence synced.")
+    except Exception as e:
+        print("Product id sequence sync skipped:", e)
+
+
+sync_product_id_sequence()
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -1225,28 +1247,44 @@ def get_admin_products():
 def create_admin_product(data: dict):
     db = SessionLocal()
 
-    values = product_payload_to_values(data)
+    try:
+        values = product_payload_to_values(data)
 
-    if not values["name"]:
+        if not values["name"]:
+            db.close()
+            return {
+                "success": False,
+                "message": "Product name is required."
+            }
+
+        # Products imported from Excel may already have fixed IDs.
+        # Creating new products without syncing the DB sequence can cause
+        # duplicate-key errors on PostgreSQL, so we assign the next ID safely.
+        next_id = db.execute(
+            text("SELECT COALESCE(MAX(id), 0) + 1 FROM products")
+        ).scalar()
+
+        product = Product(id=int(next_id or 1), **values)
+        product.is_active = 1
+
+        db.add(product)
+        db.commit()
+
+        product_id = product.id
+        db.close()
+
+        return {
+            "success": True,
+            "message": f"Product #{product_id} has been created."
+        }
+
+    except Exception as e:
+        db.rollback()
         db.close()
         return {
             "success": False,
-            "message": "Product name is required."
+            "message": "Create product failed: " + str(e)
         }
-
-    product = Product(**values)
-    product.is_active = 1
-
-    db.add(product)
-    db.commit()
-
-    product_id = product.id
-    db.close()
-
-    return {
-        "success": True,
-        "message": f"Product #{product_id} has been created."
-    }
 
 
 @app.post("/admin/products/{product_id}")
