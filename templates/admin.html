@@ -584,6 +584,55 @@
             box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
         }
 
+
+        .product-file-box {
+            border: 1.5px dashed #cbd5e1;
+            border-radius: 14px;
+            padding: 12px;
+            background: #ffffff;
+        }
+
+        .product-file-box input[type="file"] {
+            width: 100%;
+            box-sizing: border-box;
+            border: none;
+            padding: 8px 0;
+            font-size: 13px;
+            font-weight: 800;
+            color: #111827;
+        }
+
+        .product-file-current {
+            margin-top: 8px;
+            color: #6b7280;
+            font-size: 12px;
+            font-weight: 800;
+            line-height: 1.45;
+            word-break: break-all;
+        }
+
+        .product-file-preview {
+            margin-top: 10px;
+            width: 92px;
+            height: 92px;
+            border-radius: 12px;
+            object-fit: cover;
+            border: 1px solid #e5e7eb;
+            background: #f8fafc;
+            display: block;
+        }
+
+        .product-file-status {
+            display: inline-flex;
+            margin-top: 8px;
+            padding: 5px 9px;
+            border-radius: 999px;
+            background: #eef4ff;
+            color: #1f3c88;
+            font-size: 12px;
+            font-weight: 900;
+        }
+
         .product-list-grid {
             display: grid;
             grid-template-columns: 1fr;
@@ -929,7 +978,7 @@
         </summary>
 
         <div class="panel-desc" style="margin: 0 0 16px;">
-            Add, edit, activate or hide products from the customer-facing catalog. Hidden products remain available in Admin for future use.
+            Add, edit, activate or hide products from the customer-facing catalog. Product images and videos can now be uploaded as files; old Excel product data still remains available.
         </div>
 
         <div class="product-panel-tools">
@@ -1101,13 +1150,13 @@ const PRODUCT_FIELDS = [
     { key: "price_3000", label: "Price 3000+", type: "number" },
     { key: "price_10000", label: "Price 10000+", type: "number" },
     { key: "price_50000", label: "Price 50000+", type: "number" },
-    { key: "image", label: "Image 1", type: "text", className: "wide-field" },
-    { key: "image_2", label: "Image 2", type: "text", className: "wide-field" },
-    { key: "image_3", label: "Image 3", type: "text", className: "wide-field" },
-    { key: "image_4", label: "Image 4", type: "text", className: "wide-field" },
-    { key: "image_5", label: "Image 5", type: "text", className: "wide-field" },
-    { key: "image_6", label: "Image 6", type: "text", className: "wide-field" },
-    { key: "video", label: "Video", type: "text", className: "wide-field" },
+    { key: "image", label: "Image 1", type: "file", media: "image", accept: "image/*", className: "wide-field" },
+    { key: "image_2", label: "Image 2", type: "file", media: "image", accept: "image/*", className: "wide-field" },
+    { key: "image_3", label: "Image 3", type: "file", media: "image", accept: "image/*", className: "wide-field" },
+    { key: "image_4", label: "Image 4", type: "file", media: "image", accept: "image/*", className: "wide-field" },
+    { key: "image_5", label: "Image 5", type: "file", media: "image", accept: "image/*", className: "wide-field" },
+    { key: "image_6", label: "Image 6", type: "file", media: "image", accept: "image/*", className: "wide-field" },
+    { key: "video", label: "Video", type: "file", media: "video", accept: "video/*", className: "wide-field" },
     { key: "description", label: "Description", type: "textarea", className: "full-field" }
 ];
 
@@ -1269,6 +1318,36 @@ function renderProductFields(prefix, product) {
             `;
         }
 
+        if (field.type === "file") {
+            const fileInputId = id + "-file";
+            const statusId = id + "-status";
+            const preview = value && field.media === "image"
+                ? `<img class="product-file-preview" src="${escapeAttr(value)}" alt="Current image">`
+                : "";
+
+            return `
+                <div class="field ${fieldClass}">
+                    <label for="${fileInputId}">${field.label}</label>
+                    <div class="product-file-box">
+                        <input
+                            id="${fileInputId}"
+                            type="file"
+                            accept="${field.accept || ""}"
+                            onchange="uploadProductMedia('${escapeForJs(prefix)}', '${escapeForJs(field.key)}', this, '${escapeForJs(field.media || "image")}')"
+                        >
+                        <input id="${id}" type="hidden" value="${escapeAttr(value)}">
+                        <div id="${statusId}" class="product-file-status">
+                            ${value ? "Current file saved" : "No file selected"}
+                        </div>
+                        <div class="product-file-current">
+                            ${value ? escapeHtml(value) : "Upload a file instead of typing a path."}
+                        </div>
+                        ${preview}
+                    </div>
+                </div>
+            `;
+        }
+
         const step = field.type === "number" ? ` step="0.01"` : "";
 
         return `
@@ -1278,6 +1357,63 @@ function renderProductFields(prefix, product) {
             </div>
         `;
     }).join("");
+}
+
+async function uploadProductMedia(prefix, key, input, mediaType) {
+    const file = input && input.files ? input.files[0] : null;
+    const hiddenInput = document.getElementById(prefix + "-" + key);
+    const statusBox = document.getElementById(prefix + "-" + key + "-status");
+
+    if (!file) {
+        return;
+    }
+
+    if (statusBox) {
+        statusBox.innerText = "Uploading...";
+    }
+
+    try {
+        const response = await fetch(
+            "/admin/product-media-upload?filename=" + encodeURIComponent(file.name) +
+            "&media_type=" + encodeURIComponent(mediaType || "image"),
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/octet-stream"
+                },
+                body: file
+            }
+        );
+
+        const data = await response.json();
+
+        if (!data.success) {
+            if (statusBox) {
+                statusBox.innerText = "Upload failed";
+            }
+            showCenterMessage(data.message || "Upload failed.");
+            input.value = "";
+            return;
+        }
+
+        if (hiddenInput) {
+            hiddenInput.value = data.url || "";
+        }
+
+        if (statusBox) {
+            statusBox.innerText = "Uploaded";
+        }
+
+        showCenterMessage("File uploaded successfully.");
+
+    } catch (error) {
+        console.error("Upload product media error:", error);
+        if (statusBox) {
+            statusBox.innerText = "Upload failed";
+        }
+        showCenterMessage("Upload failed. Please check server logs.");
+        input.value = "";
+    }
 }
 
 function getProductPayload(prefix) {
@@ -1294,7 +1430,12 @@ function getProductPayload(prefix) {
 function clearNewProductForm() {
     PRODUCT_FIELDS.forEach(field => {
         const input = document.getElementById("new-product-" + field.key);
+        const fileInput = document.getElementById("new-product-" + field.key + "-file");
+        const statusBox = document.getElementById("new-product-" + field.key + "-status");
+
         if (input) input.value = "";
+        if (fileInput) fileInput.value = "";
+        if (statusBox && field.type === "file") statusBox.innerText = "No file selected";
     });
 }
 
