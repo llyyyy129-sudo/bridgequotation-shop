@@ -30,6 +30,9 @@ class Product(Base):
     price_10000 = Column(Float)
     price_50000 = Column(Float)
 
+    # 1 = visible on customer product pages, 0 = hidden from customers but kept in Admin.
+    is_active = Column(Integer, default=1)
+
 
 class User(Base):
     __tablename__ = "users"
@@ -60,7 +63,6 @@ class Order(Base):
     status = Column(String, default="Pending")
     created_at = Column(String, default="")
     return_comment = Column(String, default="")
-
 
 
 class PricingSetting(Base):

@@ -315,7 +315,8 @@
         .field select,
         .profile-input,
         .sales-select,
-        .pricing-input {
+        .pricing-input,
+        .product-input {
             width: 100%;
             height: 42px;
             border: 1.5px solid #d7dce7;
@@ -332,7 +333,8 @@
         .field select:focus,
         .profile-input:focus,
         .sales-select:focus,
-        .pricing-input:focus {
+        .pricing-input:focus,
+        .product-input:focus {
             border-color: #2563eb;
             box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
         }
@@ -515,6 +517,171 @@
             margin-top: 14px;
         }
 
+
+
+        .product-panel-tools {
+            display: grid;
+            grid-template-columns: minmax(260px, 1.2fr) minmax(180px, 0.5fr) auto;
+            gap: 14px;
+            align-items: end;
+            margin-bottom: 16px;
+        }
+
+        .product-create-panel {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 18px;
+            padding: 16px;
+            margin-bottom: 18px;
+        }
+
+        .product-create-panel summary {
+            cursor: pointer;
+            list-style: none;
+            font-weight: 900;
+            color: #1f3c88;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .product-create-panel summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .product-form-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(180px, 1fr));
+            gap: 14px;
+            margin-top: 16px;
+        }
+
+        .product-form-grid .wide-field {
+            grid-column: span 2;
+        }
+
+        .product-form-grid .full-field {
+            grid-column: 1 / -1;
+        }
+
+        .product-textarea {
+            width: 100%;
+            min-height: 92px;
+            border: 1.5px solid #d7dce7;
+            border-radius: 13px;
+            padding: 11px 12px;
+            color: #111827;
+            background: #ffffff;
+            font-size: 14px;
+            font-weight: 700;
+            font-family: inherit;
+            outline: none;
+            resize: vertical;
+        }
+
+        .product-textarea:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+        }
+
+        .product-list-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .admin-product-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 18px;
+            background: #ffffff;
+            overflow: hidden;
+        }
+
+        .admin-product-card.inactive-product {
+            background: #f8fafc;
+            opacity: 0.78;
+        }
+
+        .admin-product-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: flex-start;
+            padding: 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .admin-product-left {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            min-width: 0;
+        }
+
+        .admin-product-image {
+            width: 78px;
+            height: 78px;
+            border-radius: 14px;
+            object-fit: cover;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            flex: 0 0 auto;
+        }
+
+        .admin-product-title {
+            font-size: 18px;
+            color: #111827;
+            font-weight: 900;
+            margin-bottom: 5px;
+        }
+
+        .admin-product-sub {
+            color: #6b7280;
+            line-height: 1.55;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .product-status-pill {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 6px 11px;
+            font-size: 12px;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .product-active-pill {
+            background: #ecfdf5;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+        }
+
+        .product-inactive-pill {
+            background: #fff1f2;
+            color: #be123c;
+            border: 1px solid #fecdd3;
+        }
+
+        .admin-product-body {
+            padding: 16px;
+        }
+
+        .product-action-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .product-result-text {
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 800;
+            margin: 10px 0 16px;
+        }
+
         .center-toast {
             position: fixed;
             left: 50%;
@@ -582,7 +749,11 @@
             .filter-grid,
             .pricing-row,
             .profile-grid,
-            .user-meta-grid { grid-template-columns: 1fr; }
+            .user-meta-grid,
+            .product-panel-tools,
+            .product-form-grid { grid-template-columns: 1fr; }
+            .product-form-grid .wide-field,
+            .product-form-grid .full-field { grid-column: 1 / -1; }
             .nav-actions { justify-content: flex-start; }
         }
 
@@ -749,6 +920,56 @@
         <div id="filterResultText" class="filter-result-text">Showing all users.</div>
     </div>
 
+
+
+    <details class="user-section" open id="productManagementSection">
+        <summary>
+            <span id="productManagementTitle" class="section-title">Product Management (0)</span>
+            <span class="section-arrow">▶</span>
+        </summary>
+
+        <div class="panel-desc" style="margin: 0 0 16px;">
+            Add, edit, activate or hide products from the customer-facing catalog. Hidden products remain available in Admin for future use.
+        </div>
+
+        <div class="product-panel-tools">
+            <div class="field">
+                <label for="productSearch">Search Products</label>
+                <input id="productSearch" type="text" placeholder="Search name, category, material, packing..." oninput="applyProductFilters()">
+            </div>
+
+            <div class="field">
+                <label for="productActiveFilter">Status</label>
+                <select id="productActiveFilter" onchange="applyProductFilters()">
+                    <option value="all">All Products</option>
+                    <option value="active">Active Only</option>
+                    <option value="inactive">Hidden Only</option>
+                </select>
+            </div>
+
+            <div>
+                <button class="dark-btn" onclick="resetProductFilters()">Reset</button>
+            </div>
+        </div>
+
+        <details class="product-create-panel">
+            <summary>
+                <span>Add New Product</span>
+                <span class="section-arrow">▶</span>
+            </summary>
+
+            <div id="newProductForm" class="product-form-grid"></div>
+
+            <div class="product-action-row">
+                <button class="primary-btn" onclick="createAdminProduct()">Create Product</button>
+                <button class="soft-btn" onclick="clearNewProductForm()">Clear Form</button>
+            </div>
+        </details>
+
+        <div id="productResultText" class="product-result-text">Showing all products.</div>
+        <div id="adminProductList" class="product-list-grid"></div>
+    </details>
+
     <details class="user-section" open>
         <summary>
             <span id="pendingTitle" class="section-title">Pending User Approval (0)</span>
@@ -838,6 +1059,8 @@ const currentRole = localStorage.getItem("role");
 let allUsersCache = [];
 let salesUsersCache = [];
 let filteredUsersCache = [];
+let allProductsCache = [];
+let filteredProductsCache = [];
 
 document.getElementById("adminName").innerText = currentUser || "Unknown";
 
@@ -859,7 +1082,342 @@ async function loadAdminUsers() {
     await loadPricingSettings();
     await loadSalesOptions();
     await loadUserGroups();
+    await loadAdminProducts();
 }
+
+
+
+const PRODUCT_FIELDS = [
+    { key: "name", label: "Product Name", type: "text", required: true, className: "wide-field" },
+    { key: "category", label: "Category", type: "text" },
+    { key: "moq", label: "MOQ", type: "number" },
+    { key: "material", label: "Material", type: "text" },
+    { key: "volume", label: "Volume", type: "text" },
+    { key: "size", label: "Size", type: "text" },
+    { key: "packing", label: "Packing", type: "text", className: "wide-field" },
+    { key: "price", label: "Base Price", type: "number" },
+    { key: "price_500", label: "Price 500+", type: "number" },
+    { key: "price_1000", label: "Price 1000+", type: "number" },
+    { key: "price_3000", label: "Price 3000+", type: "number" },
+    { key: "price_10000", label: "Price 10000+", type: "number" },
+    { key: "price_50000", label: "Price 50000+", type: "number" },
+    { key: "image", label: "Image 1", type: "text", className: "wide-field" },
+    { key: "image_2", label: "Image 2", type: "text", className: "wide-field" },
+    { key: "image_3", label: "Image 3", type: "text", className: "wide-field" },
+    { key: "image_4", label: "Image 4", type: "text", className: "wide-field" },
+    { key: "image_5", label: "Image 5", type: "text", className: "wide-field" },
+    { key: "image_6", label: "Image 6", type: "text", className: "wide-field" },
+    { key: "video", label: "Video", type: "text", className: "wide-field" },
+    { key: "description", label: "Description", type: "textarea", className: "full-field" }
+];
+
+function renderNewProductForm() {
+    const box = document.getElementById("newProductForm");
+    if (!box) return;
+
+    box.innerHTML = renderProductFields("new-product", {});
+}
+
+async function loadAdminProducts() {
+    try {
+        const response = await fetch("/admin/products");
+        const products = await response.json();
+
+        allProductsCache = Array.isArray(products) ? products : [];
+        renderNewProductForm();
+        applyProductFilters();
+    } catch (error) {
+        console.error("Load products error:", error);
+        const list = document.getElementById("adminProductList");
+        if (list) {
+            list.innerHTML = `<div class="empty-message">Failed to load products.</div>`;
+        }
+    }
+}
+
+function applyProductFilters() {
+    const searchInput = document.getElementById("productSearch");
+    const statusSelect = document.getElementById("productActiveFilter");
+
+    const keyword = searchInput ? searchInput.value.trim().toLowerCase() : "";
+    const status = statusSelect ? statusSelect.value : "all";
+
+    filteredProductsCache = allProductsCache.filter(product => {
+        const searchable = [
+            product.id,
+            product.name,
+            product.category,
+            product.material,
+            product.size,
+            product.packing,
+            product.description
+        ].join(" ").toLowerCase();
+
+        const active = isProductActive(product);
+        const matchesSearch = !keyword || searchable.includes(keyword);
+        const matchesStatus =
+            status === "all" ||
+            (status === "active" && active) ||
+            (status === "inactive" && !active);
+
+        return matchesSearch && matchesStatus;
+    });
+
+    renderAdminProducts();
+}
+
+function resetProductFilters() {
+    const searchInput = document.getElementById("productSearch");
+    const statusSelect = document.getElementById("productActiveFilter");
+
+    if (searchInput) searchInput.value = "";
+    if (statusSelect) statusSelect.value = "all";
+
+    applyProductFilters();
+}
+
+function isProductActive(product) {
+    return String(product.is_active ?? 1) !== "0" && product.is_active !== false;
+}
+
+function renderAdminProducts() {
+    const title = document.getElementById("productManagementTitle");
+    const result = document.getElementById("productResultText");
+    const list = document.getElementById("adminProductList");
+
+    if (title) {
+        title.innerText = "Product Management (" + allProductsCache.length + ")";
+    }
+
+    if (result) {
+        result.innerText =
+            "Showing " + filteredProductsCache.length + " of " + allProductsCache.length + " products.";
+    }
+
+    if (!list) return;
+
+    if (!filteredProductsCache || filteredProductsCache.length === 0) {
+        list.innerHTML = `<div class="empty-message">No matching products.</div>`;
+        return;
+    }
+
+    list.innerHTML = filteredProductsCache
+        .map(product => renderAdminProductCard(product))
+        .join("");
+}
+
+function renderAdminProductCard(product) {
+    const active = isProductActive(product);
+    const previewImage = product.image || "";
+    const statusPill = active
+        ? `<span class="product-status-pill product-active-pill">Active</span>`
+        : `<span class="product-status-pill product-inactive-pill">Hidden</span>`;
+
+    return `
+        <div class="admin-product-card ${active ? "" : "inactive-product"}" id="product-card-${product.id}">
+            <div class="admin-product-header">
+                <div class="admin-product-left">
+                    ${previewImage
+                        ? `<img class="admin-product-image" src="${escapeAttr(previewImage)}" alt="Product image">`
+                        : `<div class="admin-product-image"></div>`
+                    }
+
+                    <div>
+                        <div class="admin-product-title">
+                            #${product.id} - ${escapeHtml(product.name || "Unnamed Product")}
+                        </div>
+                        <div class="admin-product-sub">
+                            Category: ${escapeHtml(product.category || "Not set")}<br>
+                            MOQ: ${escapeHtml(product.moq || "")} | Material: ${escapeHtml(product.material || "")} | Packing: ${escapeHtml(product.packing || "")}
+                        </div>
+                    </div>
+                </div>
+
+                ${statusPill}
+            </div>
+
+            <div class="admin-product-body">
+                <div class="product-form-grid">
+                    ${renderProductFields("edit-" + product.id, product)}
+                </div>
+
+                <div class="product-action-row">
+                    <button class="primary-btn" onclick="saveAdminProduct(${product.id})">Save Product</button>
+                    <button class="soft-btn" onclick="viewAdminProduct(${product.id})">View Details</button>
+                    <button class="${active ? "warning-btn" : "success-btn"}" onclick="toggleAdminProduct(${product.id}, ${active ? 0 : 1})">
+                        ${active ? "Hide Product" : "Activate Product"}
+                    </button>
+                    <button class="dark-btn" onclick="deleteAdminProduct(${product.id})">Delete Product</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderProductFields(prefix, product) {
+    return PRODUCT_FIELDS.map(field => {
+        const value = product[field.key] ?? "";
+        const id = prefix + "-" + field.key;
+        const fieldClass = field.className || "";
+
+        if (field.type === "textarea") {
+            return `
+                <div class="field ${fieldClass}">
+                    <label for="${id}">${field.label}</label>
+                    <textarea id="${id}" class="product-textarea" placeholder="${field.label}">${escapeHtml(value)}</textarea>
+                </div>
+            `;
+        }
+
+        const step = field.type === "number" ? ` step="0.01"` : "";
+
+        return `
+            <div class="field ${fieldClass}">
+                <label for="${id}">${field.label}</label>
+                <input id="${id}" class="product-input" type="${field.type}"${step} value="${escapeAttr(value)}" placeholder="${field.label}">
+            </div>
+        `;
+    }).join("");
+}
+
+function getProductPayload(prefix) {
+    const payload = {};
+
+    PRODUCT_FIELDS.forEach(field => {
+        const input = document.getElementById(prefix + "-" + field.key);
+        payload[field.key] = input ? input.value.trim() : "";
+    });
+
+    return payload;
+}
+
+function clearNewProductForm() {
+    PRODUCT_FIELDS.forEach(field => {
+        const input = document.getElementById("new-product-" + field.key);
+        if (input) input.value = "";
+    });
+}
+
+async function createAdminProduct() {
+    const payload = getProductPayload("new-product");
+
+    if (!payload.name) {
+        showCenterMessage("Product name is required.");
+        return;
+    }
+
+    try {
+        const response = await fetch("/admin/products", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            showCenterMessage(data.message || data.detail || "Create product failed.");
+            return;
+        }
+
+        clearNewProductForm();
+        await loadAdminProducts();
+        showToast(data.message);
+    } catch (error) {
+        console.error("Create product error:", error);
+        showCenterMessage("Create product failed. Please check server logs.");
+    }
+}
+
+async function saveAdminProduct(productId) {
+    const payload = getProductPayload("edit-" + productId);
+
+    if (!payload.name) {
+        showCenterMessage("Product name cannot be empty.");
+        return;
+    }
+
+    try {
+        const response = await fetch("/admin/products/" + productId, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            showCenterMessage(data.message || data.detail || "Save product failed.");
+            return;
+        }
+
+        await loadAdminProducts();
+        showToast(data.message);
+    } catch (error) {
+        console.error("Save product error:", error);
+        showCenterMessage("Save product failed. Please check server logs.");
+    }
+}
+
+async function toggleAdminProduct(productId, activeValue) {
+    const actionText = activeValue ? "activate" : "hide";
+    const ok = await showCenterConfirm("Are you sure you want to " + actionText + " product #" + productId + "?");
+
+    if (!ok) return;
+
+    try {
+        const response = await fetch("/admin/products/" + productId + "/toggle", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ is_active: activeValue })
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            showCenterMessage(data.message || data.detail || "Status update failed.");
+            return;
+        }
+
+        await loadAdminProducts();
+        showToast(data.message);
+    } catch (error) {
+        console.error("Toggle product error:", error);
+        showCenterMessage("Status update failed. Please check server logs.");
+    }
+}
+
+async function deleteAdminProduct(productId) {
+    const ok = await showCenterConfirm(
+        "Delete product #" + productId + "?\n\nThis removes it from the product database. Use Hide Product instead if you may need it again."
+    );
+
+    if (!ok) return;
+
+    try {
+        const response = await fetch("/admin/products/" + productId + "/delete", {
+            method: "POST"
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            showCenterMessage(data.message || data.detail || "Delete product failed.");
+            return;
+        }
+
+        await loadAdminProducts();
+        showToast(data.message);
+    } catch (error) {
+        console.error("Delete product error:", error);
+        showCenterMessage("Delete product failed. Please check server logs.");
+    }
+}
+
+function viewAdminProduct(productId) {
+    window.location.href = "product.html?id=" + productId;
+}
+
 
 async function loadPricingSettings() {
     try {
