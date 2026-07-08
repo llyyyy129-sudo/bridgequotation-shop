@@ -29,8 +29,6 @@ class Product(Base):
     price_3000 = Column(Float)
     price_10000 = Column(Float)
     price_50000 = Column(Float)
-
-    # 1 = visible on customer product pages, 0 = hidden from customers but kept in Admin.
     is_active = Column(Integer, default=1)
 
 

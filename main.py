@@ -13,6 +13,11 @@ from datetime import datetime
 
 from sqlalchemy import text, inspect
 import json
+import base64
+import re
+import uuid
+import shutil
+from pathlib import Path
 
 
 app = FastAPI()
@@ -129,6 +134,13 @@ def run_migrations():
         "products",
         "packing",
         "VARCHAR DEFAULT ''"
+    )
+
+
+    add_column_if_missing(
+        "products",
+        "is_active",
+        "INTEGER DEFAULT 1"
     )
 
     add_column_if_missing(
@@ -383,7 +395,8 @@ def serialize_product(product, multiplier=1.0):
         "price_3000": apply_price_multiplier(product.price_3000, multiplier),
         "price_10000": apply_price_multiplier(product.price_10000, multiplier),
         "price_50000": apply_price_multiplier(product.price_50000, multiplier),
-        "category": product.category
+        "category": product.category,
+        "is_active": getattr(product, "is_active", 1)
     }
 
 
@@ -477,7 +490,9 @@ def get_products(username: str = ""):
     db = SessionLocal()
 
     multiplier = get_price_multiplier(db, username)
-    products = db.query(Product).all()
+    products = db.query(Product).filter(
+        Product.is_active != 0
+    ).all()
 
     result = [
         serialize_product(product, multiplier)
@@ -1110,6 +1125,370 @@ def delete_user(user_id: int):
         "success": True,
         "message": f"{username} has been deleted."
     }
+
+
+
+@app.post("/admin/users/{user_id}/profile")
+def update_user_profile(user_id: int, data: dict):
+    db = SessionLocal()
+
+    user = db.query(User).filter(
+        User.id == user_id
+    ).first()
+
+    if not user:
+        db.close()
+        return {
+            "success": False,
+            "message": "User not found."
+        }
+
+    company_name = data.get("company_name", "")
+    email = data.get("email", "")
+
+    user.company_name = str(company_name or "").strip()
+    user.email = str(email or "").strip()
+
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": f"Profile for {user.username} has been updated."
+    }
+
+
+# =========================
+# ADMIN PRODUCT MANAGEMENT
+# =========================
+
+def to_int(value, default=0):
+    try:
+        if value is None or value == "":
+            return default
+        return int(float(value))
+    except Exception:
+        return default
+
+
+def to_float(value, default=0.0):
+    try:
+        if value is None or value == "":
+            return default
+        return float(value)
+    except Exception:
+        return default
+
+
+def product_payload_to_values(data: dict):
+    return {
+        "name": str(data.get("name", "") or "").strip(),
+        "description": str(data.get("description", "") or "").strip(),
+        "image": str(data.get("image", "") or "").strip(),
+        "image_2": str(data.get("image_2", "") or "").strip(),
+        "image_3": str(data.get("image_3", "") or "").strip(),
+        "image_4": str(data.get("image_4", "") or "").strip(),
+        "image_5": str(data.get("image_5", "") or "").strip(),
+        "image_6": str(data.get("image_6", "") or "").strip(),
+        "video": str(data.get("video", "") or "").strip(),
+        "moq": to_int(data.get("moq"), 0),
+        "material": str(data.get("material", "") or "").strip(),
+        "volume": str(data.get("volume", "") or "").strip(),
+        "size": str(data.get("size", "") or "").strip(),
+        "packing": str(data.get("packing", "") or "").strip(),
+        "category": str(data.get("category", "") or "").strip(),
+        "price": to_int(data.get("price"), 0),
+        "price_500": to_float(data.get("price_500"), 0.0),
+        "price_1000": to_float(data.get("price_1000"), 0.0),
+        "price_3000": to_float(data.get("price_3000"), 0.0),
+        "price_10000": to_float(data.get("price_10000"), 0.0),
+        "price_50000": to_float(data.get("price_50000"), 0.0),
+    }
+
+
+@app.get("/admin/products")
+def get_admin_products():
+    db = SessionLocal()
+
+    products = db.query(Product).order_by(Product.id.desc()).all()
+
+    result = [
+        serialize_product(product, 1.0)
+        for product in products
+    ]
+
+    db.close()
+    return result
+
+
+@app.post("/admin/products")
+def create_admin_product(data: dict):
+    db = SessionLocal()
+
+    values = product_payload_to_values(data)
+
+    if not values["name"]:
+        db.close()
+        return {
+            "success": False,
+            "message": "Product name is required."
+        }
+
+    product = Product(**values)
+    product.is_active = 1
+
+    db.add(product)
+    db.commit()
+
+    product_id = product.id
+    db.close()
+
+    return {
+        "success": True,
+        "message": f"Product #{product_id} has been created."
+    }
+
+
+@app.post("/admin/products/{product_id}")
+def update_admin_product(product_id: int, data: dict):
+    db = SessionLocal()
+
+    product = db.query(Product).filter(
+        Product.id == product_id
+    ).first()
+
+    if not product:
+        db.close()
+        return {
+            "success": False,
+            "message": "Product not found."
+        }
+
+    values = product_payload_to_values(data)
+
+    if not values["name"]:
+        db.close()
+        return {
+            "success": False,
+            "message": "Product name cannot be empty."
+        }
+
+    for key, value in values.items():
+        setattr(product, key, value)
+
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": f"Product #{product_id} has been updated."
+    }
+
+
+@app.post("/admin/products/{product_id}/toggle")
+def toggle_admin_product(product_id: int, data: dict):
+    db = SessionLocal()
+
+    product = db.query(Product).filter(
+        Product.id == product_id
+    ).first()
+
+    if not product:
+        db.close()
+        return {
+            "success": False,
+            "message": "Product not found."
+        }
+
+    active_value = data.get("is_active", 1)
+
+    if active_value in [False, "false", "False", "0", 0]:
+        product.is_active = 0
+        message = f"Product #{product_id} has been hidden."
+    else:
+        product.is_active = 1
+        message = f"Product #{product_id} has been activated."
+
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": message
+    }
+
+
+@app.post("/admin/products/{product_id}/delete")
+def delete_admin_product(product_id: int):
+    db = SessionLocal()
+
+    product = db.query(Product).filter(
+        Product.id == product_id
+    ).first()
+
+    if not product:
+        db.close()
+        return {
+            "success": False,
+            "message": "Product not found."
+        }
+
+    db.delete(product)
+    db.commit()
+    db.close()
+
+    return {
+        "success": True,
+        "message": f"Product #{product_id} has been deleted."
+    }
+
+
+def safe_upload_extension(filename, media_type):
+    suffix = Path(str(filename or "")).suffix.lower()
+
+    image_extensions = [".jpg", ".jpeg", ".png", ".webp", ".gif"]
+    video_extensions = [".mp4", ".webm", ".mov", ".m4v"]
+
+    if media_type == "video":
+        if suffix not in video_extensions:
+            return None
+    else:
+        if suffix not in image_extensions:
+            return None
+
+    return suffix
+
+
+@app.post("/admin/product-media-upload-chunk")
+def upload_product_media_chunk(data: dict):
+    upload_id = str(data.get("upload_id", "") or "").strip()
+    filename = str(data.get("filename", "") or "").strip()
+    media_type = str(data.get("media_type", "image") or "image").strip().lower()
+
+    if media_type not in ["image", "video"]:
+        media_type = "image"
+
+    try:
+        chunk_index = int(data.get("chunk_index", 0))
+        total_chunks = int(data.get("total_chunks", 1))
+    except Exception:
+        return {
+            "success": False,
+            "message": "Invalid chunk information."
+        }
+
+    if not upload_id:
+        return {
+            "success": False,
+            "message": "Missing upload id."
+        }
+
+    if chunk_index < 0 or total_chunks <= 0 or chunk_index >= total_chunks:
+        return {
+            "success": False,
+            "message": "Invalid chunk index."
+        }
+
+    extension = safe_upload_extension(filename, media_type)
+
+    if not extension:
+        return {
+            "success": False,
+            "message": "Invalid file type."
+        }
+
+    chunk_data = str(data.get("chunk_data", "") or "")
+
+    if "," in chunk_data:
+        chunk_data = chunk_data.split(",", 1)[1]
+
+    if not chunk_data:
+        return {
+            "success": False,
+            "message": "Missing chunk data."
+        }
+
+    try:
+        chunk_bytes = base64.b64decode(chunk_data)
+    except Exception:
+        return {
+            "success": False,
+            "message": "Invalid chunk data."
+        }
+
+    safe_upload_id = re.sub(r"[^a-zA-Z0-9_-]", "", upload_id)[:80]
+
+    if not safe_upload_id:
+        return {
+            "success": False,
+            "message": "Invalid upload id."
+        }
+
+    root_dir = Path("static") / "uploads" / "products"
+    tmp_dir = root_dir / "_chunks" / safe_upload_id
+
+    if media_type == "video":
+        final_dir = root_dir / "videos"
+    else:
+        final_dir = root_dir / "images"
+
+    try:
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        final_dir.mkdir(parents=True, exist_ok=True)
+
+        chunk_path = tmp_dir / f"{chunk_index:06d}.part"
+        chunk_path.write_bytes(chunk_bytes)
+
+        if chunk_index < total_chunks - 1:
+            return {
+                "success": True,
+                "message": f"Chunk {chunk_index + 1}/{total_chunks} uploaded.",
+                "complete": False
+            }
+
+        missing_chunks = []
+
+        for index in range(total_chunks):
+            part_path = tmp_dir / f"{index:06d}.part"
+            if not part_path.exists():
+                missing_chunks.append(index)
+
+        if missing_chunks:
+            return {
+                "success": False,
+                "message": "Missing upload chunks: " + ",".join(str(i) for i in missing_chunks[:10])
+            }
+
+        final_name = (
+            datetime.now().strftime("%Y%m%d%H%M%S") +
+            "_" +
+            uuid.uuid4().hex[:10] +
+            extension
+        )
+
+        final_path = final_dir / final_name
+
+        with final_path.open("wb") as output_file:
+            for index in range(total_chunks):
+                part_path = tmp_dir / f"{index:06d}.part"
+                output_file.write(part_path.read_bytes())
+
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+        public_url = "/" + str(final_path).replace("\\", "/")
+
+        return {
+            "success": True,
+            "message": "File uploaded successfully.",
+            "complete": True,
+            "url": public_url
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": "Upload failed: " + str(e)
+        }
 
 
 # =========================
