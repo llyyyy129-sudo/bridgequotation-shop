@@ -1365,7 +1365,48 @@ async function uploadProductMedia(prefix, key, input, mediaType) {
     const statusBox = document.getElementById(prefix + "-" + key + "-status");
 
     if (!file) {
+        if (statusBox) {
+            statusBox.innerText = "No file selected";
+        }
         return;
+    }
+
+    const fileName = file.name || "";
+    const suffix = fileName.includes(".")
+        ? fileName.substring(fileName.lastIndexOf(".")).toLowerCase()
+        : "";
+
+    const imageExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
+    const videoExtensions = [".mp4", ".webm", ".mov", ".m4v"];
+
+    if ((mediaType || "image") === "video") {
+        if (!videoExtensions.includes(suffix)) {
+            showCenterMessage("Invalid video type. Please upload mp4, webm, mov or m4v.");
+            input.value = "";
+            if (statusBox) statusBox.innerText = "Invalid file type";
+            return;
+        }
+
+        if (file.size > 80 * 1024 * 1024) {
+            showCenterMessage("Video is too large. Please keep it under 80MB.");
+            input.value = "";
+            if (statusBox) statusBox.innerText = "File too large";
+            return;
+        }
+    } else {
+        if (!imageExtensions.includes(suffix)) {
+            showCenterMessage("Invalid image type. Please upload jpg, png, webp or gif.");
+            input.value = "";
+            if (statusBox) statusBox.innerText = "Invalid file type";
+            return;
+        }
+
+        if (file.size > 12 * 1024 * 1024) {
+            showCenterMessage("Image is too large. Please keep it under 12MB.");
+            input.value = "";
+            if (statusBox) statusBox.innerText = "File too large";
+            return;
+        }
     }
 
     if (statusBox) {
@@ -1373,21 +1414,32 @@ async function uploadProductMedia(prefix, key, input, mediaType) {
     }
 
     try {
-        const response = await fetch(
-            "/admin/product-media-upload?filename=" + encodeURIComponent(file.name) +
-            "&media_type=" + encodeURIComponent(mediaType || "image"),
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/octet-stream"
-                },
-                body: file
-            }
-        );
+        const fileData = await readFileAsDataURL(file);
 
-        const data = await response.json();
+        const response = await fetch("/admin/product-media-upload", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                filename: file.name,
+                media_type: mediaType || "image",
+                file_data: fileData
+            })
+        });
 
-        if (!data.success) {
+        let data = null;
+
+        try {
+            data = await response.json();
+        } catch (jsonError) {
+            showCenterMessage("Upload failed. Server did not return JSON. Please check Railway logs.");
+            if (statusBox) statusBox.innerText = "Upload failed";
+            input.value = "";
+            return;
+        }
+
+        if (!response.ok || !data.success) {
             if (statusBox) {
                 statusBox.innerText = "Upload failed";
             }
@@ -1414,6 +1466,17 @@ async function uploadProductMedia(prefix, key, input, mediaType) {
         showCenterMessage("Upload failed. Please check server logs.");
         input.value = "";
     }
+}
+
+function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(reader.error || new Error("File read failed"));
+
+        reader.readAsDataURL(file);
+    });
 }
 
 function getProductPayload(prefix) {
