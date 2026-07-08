@@ -421,6 +421,56 @@
             margin-bottom: 13px;
         }
 
+        .compact-user-card {
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .compact-user-card > summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 18px;
+        }
+
+        .compact-user-card > summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .compact-user-card .user-card-header {
+            margin-bottom: 0;
+        }
+
+        .user-card-body {
+            padding: 0 18px 18px;
+        }
+
+        .user-expand-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            padding: 6px 11px;
+            background: #eef4ff;
+            color: #1f3c88;
+            border: 1px solid #bfdbfe;
+            font-size: 12px;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .user-expand-pill::before {
+            content: "▶";
+            font-size: 10px;
+        }
+
+        .compact-user-card[open] .user-expand-pill::before {
+            content: "▼";
+        }
+
+        .compact-user-card .open-text { display: none; }
+        .compact-user-card[open] .closed-text { display: none; }
+        .compact-user-card[open] .open-text { display: inline; }
+
         .user-title {
             font-size: 18px;
             font-weight: 900;
@@ -1500,7 +1550,7 @@ function renderAdminProductCard(product) {
             <summary class="admin-product-header">
                 <div class="admin-product-left">
                     ${previewImage
-                        ? `<img class="admin-product-image" src="${escapeAttr(previewImage)}" alt="Product image">`
+                        ? `<img class="admin-product-image" src="${escapeAttr(previewImage)}" alt="Product image" onerror="this.onerror=null;this.src='/static/image/bg2.jpg';">`
                         : `<div class="admin-product-image"></div>`
                     }
 
@@ -1561,7 +1611,7 @@ function renderProductFields(prefix, product) {
             const fileInputId = id + "-file";
             const statusId = id + "-status";
             const preview = value && field.media === "image"
-                ? `<img class="product-file-preview" src="${escapeAttr(value)}" alt="Current image">`
+                ? `<img class="product-file-preview" src="${escapeAttr(value)}" alt="Current image" onerror="this.onerror=null;this.style.display='none';">`
                 : "";
 
             return `
@@ -2121,11 +2171,13 @@ function renderUserCard(user) {
     const isSales = role === "sales" || accountType === "employee";
 
     return `
-        <div class="user-card" id="all-user-card-${user.id}">
-            <div class="user-card-header">
+        <details class="user-card compact-user-card" id="all-user-card-${user.id}">
+            <summary class="user-card-header">
                 <div>
                     <div class="user-title">${escapeHtml(user.username)}</div>
-                    <div class="user-sub">User #${user.id}</div>
+                    <div class="user-sub">
+                        User #${user.id} · ${escapeHtml(user.company_name || "Company not set")} · ${escapeHtml(user.email || "Email not set")}
+                    </div>
                 </div>
 
                 <div class="pill-row">
@@ -2134,46 +2186,52 @@ function renderUserCard(user) {
                         ${escapeHtml(formatRoleLabel(user))}
                     </span>
                     <span class="pill">${escapeHtml(formatAccountType(accountType))}</span>
+                    <span class="user-expand-pill">
+                        <span class="closed-text">View</span>
+                        <span class="open-text">Close</span>
+                    </span>
                 </div>
+            </summary>
+
+            <div class="user-card-body">
+                <div class="user-meta-grid">
+                    <div class="meta-box">
+                        <div class="meta-label">Company</div>
+                        <div class="meta-value">${escapeHtml(user.company_name || "Not set")}</div>
+                    </div>
+
+                    <div class="meta-box">
+                        <div class="meta-label">Email</div>
+                        <div class="meta-value">${escapeHtml(user.email || "Not set")}</div>
+                    </div>
+
+                    <div class="meta-box">
+                        <div class="meta-label">Assigned Sales</div>
+                        <div class="meta-value">${escapeHtml(user.assigned_sales || "Not assigned")}</div>
+                    </div>
+
+                    <div class="meta-box">
+                        <div class="meta-label">Customer Level</div>
+                        <div class="meta-value">${escapeHtml(user.customer_level || "A")}</div>
+                    </div>
+
+                    <div class="meta-box">
+                        <div class="meta-label">Role</div>
+                        <div class="meta-value">${escapeHtml(role || "Not set")}</div>
+                    </div>
+
+                    <div class="meta-box">
+                        <div class="meta-label">Status</div>
+                        <div class="meta-value">${escapeHtml(status)}</div>
+                    </div>
+                </div>
+
+                ${renderProfileEditBox(user)}
+                ${renderCustomerLevelBox(user)}
+                ${renderAssignSalesBox(user)}
+                ${renderActionButtons(user)}
             </div>
-
-            <div class="user-meta-grid">
-                <div class="meta-box">
-                    <div class="meta-label">Company</div>
-                    <div class="meta-value">${escapeHtml(user.company_name || "Not set")}</div>
-                </div>
-
-                <div class="meta-box">
-                    <div class="meta-label">Email</div>
-                    <div class="meta-value">${escapeHtml(user.email || "Not set")}</div>
-                </div>
-
-                <div class="meta-box">
-                    <div class="meta-label">Assigned Sales</div>
-                    <div class="meta-value">${escapeHtml(user.assigned_sales || "Not assigned")}</div>
-                </div>
-
-                <div class="meta-box">
-                    <div class="meta-label">Customer Level</div>
-                    <div class="meta-value">${escapeHtml(user.customer_level || "A")}</div>
-                </div>
-
-                <div class="meta-box">
-                    <div class="meta-label">Role</div>
-                    <div class="meta-value">${escapeHtml(role || "Not set")}</div>
-                </div>
-
-                <div class="meta-box">
-                    <div class="meta-label">Status</div>
-                    <div class="meta-value">${escapeHtml(status)}</div>
-                </div>
-            </div>
-
-            ${renderProfileEditBox(user)}
-            ${renderCustomerLevelBox(user)}
-            ${renderAssignSalesBox(user)}
-            ${renderActionButtons(user)}
-        </div>
+        </details>
     `;
 }
 
