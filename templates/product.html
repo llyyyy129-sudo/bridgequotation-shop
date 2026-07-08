@@ -822,7 +822,7 @@
   <div class="action-area">
     <div class="quantity-box">
       <label>Quantity:</label>
-      <input id="quantity" type="number" value="1" min="1" onchange="updatePrice()" oninput="updatePrice()">
+      <input id="quantity" type="number" value="1" min="1" step="1" onchange="validateQuantityAndUpdate()" oninput="updatePrice(false)">
     </div>
 
     <div class="action-buttons">
@@ -1230,33 +1230,75 @@ function getTierLabel(quantity) {
   return "MOQ";
 }
 
-function updatePrice() {
-  const quantityInput = document.getElementById("quantity");
+function validateQuantityAndUpdate() {
+  updatePrice(true);
+}
 
-  let quantity = parseInt(quantityInput.value);
+function updatePrice(enforceMinimum = false) {
+  const quantityInput = document.getElementById("quantity");
+  const livePrice = document.getElementById("livePrice");
+
+  if (!quantityInput || !window.currentProduct) {
+    return;
+  }
+
+  const rawValue = String(quantityInput.value || "").trim();
+
+  if (!rawValue) {
+    if (livePrice) {
+      livePrice.innerHTML = `
+        <b>Selected Tier:</b> -
+        <br>
+        <b>Unit Price:</b> -
+        <br>
+        <b>Amount:</b> -
+      `;
+    }
+    return;
+  }
+
+  let quantity = parseInt(rawValue, 10);
 
   if (isNaN(quantity)) {
     return;
   }
 
-  if (quantity < currentProduct.moq) {
-    showCenterMessage(`Minimum Order Quantity is ${currentProduct.moq} pcs`);
+  const moq = Number(currentProduct.moq || 1);
 
-    quantityInput.value = currentProduct.moq;
-
-    quantity = currentProduct.moq;
+  // When the customer is still typing, do not force the value back to MOQ.
+  // Example: typing 600 starts with 6, which is lower than MOQ 500.
+  // We only correct it when the input loses focus or when Add to Cart is clicked.
+  if (quantity < moq) {
+    if (enforceMinimum) {
+      showCenterMessage(`Minimum Order Quantity is ${moq} pcs`);
+      quantityInput.value = moq;
+      quantity = moq;
+    } else {
+      if (livePrice) {
+        livePrice.innerHTML = `
+          <b>Selected Tier:</b> Below MOQ
+          <br>
+          <b>Minimum Order Quantity:</b> ${moq} pcs
+          <br>
+          <b>Please continue typing or enter at least ${moq} pcs.</b>
+        `;
+      }
+      return;
+    }
   }
 
   const unitPrice = getTierPrice(quantity, currentProduct);
   const total = quantity * unitPrice;
 
-  document.getElementById("livePrice").innerHTML = `
-    <b>Selected Tier:</b> ${getTierLabel(quantity)}
-    <br>
-    <b>Unit Price:</b> $${money(unitPrice)}
-    <br>
-    <b>Amount:</b> $${money(total)}
-  `;
+  if (livePrice) {
+    livePrice.innerHTML = `
+      <b>Selected Tier:</b> ${getTierLabel(quantity)}
+      <br>
+      <b>Unit Price:</b> $${money(unitPrice)}
+      <br>
+      <b>Amount:</b> $${money(total)}
+    `;
+  }
 }
 
 function addToCart() {
