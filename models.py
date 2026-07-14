@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy import Column, Integer, String, Float, Text
 from database import Base
 
 
@@ -69,3 +69,31 @@ class PricingSetting(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     b_multiplier = Column(Float, default=1.2)
+
+
+class ProformaInvoice(Base):
+    __tablename__ = "proforma_invoices"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, index=True)
+    pi_no = Column(String, default="")
+    pdf_path = Column(String, default="")
+    status = Column(String, default="Sent")
+    version = Column(Integer, default=1)
+    sent_by = Column(String, default="")
+    sent_at = Column(String, default="")
+    received_at = Column(String, default="")
+    customer_message = Column(Text, default="")
+
+
+class PIHistory(Base):
+    __tablename__ = "pi_histories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, index=True)
+    pi_id = Column(Integer, index=True)
+    action = Column(String, default="")
+    message = Column(Text, default="")
+    created_by = Column(String, default="")
+    created_at = Column(String, default="")
+    pdf_path = Column(String, default="")

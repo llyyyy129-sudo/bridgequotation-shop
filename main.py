@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine, SessionLocal
-from models import Product, User, Order, PricingSetting, Base
+from models import Product, User, Order, PricingSetting, ProformaInvoice, PIHistory, Base
 
 from reportlab.lib.pagesizes import A4
 
@@ -404,6 +404,470 @@ def serialize_product(product, multiplier=1.0):
         "category": product.category,
         "is_active": getattr(product, "is_active", 1)
     }
+
+
+
+# =========================
+# PROFORMA INVOICE HELPERS
+# =========================
+
+def order_all_items_confirmed(order):
+    items = normalize_order_items(order)
+
+    if not items:
+        return False
+
+    for item in items:
+        if not isinstance(item, dict):
+            return False
+
+        if item.get("item_status") != "Confirmed":
+            return False
+
+    return True
+
+
+def get_latest_pi(db, order_id):
+    return db.query(ProformaInvoice).filter(
+        ProformaInvoice.order_id == order_id
+    ).order_by(ProformaInvoice.id.desc()).first()
+
+
+def serialize_pi(pi):
+    if not pi:
+        return None
+
+    return {
+        "id": pi.id,
+        "order_id": pi.order_id,
+        "pi_no": pi.pi_no,
+        "pdf_path": pi.pdf_path,
+        "pdf_url": pi.pdf_path,
+        "status": pi.status,
+        "version": pi.version,
+        "sent_by": pi.sent_by,
+        "sent_at": pi.sent_at,
+        "received_at": pi.received_at,
+        "customer_message": pi.customer_message or ""
+    }
+
+
+def serialize_pi_history_item(history):
+    return {
+        "id": history.id,
+        "order_id": history.order_id,
+        "pi_id": history.pi_id,
+        "action": history.action,
+        "message": history.message or "",
+        "created_by": history.created_by or "",
+        "created_at": history.created_at or "",
+        "pdf_path": history.pdf_path or ""
+    }
+
+
+def serialize_pi_state(db, order):
+    current_pi = get_latest_pi(db, order.id)
+
+    histories = db.query(PIHistory).filter(
+        PIHistory.order_id == order.id
+    ).order_by(PIHistory.id.asc()).all()
+
+    return {
+        "has_pi": current_pi is not None,
+        "current": serialize_pi(current_pi),
+        "history": [
+            serialize_pi_history_item(history)
+            for history in histories
+        ]
+    }
+
+
+def add_pi_history(db, order_id, pi_id, action, message, created_by, pdf_path=""):
+    history = PIHistory(
+        order_id=order_id,
+        pi_id=pi_id,
+        action=action,
+        message=message or "",
+        created_by=created_by or "",
+        created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        pdf_path=pdf_path or ""
+    )
+
+    db.add(history)
+    return history
+
+
+def generate_pi_pdf_file(order, customer, sales_user, pi_no, version):
+    from reportlab.platypus import (
+        SimpleDocTemplate,
+        Table,
+        TableStyle,
+        Paragraph,
+        Spacer,
+        Image
+    )
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.utils import ImageReader
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from pathlib import Path as LocalPath
+
+    pi_dir = LocalPath("static/uploads/pi")
+    pi_dir.mkdir(parents=True, exist_ok=True)
+
+    safe_pi_no = re.sub(r"[^A-Za-z0-9_-]+", "_", pi_no)
+    file_name = f"{safe_pi_no}_v{version}.pdf"
+    output_path = pi_dir / file_name
+
+    styles = getSampleStyleSheet()
+
+    brand_blue = colors.HexColor("#1f3c88")
+    light_blue = colors.HexColor("#eef4ff")
+    soft_gray = colors.HexColor("#f8fafc")
+    border_gray = colors.HexColor("#dbe3ef")
+    dark_text = colors.HexColor("#111827")
+    muted_text = colors.HexColor("#4b5563")
+
+    title_style = ParagraphStyle(
+        "PITitle",
+        parent=styles["Title"],
+        fontName="Helvetica-Bold",
+        fontSize=18,
+        leading=22,
+        textColor=brand_blue,
+        alignment=TA_CENTER,
+        spaceAfter=8
+    )
+
+    normal_style = ParagraphStyle(
+        "PINormal",
+        parent=styles["Normal"],
+        fontSize=8,
+        leading=10,
+        textColor=dark_text
+    )
+
+    small_style = ParagraphStyle(
+        "PISmall",
+        parent=styles["Normal"],
+        fontSize=7,
+        leading=9,
+        textColor=dark_text
+    )
+
+    small_center_style = ParagraphStyle(
+        "PISmallCenter",
+        parent=small_style,
+        alignment=TA_CENTER
+    )
+
+    small_right_style = ParagraphStyle(
+        "PISmallRight",
+        parent=small_style,
+        alignment=TA_RIGHT
+    )
+
+    def escape_pdf_text(value):
+        if value is None:
+            value = ""
+
+        return (
+            str(value)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\n", "<br/>")
+        )
+
+    def p(value, style=small_style):
+        return Paragraph(escape_pdf_text(value), style)
+
+    def money(value):
+        try:
+            return "${:,.2f}".format(float(value or 0))
+        except Exception:
+            return "$0.00"
+
+    def safe_number(value, default=0):
+        try:
+            return float(value or default)
+        except Exception:
+            return float(default)
+
+    def make_product_image(image_url):
+        if not image_url:
+            return p("No Image", small_center_style)
+
+        image_path = str(image_url)
+
+        if image_path.startswith("/"):
+            image_path = "." + image_path
+
+        local_path = LocalPath(image_path)
+
+        if not local_path.exists():
+            return p("No Image", small_center_style)
+
+        try:
+            reader = ImageReader(str(local_path))
+            img_width, img_height = reader.getSize()
+
+            max_width = 52
+            max_height = 48
+            scale = min(max_width / img_width, max_height / img_height)
+
+            product_image = Image(
+                str(local_path),
+                width=img_width * scale,
+                height=img_height * scale
+            )
+
+            product_image.hAlign = "CENTER"
+            return product_image
+
+        except Exception:
+            return p("No Image", small_center_style)
+
+    items = normalize_order_items(order)
+
+    doc = SimpleDocTemplate(
+        str(output_path),
+        pagesize=A4,
+        rightMargin=20,
+        leftMargin=20,
+        topMargin=18,
+        bottomMargin=18
+    )
+
+    elements = []
+
+    elements.append(Paragraph("PROFORMA INVOICE / SALES CONFIRMATION", title_style))
+
+    header_data = [
+        [
+            p(f"<b>S/C NO.:</b> {pi_no}", normal_style),
+            p(f"<b>DATE:</b> {datetime.now().strftime('%b %d, %Y')}", normal_style)
+        ]
+    ]
+
+    header_table = Table(header_data, colWidths=[360, 175])
+    header_table.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.7, border_gray),
+        ("BACKGROUND", (0, 0), (-1, -1), light_blue),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+    ]))
+    elements.append(header_table)
+    elements.append(Spacer(1, 8))
+
+    buyer_company = customer.company_name if customer else order.username
+    buyer_email = customer.email if customer else ""
+    buyer_contact = customer.username if customer else order.username
+
+    seller_company = "NINGBO FUTURE HOUSEWARE CO.,LTD."
+    seller_address = "2560 YONGJIANG AVENUE, BUILDING 8 IN WEST DISTRICT, NINGBO 315048, CHINA"
+    seller_contact = sales_user.username if sales_user else (order.sales_username or "")
+    seller_email = sales_user.email if sales_user else ""
+
+    buyer_block = (
+        "<b>THE BUYER:</b><br/>"
+        + escape_pdf_text(buyer_company or "")
+        + "<br/>CONTACT: "
+        + escape_pdf_text(buyer_contact or "")
+        + "<br/>EMAIL: "
+        + escape_pdf_text(buyer_email or "")
+    )
+
+    seller_block = (
+        "<b>THE SELLER:</b><br/>"
+        + escape_pdf_text(seller_company)
+        + "<br/>"
+        + escape_pdf_text(seller_address)
+        + "<br/>CONTACT: "
+        + escape_pdf_text(seller_contact or "")
+        + "<br/>EMAIL: "
+        + escape_pdf_text(seller_email or "")
+    )
+
+    parties_table = Table(
+        [[Paragraph(buyer_block, normal_style), Paragraph(seller_block, normal_style)]],
+        colWidths=[267, 267]
+    )
+    parties_table.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.7, border_gray),
+        ("INNERGRID", (0, 0), (-1, -1), 0.6, border_gray),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.white),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+    ]))
+    elements.append(parties_table)
+    elements.append(Spacer(1, 9))
+
+    intro = Paragraph(
+        "This undersigned seller and buyer have agreed to conclude the following transactions according to the terms and conditions stipulated below:",
+        normal_style
+    )
+    elements.append(intro)
+    elements.append(Spacer(1, 8))
+
+    table_data = [
+        [
+            p("Picture", small_center_style),
+            p("Description", small_center_style),
+            p("Ctn", small_center_style),
+            p("Inner", small_center_style),
+            p("Unit", small_center_style),
+            p("Qty", small_center_style),
+            p("Meas./ctn", small_center_style),
+            p("Meas.", small_center_style),
+            p("Price<br/>FOB NINGBO", small_center_style),
+            p("Amount", small_center_style)
+        ]
+    ]
+
+    total_qty = 0
+    grand_total = 0
+
+    for item in items:
+        qty = int(safe_number(item.get("quantity") or item.get("qty"), 0))
+        unit_price = safe_number(item.get("price") or item.get("unit_price"), 0)
+        amount = qty * unit_price
+
+        total_qty += qty
+        grand_total += amount
+
+        description_parts = [
+            item.get("name") or item.get("product_name") or "Product",
+            f"Size: {item.get('size', '')}",
+            f"Material: {item.get('material', '')}",
+            f"Packaging: {item.get('packing', '')}",
+        ]
+
+        if item.get("customer_requirement"):
+            description_parts.append(f"Requirement: {item.get('customer_requirement', '')}")
+
+        description = "\n".join([part for part in description_parts if part])
+
+        volume = item.get("volume", "")
+
+        table_data.append([
+            make_product_image(item.get("image", "")),
+            p(description),
+            p("", small_center_style),
+            p("", small_center_style),
+            p("PCS", small_center_style),
+            p(f"{qty:,}", small_center_style),
+            p(volume, small_center_style),
+            p("", small_center_style),
+            p(money(unit_price), small_right_style),
+            p(money(amount), small_right_style)
+        ])
+
+    table_data.append([
+        "",
+        p("TTL:", small_right_style),
+        "",
+        "",
+        "",
+        p(f"{total_qty:,}", small_center_style),
+        "",
+        "",
+        "",
+        p(money(grand_total), small_right_style)
+    ])
+
+    product_table = Table(
+        table_data,
+        colWidths=[56, 145, 34, 34, 38, 44, 54, 44, 62, 62],
+        repeatRows=1
+    )
+
+    product_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), brand_blue),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("BACKGROUND", (0, -1), (-1, -1), light_blue),
+        ("BOX", (0, 0), (-1, -1), 0.7, border_gray),
+        ("INNERGRID", (0, 0), (-1, -1), 0.4, border_gray),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("ALIGN", (2, 1), (7, -1), "CENTER"),
+        ("ALIGN", (8, 1), (9, -1), "RIGHT"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+
+    elements.append(product_table)
+    elements.append(Spacer(1, 10))
+
+    terms = [
+        ["PORT OF LOADING:", "NINGBO, CHINA"],
+        ["PORT OF DESTINATION:", "TO BE CONFIRMED"],
+        ["SHIPMENT TERM:", "BY SEA"],
+        ["PAYMENT TERM:", "TO BE CONFIRMED"],
+        ["TIME OF SHIPMENT:", "TO BE CONFIRMED"]
+    ]
+
+    terms_table = Table(
+        [[p(label, normal_style), p(value, normal_style)] for label, value in terms],
+        colWidths=[150, 385]
+    )
+    terms_table.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.7, border_gray),
+        ("INNERGRID", (0, 0), (-1, -1), 0.4, border_gray),
+        ("BACKGROUND", (0, 0), (0, -1), soft_gray),
+        ("LEFTPADDING", (0, 0), (-1, -1), 7),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    elements.append(terms_table)
+    elements.append(Spacer(1, 10))
+
+    bank_lines = (
+        "<b>OUR BANK INFORMATION:</b><br/>"
+        "BENEFICIARY: NINGBO FUTURE HOUSEWARE CO.,LTD.<br/>"
+        "ADD: 16/F,95 Business Mansion, No.598 Jiangnan Road, Jiangdong, Ningbo<br/>"
+        "BENEFICIARY BANK: SHANGHAI PUDONG DEVELOPMENT BANK NINGBO BRANCH<br/>"
+        "ADD: 21 JIANG XIA STREET, NINGBO, P.R.CHINA<br/>"
+        "SWIFT CODE: SPDBCNSH342<br/>"
+        "ACCOUNT NO.: 94171455350000054<br/>"
+        "T/T PAYMENT PLEASE CHOOSE INTERMEDIARY BANK: CITIBANK N.A., NEW YORK<br/>"
+        "SWIFT CODE: CITIUS33"
+    )
+
+    bank_table = Table([[Paragraph(bank_lines, normal_style)]], colWidths=[535])
+    bank_table.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.7, border_gray),
+        ("BACKGROUND", (0, 0), (-1, -1), soft_gray),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+    ]))
+
+    elements.append(bank_table)
+    elements.append(Spacer(1, 9))
+
+    note = Paragraph(
+        "Our company promises that our exported products are fully in line with the quality testing standards of the host country, and we will take full responsibility for any quality problems.<br/>"
+        "Please note that we will not change bank details by email. Any account change will be notified by our company in official documents.",
+        small_style
+    )
+    elements.append(note)
+
+    doc.build(elements)
+
+    return "/static/uploads/pi/" + file_name
+
 
 
 
@@ -1621,7 +2085,8 @@ def get_sales_orders(sales_username: str):
             "status": order.status,
             "created_at": order.created_at,
             "return_comment": order.return_comment,
-            "items": json.dumps(items)
+            "items": json.dumps(items),
+            "pi": serialize_pi_state(db, order)
         })
 
     db.close()
@@ -1839,7 +2304,8 @@ def get_customer_orders(username: str):
             "total": order.total,
             "created_at": order.created_at,
             "return_comment": order.return_comment,
-            "items": json.dumps(items)
+            "items": json.dumps(items),
+            "pi": serialize_pi_state(db, order)
         })
 
     db.close()
@@ -1878,6 +2344,275 @@ def delete_customer_order(order_id: int, data: dict):
         "success": True,
         "message": f"Order #{order_id} has been deleted."
     }
+
+
+# =========================
+# PROFORMA INVOICE WORKFLOW
+# =========================
+
+@app.post("/sales/orders/{order_id}/pi/send")
+def sales_send_pi(order_id: int, data: dict = None):
+    db = SessionLocal()
+
+    if data is None:
+        data = {}
+
+    order = db.query(Order).filter(
+        Order.id == order_id
+    ).first()
+
+    if not order:
+        db.close()
+        return {
+            "success": False,
+            "message": "Order not found."
+        }
+
+    if not order_all_items_confirmed(order):
+        db.close()
+        return {
+            "success": False,
+            "message": "PI can only be sent after all products are confirmed."
+        }
+
+    sales_username = data.get("sales_username", "").strip() or order.sales_username or ""
+    sales_user = None
+
+    if sales_username:
+        sales_user = db.query(User).filter(
+            User.username == sales_username
+        ).first()
+
+    customer = db.query(User).filter(
+        User.username == order.username
+    ).first()
+
+    latest_pi = get_latest_pi(db, order.id)
+    next_version = 1
+
+    if latest_pi:
+        next_version = int(latest_pi.version or 1) + 1
+
+    pi_no = f"PI-{datetime.now().strftime('%Y%m%d')}-{order.id:04d}"
+
+    status = "Sent" if next_version == 1 else "Revised Sent"
+
+    try:
+        pdf_url = generate_pi_pdf_file(
+            order=order,
+            customer=customer,
+            sales_user=sales_user,
+            pi_no=pi_no,
+            version=next_version
+        )
+    except Exception as e:
+        db.close()
+        return {
+            "success": False,
+            "message": "PI PDF generation failed: " + str(e)
+        }
+
+    pi = ProformaInvoice(
+        order_id=order.id,
+        pi_no=pi_no,
+        pdf_path=pdf_url,
+        status=status,
+        version=next_version,
+        sent_by=sales_username,
+        sent_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        received_at="",
+        customer_message=""
+    )
+
+    db.add(pi)
+    db.flush()
+
+    action = "Sales Sent PI" if next_version == 1 else "Sales Sent Revised PI"
+
+    add_pi_history(
+        db=db,
+        order_id=order.id,
+        pi_id=pi.id,
+        action=action,
+        message=f"{action} version {next_version}.",
+        created_by=sales_username or "Sales",
+        pdf_path=pdf_url
+    )
+
+    db.commit()
+
+    result = {
+        "success": True,
+        "message": f"PI version {next_version} has been sent.",
+        "pi": serialize_pi(pi),
+        "pdf_url": pdf_url
+    }
+
+    db.close()
+    return result
+
+
+@app.get("/orders/{order_id}/pi")
+def get_order_pi(order_id: int):
+    db = SessionLocal()
+
+    order = db.query(Order).filter(
+        Order.id == order_id
+    ).first()
+
+    if not order:
+        db.close()
+        return {
+            "success": False,
+            "message": "Order not found."
+        }
+
+    result = {
+        "success": True,
+        "pi": serialize_pi_state(db, order)
+    }
+
+    db.close()
+    return result
+
+
+@app.post("/customer/orders/{order_id}/pi/receive")
+def customer_receive_pi(order_id: int, data: dict):
+    db = SessionLocal()
+
+    username = data.get("username", "").strip()
+
+    order = db.query(Order).filter(
+        Order.id == order_id
+    ).first()
+
+    if not order:
+        db.close()
+        return {
+            "success": False,
+            "message": "Order not found."
+        }
+
+    if order.username != username:
+        db.close()
+        return {
+            "success": False,
+            "message": "You can only receive PI for your own order."
+        }
+
+    pi = get_latest_pi(db, order.id)
+
+    if not pi:
+        db.close()
+        return {
+            "success": False,
+            "message": "No PI has been sent for this order yet."
+        }
+
+    if pi.status == "Received":
+        db.close()
+        return {
+            "success": False,
+            "message": "This PI has already been received."
+        }
+
+    pi.status = "Received"
+    pi.received_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    add_pi_history(
+        db=db,
+        order_id=order.id,
+        pi_id=pi.id,
+        action="Customer Received PI",
+        message="Customer confirmed PI received.",
+        created_by=username,
+        pdf_path=pi.pdf_path
+    )
+
+    db.commit()
+
+    result = {
+        "success": True,
+        "message": "PI received successfully.",
+        "pi": serialize_pi(pi)
+    }
+
+    db.close()
+    return result
+
+
+@app.post("/customer/orders/{order_id}/pi/send-back")
+def customer_send_back_pi(order_id: int, data: dict):
+    db = SessionLocal()
+
+    username = data.get("username", "").strip()
+    message = data.get("message", "").strip()
+
+    if not message:
+        db.close()
+        return {
+            "success": False,
+            "message": "Please enter a sent-back reason."
+        }
+
+    order = db.query(Order).filter(
+        Order.id == order_id
+    ).first()
+
+    if not order:
+        db.close()
+        return {
+            "success": False,
+            "message": "Order not found."
+        }
+
+    if order.username != username:
+        db.close()
+        return {
+            "success": False,
+            "message": "You can only send back PI for your own order."
+        }
+
+    pi = get_latest_pi(db, order.id)
+
+    if not pi:
+        db.close()
+        return {
+            "success": False,
+            "message": "No PI has been sent for this order yet."
+        }
+
+    if pi.status == "Received":
+        db.close()
+        return {
+            "success": False,
+            "message": "Received PI cannot be sent back."
+        }
+
+    pi.status = "Sent Back"
+    pi.customer_message = message
+
+    add_pi_history(
+        db=db,
+        order_id=order.id,
+        pi_id=pi.id,
+        action="Customer Sent Back PI",
+        message=message,
+        created_by=username,
+        pdf_path=pi.pdf_path
+    )
+
+    db.commit()
+
+    result = {
+        "success": True,
+        "message": "PI has been sent back to sales.",
+        "pi": serialize_pi(pi)
+    }
+
+    db.close()
+    return result
+
 
 
 # =========================

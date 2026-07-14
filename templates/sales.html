@@ -970,6 +970,146 @@
             color: #374151;
         }
 
+
+        .pi-workflow-panel {
+            border: 1px solid #bfdbfe;
+            background: #f8fbff;
+            border-radius: 16px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .pi-workflow-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .pi-title {
+            color: #1f3c88;
+            font-size: 18px;
+            font-weight: 900;
+            margin-bottom: 5px;
+        }
+
+        .pi-subtitle {
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.55;
+        }
+
+        .pi-status-pill {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 7px 11px;
+            font-size: 12px;
+            font-weight: 900;
+            border: 1px solid #dbeafe;
+            background: #ffffff;
+            color: #1f3c88;
+        }
+
+        .pi-status-sent,
+        .pi-status-revised {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border-color: #bfdbfe;
+        }
+
+        .pi-status-back {
+            background: #fff7ed;
+            color: #ea580c;
+            border-color: #fed7aa;
+        }
+
+        .pi-status-received {
+            background: #ecfdf5;
+            color: #15803d;
+            border-color: #bbf7d0;
+        }
+
+        .pi-action-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .pi-btn {
+            border: none;
+            border-radius: 12px;
+            padding: 10px 15px;
+            font-weight: 900;
+            cursor: pointer;
+            background: #2563eb;
+            color: #ffffff;
+            box-shadow: 0 10px 22px rgba(37, 99, 235, 0.16);
+        }
+
+        .pi-btn.secondary {
+            background: #ffffff;
+            color: #1f3c88;
+            border: 1px solid #bfdbfe;
+            box-shadow: none;
+        }
+
+        .pi-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .pi-history-details {
+            border: 1px solid #e5e7eb;
+            background: #ffffff;
+            border-radius: 14px;
+            overflow: hidden;
+            margin-top: 13px;
+        }
+
+        .pi-history-details summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 12px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #1f3c88;
+            font-weight: 900;
+        }
+
+        .pi-history-details summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .pi-history-list {
+            padding: 0 14px 14px;
+        }
+
+        .pi-history-item {
+            border-top: 1px solid #e5e7eb;
+            padding: 10px 0;
+            color: #4b5563;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .pi-history-item b {
+            color: #111827;
+        }
+
+        .pi-empty {
+            color: #6b7280;
+            font-weight: 800;
+            font-size: 13px;
+            padding: 10px 0;
+        }
+
         @media (max-width: 720px) {
             .sales-page { padding: 18px; }
             .app-nav { align-items: flex-start; flex-direction: column; }
@@ -1777,6 +1917,7 @@ function renderOrderSection(order) {
                 ${renderProductStatusSection(order, "pending", "Pending Products", pending, true)}
                 ${renderProductStatusSection(order, "confirmed", "Confirmed Products", confirmed, false)}
                 ${renderProductStatusSection(order, "returned", "Returned Products", returned, false)}
+                ${renderPIWorkflow(order, statusInfo)}
             </div>
         </details>
     `;
@@ -2120,6 +2261,195 @@ async function returnProduct(orderId, itemIndex) {
     showCenterMessage("Product returned.");
     loadSalesOrders();
 }
+
+
+function getPIState(order) {
+    if (!order || !order.pi) {
+        return {
+            has_pi: false,
+            current: null,
+            history: []
+        };
+    }
+
+    if (typeof order.pi === "string") {
+        try {
+            return JSON.parse(order.pi);
+        } catch (error) {
+            return {
+                has_pi: false,
+                current: null,
+                history: []
+            };
+        }
+    }
+
+    return order.pi;
+}
+
+
+function getPIStatusClass(status) {
+    const value = String(status || "").toLowerCase();
+
+    if (value.includes("received")) return "pi-status-received";
+    if (value.includes("back")) return "pi-status-back";
+    if (value.includes("revised")) return "pi-status-revised";
+    if (value.includes("sent")) return "pi-status-sent";
+
+    return "";
+}
+
+
+function renderPIWorkflow(order, statusInfo) {
+    if (!statusInfo || statusInfo.key !== "completed") {
+        return "";
+    }
+
+    const piState = getPIState(order);
+    const current = piState.current;
+    const history = Array.isArray(piState.history) ? piState.history : [];
+
+    let statusLabel = "Not Sent";
+    let statusClass = "";
+
+    if (current) {
+        statusLabel = current.status || "Sent";
+        statusClass = getPIStatusClass(statusLabel);
+    }
+
+    const canSend = !current || String(current.status || "").toLowerCase().includes("back");
+    const sendButtonText = current ? "Send Revised PI" : "Send PI";
+
+    const viewButton = current && current.pdf_url ? `
+        <button class="pi-btn secondary" onclick="openPI('${escapeForJs(current.pdf_url)}')">
+            View PI PDF
+        </button>
+    ` : "";
+
+    const sendButton = canSend ? `
+        <button class="pi-btn" onclick="sendPI(${order.id})">
+            ${sendButtonText}
+        </button>
+    ` : `
+        <button class="pi-btn" disabled>
+            Waiting Customer Response
+        </button>
+    `;
+
+    return `
+        <div class="pi-workflow-panel">
+            <div class="pi-workflow-header">
+                <div>
+                    <div class="pi-title">Proforma Invoice</div>
+                    <div class="pi-subtitle">
+                        Generate a PI PDF after all products are confirmed. The customer can receive it or send it back for revision.
+                    </div>
+                </div>
+
+                <span class="pi-status-pill ${statusClass}">
+                    PI Status: ${escapeHtml(statusLabel)}
+                </span>
+            </div>
+
+            <div class="pi-action-row">
+                ${sendButton}
+                ${viewButton}
+            </div>
+
+            ${renderPIHistory(history)}
+        </div>
+    `;
+}
+
+
+function renderPIHistory(history) {
+    if (!history || history.length === 0) {
+        return `
+            <details class="pi-history-details">
+                <summary>
+                    <span>PI History (0)</span>
+                    <span class="summary-arrow">▶</span>
+                </summary>
+                <div class="pi-history-list">
+                    <div class="pi-empty">No PI history yet.</div>
+                </div>
+            </details>
+        `;
+    }
+
+    return `
+        <details class="pi-history-details">
+            <summary>
+                <span>PI History (${history.length})</span>
+                <span class="summary-arrow">▶</span>
+            </summary>
+
+            <div class="pi-history-list">
+                ${history.map(item => `
+                    <div class="pi-history-item">
+                        <b>${escapeHtml(item.created_at || "")}</b>
+                        &nbsp; ${escapeHtml(item.action || "")}
+                        ${item.created_by ? " by " + escapeHtml(item.created_by) : ""}
+                        ${item.message ? `<br>${escapeHtml(item.message)}` : ""}
+                        ${item.pdf_path ? `<br><button class="pi-btn secondary" onclick="openPI('${escapeForJs(item.pdf_path)}')">View PDF</button>` : ""}
+                    </div>
+                `).join("")}
+            </div>
+        </details>
+    `;
+}
+
+
+function openPI(url) {
+    if (!url) {
+        showCenterMessage("PI PDF is not available.");
+        return;
+    }
+
+    window.open(url, "_blank");
+}
+
+
+async function sendPI(orderId) {
+    const ok = await showCenterConfirm(
+        "Send PI PDF to customer for this order?"
+    );
+
+    if (!ok) return;
+
+    try {
+        const response = await fetch(
+            "/sales/orders/" + orderId + "/pi/send",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    sales_username: salesUsername
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!data.success) {
+            showCenterMessage(data.message || "Send PI failed.");
+            return;
+        }
+
+        showCenterMessage(data.message || "PI sent.");
+        if (data.pdf_url) {
+            window.open(data.pdf_url, "_blank");
+        }
+        await loadSalesOrders();
+
+    } catch (error) {
+        console.error("Send PI error:", error);
+        showCenterMessage("Send PI failed. Please check server logs.");
+    }
+}
+
 
 
 function getCustomerName(order) {
