@@ -4,14 +4,14 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine, SessionLocal
-from models import Product, User, Order, PricingSetting, ProformaInvoice, PIHistory, SharedSalesFile, Base
+from models import Product, User, Order, PricingSetting, ProformaInvoice, PIHistory, SharedSalesFile, SharedSalesFolder, Base
 
 from reportlab.lib.pagesizes import A4
 
 from io import BytesIO
 from datetime import datetime
 
-from sqlalchemy import text, inspect
+from sqlalchemy import text, inspect, func
 import json
 import base64
 import re
@@ -170,6 +170,12 @@ def run_migrations():
         "orders",
         "return_comment",
         "VARCHAR DEFAULT ''"
+    )
+
+    add_column_if_missing(
+        "shared_sales_files",
+        "folder_id",
+        "INTEGER DEFAULT 0"
     )
 
 
@@ -1918,6 +1924,7 @@ def get_shared_file_type(filename):
 def serialize_shared_file(shared_file):
     return {
         "id": shared_file.id,
+        "folder_id": int(getattr(shared_file, "folder_id", 0) or 0),
         "original_name": shared_file.original_name or "",
         "file_path": shared_file.file_path or "",
         "file_url": shared_file.file_path or "",
@@ -1940,6 +1947,46 @@ def can_access_shared_files(db, username, admin_only=False):
         return True
 
     return not admin_only and user.role == "sales"
+
+
+def get_shared_sales_folders(db):
+    count_rows = db.query(
+        SharedSalesFile.folder_id,
+        func.count(SharedSalesFile.id)
+    ).group_by(SharedSalesFile.folder_id).all()
+
+    counts = {
+        int(folder_id or 0): int(file_count or 0)
+        for folder_id, file_count in count_rows
+    }
+
+    folders = db.query(SharedSalesFolder).order_by(
+        SharedSalesFolder.name.asc()
+    ).all()
+
+    result = [
+        {
+            "id": folder.id,
+            "name": folder.name,
+            "created_by": folder.created_by or "",
+            "created_at": folder.created_at or "",
+            "file_count": counts.pop(folder.id, 0)
+        }
+        for folder in folders
+    ]
+
+    unfiled_count = sum(counts.values())
+    if unfiled_count:
+        result.append({
+            "id": 0,
+            "name": "Unfiled Files",
+            "created_by": "",
+            "created_at": "",
+            "file_count": unfiled_count,
+            "is_unfiled": True
+        })
+
+    return result
 
 
 @app.post("/admin/product-media-upload-chunk")
@@ -2078,21 +2125,74 @@ def upload_product_media_chunk(data: dict):
 # SHARED SALES FILE LIBRARY
 # =========================
 
+@app.post("/shared-sales-folders/create")
+def create_shared_sales_folder(data: dict):
+    db = SessionLocal()
+    username = str(data.get("username", "") or "").strip()
+    name = re.sub(r"\s+", " ", str(data.get("name", "") or "").strip())
+
+    if not can_access_shared_files(db, username):
+        db.close()
+        return {"success": False, "message": "Only sales users and admin can create folders."}
+
+    if not name:
+        db.close()
+        return {"success": False, "message": "Please enter a folder name."}
+
+    if len(name) > 80:
+        db.close()
+        return {"success": False, "message": "Folder name must be 80 characters or less."}
+
+    existing = db.query(SharedSalesFolder).filter(
+        func.lower(SharedSalesFolder.name) == name.lower()
+    ).first()
+
+    if existing:
+        db.close()
+        return {"success": False, "message": "A folder with this name already exists."}
+
+    folder = SharedSalesFolder(
+        name=name,
+        created_by=username,
+        created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    )
+    db.add(folder)
+    db.commit()
+
+    result = {
+        "success": True,
+        "message": "Folder created.",
+        "folder": {
+            "id": folder.id,
+            "name": folder.name,
+            "created_by": folder.created_by,
+            "created_at": folder.created_at,
+            "file_count": 0
+        }
+    }
+    db.close()
+    return result
+
+
 @app.get("/shared-sales-files/{username}")
-def get_shared_sales_files(username: str):
+def get_shared_sales_files(username: str, folder_id: int = None):
     db = SessionLocal()
 
     if not can_access_shared_files(db, username):
         db.close()
         return {"success": False, "message": "Only sales users and admin can access shared files."}
 
-    files = db.query(SharedSalesFile).order_by(
-        SharedSalesFile.id.desc()
-    ).all()
+    query = db.query(SharedSalesFile)
+
+    if folder_id is not None:
+        query = query.filter(SharedSalesFile.folder_id == folder_id)
+
+    files = query.order_by(SharedSalesFile.id.desc()).all()
 
     result = {
         "success": True,
-        "files": [serialize_shared_file(shared_file) for shared_file in files]
+        "files": [serialize_shared_file(shared_file) for shared_file in files],
+        "folders": get_shared_sales_folders(db)
     }
     db.close()
     return result
@@ -2104,6 +2204,12 @@ def upload_shared_sales_file_chunk(data: dict):
     username = str(data.get("username", "") or "").strip()
     upload_id = str(data.get("upload_id", "") or "").strip()
     filename = Path(str(data.get("filename", "") or "")).name.strip()
+
+    try:
+        folder_id = int(data.get("folder_id", 0))
+    except Exception:
+        db.close()
+        return {"success": False, "message": "Please select a valid folder."}
 
     try:
         chunk_index = int(data.get("chunk_index", 0))
@@ -2119,6 +2225,14 @@ def upload_shared_sales_file_chunk(data: dict):
     if not upload_id or not filename:
         db.close()
         return {"success": False, "message": "Missing upload id or file name."}
+
+    folder = db.query(SharedSalesFolder).filter(
+        SharedSalesFolder.id == folder_id
+    ).first()
+
+    if not folder:
+        db.close()
+        return {"success": False, "message": "Please create or select a folder before uploading."}
 
     if chunk_index < 0 or total_chunks <= 0 or chunk_index >= total_chunks:
         db.close()
@@ -2150,10 +2264,11 @@ def upload_shared_sales_file_chunk(data: dict):
 
     root_dir = Path("static") / "uploads" / "shared_sales_files"
     tmp_dir = root_dir / "_chunks" / safe_upload_id
+    final_dir = root_dir / f"folder_{folder.id}"
 
     try:
         tmp_dir.mkdir(parents=True, exist_ok=True)
-        root_dir.mkdir(parents=True, exist_ok=True)
+        final_dir.mkdir(parents=True, exist_ok=True)
         (tmp_dir / f"{chunk_index:06d}.part").write_bytes(chunk_bytes)
 
         if chunk_index < total_chunks - 1:
@@ -2173,7 +2288,7 @@ def upload_shared_sales_file_chunk(data: dict):
             return {"success": False, "message": "Missing upload chunks."}
 
         final_name = datetime.now().strftime("%Y%m%d%H%M%S") + "_" + uuid.uuid4().hex[:10] + extension
-        final_path = root_dir / final_name
+        final_path = final_dir / final_name
 
         with final_path.open("wb") as output_file:
             for index in range(total_chunks):
@@ -2182,6 +2297,7 @@ def upload_shared_sales_file_chunk(data: dict):
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
         shared_file = SharedSalesFile(
+            folder_id=folder.id,
             original_name=filename[:255],
             file_path="/" + str(final_path).replace("\\", "/"),
             file_type=get_shared_file_type(filename),

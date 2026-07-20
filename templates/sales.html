@@ -1125,6 +1125,21 @@
         .shared-file-name { color: #111827; font-size: 14px; font-weight: 900; word-break: break-word; }
         .shared-file-meta { color: #6b7280; font-size: 12px; font-weight: 700; line-height: 1.5; margin-top: 4px; }
         .shared-file-download { flex: 0 0 auto; border: 1px solid #c7d2fe; background: #eef2ff; color: #3730a3; border-radius: 10px; padding: 8px 11px; font-size: 12px; font-weight: 900; text-decoration: none; }
+        details.shared-files-card > summary { list-style: none; cursor: pointer; }
+        details.shared-files-card > summary::-webkit-details-marker { display: none; }
+        .shared-files-summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .shared-files-arrow { color: #4f46e5; font-size: 18px; font-weight: 900; transition: transform 0.18s ease; }
+        details.shared-files-card[open] .shared-files-arrow { transform: rotate(90deg); }
+        .shared-files-content { margin-top: 16px; }
+        .shared-folder-create-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin-bottom: 12px; }
+        .shared-folder-create-row input, .shared-file-upload-box select { width: 100%; border: 1px solid #c7d2fe; border-radius: 10px; padding: 10px 12px; font: inherit; }
+        .shared-folder-create-row button, .shared-folder-back { border: none; background: #4f46e5; color: #ffffff; border-radius: 10px; padding: 10px 13px; font-weight: 900; cursor: pointer; }
+        .shared-folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; margin-top: 14px; }
+        .shared-folder-card { border: 1px solid #c7d2fe; background: #ffffff; border-radius: 13px; padding: 15px; cursor: pointer; text-align: left; }
+        .shared-folder-card:hover { background: #eef2ff; transform: translateY(-1px); }
+        .shared-folder-name { color: #312e81; font-size: 14px; font-weight: 900; word-break: break-word; }
+        .shared-folder-count { color: #6b7280; font-size: 12px; font-weight: 800; margin-top: 6px; }
+        .shared-folder-view-head { display: flex; align-items: center; gap: 10px; margin-top: 14px; color: #312e81; font-weight: 900; }
 
         @media (max-width: 720px) {
             .sales-page { padding: 18px; }
@@ -1241,29 +1256,39 @@
         </div>
     </div>
 
-    <section id="sharedFilesSection" class="summary-card shared-files-card">
-        <div class="shared-files-header">
+    <details id="sharedFilesSection" class="summary-card shared-files-card">
+        <summary class="shared-files-summary">
             <div>
                 <div class="shared-files-title">Shared Files</div>
                 <div class="shared-files-subtitle">
-                    Shared workspace for all sales users. Upload and download product images, PDF, Word, Excel, PowerPoint, ZIP and video files.
+                    Create your own folders, then upload and download files inside each folder.
                 </div>
             </div>
-        </div>
+            <span class="shared-files-arrow">▶</span>
+        </summary>
 
-        <div class="shared-file-upload-box">
+        <div class="shared-files-content">
+            <div class="shared-folder-create-row">
+                <input id="newSharedFolderName" type="text" placeholder="New folder name, e.g. MARVIN Project">
+                <button type="button" onclick="createSharedSalesFolder()">New Folder</button>
+            </div>
+
+            <div class="shared-file-upload-box">
+                <select id="sharedFileFolder"></select>
+                <div style="height:10px"></div>
             <input id="sharedFileInput" type="file"
                 accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.zip,.rar,.mp4,.webm,.mov,.m4v"
                 onchange="uploadSharedSalesFile(this)">
-            <div id="sharedFileUploadStatus" class="shared-file-upload-status">Select a file to share with the sales team.</div>
-        </div>
+                <div id="sharedFileUploadStatus" class="shared-file-upload-status">Choose a folder, then select a file to upload.</div>
+            </div>
 
-        <div class="shared-file-toolbar">
+            <div class="shared-file-toolbar">
             <input id="sharedFileSearch" type="text" placeholder="Search shared files..." oninput="renderSharedSalesFiles()">
-        </div>
+            </div>
 
-        <div id="sharedFileList" class="shared-file-list"></div>
-    </section>
+            <div id="sharedFileList" class="shared-file-list"></div>
+        </div>
+    </details>
 
     <div class="summary-card">
         <div class="summary-title">Sales Order Board</div>
@@ -1423,6 +1448,8 @@ const role = localStorage.getItem("role");
 
 let allSalesCustomerGroups = [];
 let sharedSalesFilesCache = [];
+let sharedSalesFoldersCache = [];
+let activeSharedFolderId = null;
 
 document.getElementById("salesName").innerText = salesUsername || "Unknown";
 
@@ -1461,7 +1488,12 @@ async function loadSharedSalesFiles() {
     const list = document.getElementById("sharedFileList");
 
     try {
-        const response = await fetch("/shared-sales-files/" + encodeURIComponent(salesUsername));
+        let url = "/shared-sales-files/" + encodeURIComponent(salesUsername);
+        if (activeSharedFolderId !== null) {
+            url += "?folder_id=" + encodeURIComponent(activeSharedFolderId);
+        }
+
+        const response = await fetch(url);
         const data = await response.json();
 
         if (!response.ok || !data?.success) {
@@ -1469,10 +1501,35 @@ async function loadSharedSalesFiles() {
         }
 
         sharedSalesFilesCache = Array.isArray(data.files) ? data.files : [];
+        sharedSalesFoldersCache = Array.isArray(data.folders) ? data.folders : [];
+
+        if (activeSharedFolderId !== null && !sharedSalesFoldersCache.some(folder => Number(folder.id) === Number(activeSharedFolderId))) {
+            activeSharedFolderId = null;
+        }
+
+        renderSharedFolderSelect();
         renderSharedSalesFiles();
     } catch (error) {
         console.error("Load shared files error:", error);
         if (list) list.innerHTML = `<div class="pi-empty">Failed to load shared files.</div>`;
+    }
+}
+
+
+function renderSharedFolderSelect() {
+    const select = document.getElementById("sharedFileFolder");
+    if (!select) return;
+
+    const selectedId = activeSharedFolderId !== null ? Number(activeSharedFolderId) : Number(select.value || 0);
+    const uploadFolders = sharedSalesFoldersCache.filter(folder => Number(folder.id) > 0);
+
+    select.innerHTML = uploadFolders.length ? `
+        <option value="">Choose upload folder...</option>
+        ${uploadFolders.map(folder => `<option value="${folder.id}">${escapeHtml(folder.name)}</option>`).join("")}
+    ` : `<option value="">Create a folder first...</option>`;
+
+    if (selectedId > 0 && uploadFolders.some(folder => Number(folder.id) === selectedId)) {
+        select.value = String(selectedId);
     }
 }
 
@@ -1482,14 +1539,83 @@ function renderSharedSalesFiles() {
     const keyword = String(document.getElementById("sharedFileSearch")?.value || "").trim().toLowerCase();
     if (!list) return;
 
+    if (activeSharedFolderId === null) {
+        list.innerHTML = sharedSalesFoldersCache.length ? `
+            <div class="shared-folder-grid">
+                ${sharedSalesFoldersCache.map(renderSharedFolderCard).join("")}
+            </div>
+        ` : `<div class="pi-empty">No folders yet. Create your first folder above.</div>`;
+        return;
+    }
+
     const files = sharedSalesFilesCache.filter(file => {
         const searchable = [file.original_name, file.file_type, file.uploaded_by, file.uploaded_at].join(" ").toLowerCase();
         return !keyword || searchable.includes(keyword);
     });
 
-    list.innerHTML = files.length ? files.map(renderSharedSalesFile).join("") : `
-        <div class="pi-empty">${keyword ? "No matching files." : "No shared files yet."}</div>
+    const activeFolder = sharedSalesFoldersCache.find(folder => Number(folder.id) === Number(activeSharedFolderId));
+    list.innerHTML = `
+        <div class="shared-folder-view-head">
+            <button class="shared-folder-back" type="button" onclick="backToSharedFolders()">← Folders</button>
+            <span>${escapeHtml(activeFolder?.name || "Folder")}</span>
+        </div>
+        ${files.length ? files.map(renderSharedSalesFile).join("") : `
+            <div class="pi-empty">${keyword ? "No matching files." : "This folder is empty."}</div>
+        `}
     `;
+}
+
+
+function renderSharedFolderCard(folder) {
+    return `
+        <button type="button" class="shared-folder-card" onclick="openSharedFolder(${folder.id})">
+            <div class="shared-folder-name">📁 ${escapeHtml(folder.name || "Folder")}</div>
+            <div class="shared-folder-count">${Number(folder.file_count || 0)} file(s)</div>
+        </button>
+    `;
+}
+
+
+async function openSharedFolder(folderId) {
+    activeSharedFolderId = Number(folderId);
+    const search = document.getElementById("sharedFileSearch");
+    if (search) search.value = "";
+    await loadSharedSalesFiles();
+}
+
+
+async function backToSharedFolders() {
+    activeSharedFolderId = null;
+    const search = document.getElementById("sharedFileSearch");
+    if (search) search.value = "";
+    await loadSharedSalesFiles();
+}
+
+
+async function createSharedSalesFolder() {
+    const input = document.getElementById("newSharedFolderName");
+    const name = String(input?.value || "").trim();
+    if (!name) {
+        showCenterMessage("Please enter a folder name.");
+        return;
+    }
+
+    try {
+        const response = await fetch("/shared-sales-folders/create", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: salesUsername, name: name })
+        });
+        const data = await response.json();
+        if (!response.ok || !data?.success) throw new Error(data?.message || "Folder creation failed.");
+
+        activeSharedFolderId = Number(data.folder.id);
+        if (input) input.value = "";
+        showCenterMessage("Folder created.");
+        await loadSharedSalesFiles();
+    } catch (error) {
+        showCenterMessage(error.message || "Folder creation failed.");
+    }
 }
 
 
@@ -1527,7 +1653,14 @@ function isAllowedSharedSalesFile(file) {
 async function uploadSharedSalesFile(input) {
     const file = input?.files?.[0];
     const statusBox = document.getElementById("sharedFileUploadStatus");
+    const folderId = Number(document.getElementById("sharedFileFolder")?.value || 0);
     if (!file) return;
+
+    if (!folderId) {
+        showCenterMessage("Please create or choose a folder first.");
+        input.value = "";
+        return;
+    }
 
     if (!isAllowedSharedSalesFile(file)) {
         showCenterMessage("Unsupported file type.");
@@ -1545,11 +1678,12 @@ async function uploadSharedSalesFile(input) {
 
     try {
         if (statusBox) statusBox.innerText = "Uploading 0%...";
-        await uploadSharedFileInChunks(file, percent => {
+        await uploadSharedFileInChunks(file, folderId, percent => {
             if (statusBox) statusBox.innerText = "Uploading " + percent + "%...";
         });
         showCenterMessage("Shared file uploaded.");
         input.value = "";
+        activeSharedFolderId = folderId;
         await loadSharedSalesFiles();
     } catch (error) {
         console.error("Shared file upload error:", error);
@@ -1560,7 +1694,7 @@ async function uploadSharedSalesFile(input) {
 }
 
 
-async function uploadSharedFileInChunks(file, onProgress) {
+async function uploadSharedFileInChunks(file, folderId, onProgress) {
     const chunkSize = 384 * 1024;
     const totalChunks = Math.max(1, Math.ceil(file.size / chunkSize));
     const uploadId = Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 12);
@@ -1574,6 +1708,7 @@ async function uploadSharedFileInChunks(file, onProgress) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 username: salesUsername,
+                folder_id: folderId,
                 upload_id: uploadId,
                 filename: file.name,
                 chunk_index: chunkIndex,
@@ -2678,7 +2813,10 @@ function scrollToDashboard() {
 
 function scrollToSharedFiles() {
     const section = document.getElementById("sharedFilesSection");
-    if (section) section.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (section) {
+        section.open = true;
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
 }
 
 

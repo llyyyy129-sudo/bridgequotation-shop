@@ -103,9 +103,19 @@ class SharedSalesFile(Base):
     __tablename__ = "shared_sales_files"
 
     id = Column(Integer, primary_key=True, index=True)
+    folder_id = Column(Integer, index=True, default=0)
     original_name = Column(String, default="")
     file_path = Column(String, default="")
     file_type = Column(String, default="")
     file_size = Column(Integer, default=0)
     uploaded_by = Column(String, default="")
     uploaded_at = Column(String, default="")
+
+
+class SharedSalesFolder(Base):
+    __tablename__ = "shared_sales_folders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    created_by = Column(String, default="")
+    created_at = Column(String, default="")
