@@ -1408,12 +1408,9 @@ async function loadAdminSharedFiles() {
     const list = document.getElementById("adminSharedFileList");
 
     try {
-        let url = "/shared-sales-files/" + encodeURIComponent(currentUser);
-        if (activeAdminSharedFolderId !== null) {
-            url += "?folder_id=" + encodeURIComponent(activeAdminSharedFolderId);
-        }
-
-        const response = await fetch(url);
+        const response = await fetch(
+            "/shared-sales-files/" + encodeURIComponent(currentUser)
+        );
         const data = await response.json();
 
         if (!response.ok || !data?.success) {
@@ -1469,6 +1466,9 @@ function renderAdminSharedFiles() {
     }
 
     const files = adminSharedFilesCache.filter(file => {
+        if (Number(file.folder_id || 0) !== Number(activeAdminSharedFolderId)) {
+            return false;
+        }
         const searchable = [file.original_name, file.file_type, file.uploaded_by, file.uploaded_at].join(" ").toLowerCase();
         return !keyword || searchable.includes(keyword);
     });
@@ -1496,19 +1496,21 @@ function renderAdminSharedFolderCard(folder) {
 }
 
 
-async function openAdminSharedFolder(folderId) {
+function openAdminSharedFolder(folderId) {
     activeAdminSharedFolderId = Number(folderId);
     const search = document.getElementById("adminSharedFileSearch");
     if (search) search.value = "";
-    await loadAdminSharedFiles();
+    renderAdminSharedFolderSelect();
+    renderAdminSharedFiles();
 }
 
 
-async function backToAdminSharedFolders() {
+function backToAdminSharedFolders() {
     activeAdminSharedFolderId = null;
     const search = document.getElementById("adminSharedFileSearch");
     if (search) search.value = "";
-    await loadAdminSharedFiles();
+    renderAdminSharedFolderSelect();
+    renderAdminSharedFiles();
 }
 
 

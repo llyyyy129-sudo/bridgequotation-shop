@@ -1488,12 +1488,9 @@ async function loadSharedSalesFiles() {
     const list = document.getElementById("sharedFileList");
 
     try {
-        let url = "/shared-sales-files/" + encodeURIComponent(salesUsername);
-        if (activeSharedFolderId !== null) {
-            url += "?folder_id=" + encodeURIComponent(activeSharedFolderId);
-        }
-
-        const response = await fetch(url);
+        const response = await fetch(
+            "/shared-sales-files/" + encodeURIComponent(salesUsername)
+        );
         const data = await response.json();
 
         if (!response.ok || !data?.success) {
@@ -1549,6 +1546,9 @@ function renderSharedSalesFiles() {
     }
 
     const files = sharedSalesFilesCache.filter(file => {
+        if (Number(file.folder_id || 0) !== Number(activeSharedFolderId)) {
+            return false;
+        }
         const searchable = [file.original_name, file.file_type, file.uploaded_by, file.uploaded_at].join(" ").toLowerCase();
         return !keyword || searchable.includes(keyword);
     });
@@ -1576,19 +1576,21 @@ function renderSharedFolderCard(folder) {
 }
 
 
-async function openSharedFolder(folderId) {
+function openSharedFolder(folderId) {
     activeSharedFolderId = Number(folderId);
     const search = document.getElementById("sharedFileSearch");
     if (search) search.value = "";
-    await loadSharedSalesFiles();
+    renderSharedFolderSelect();
+    renderSharedSalesFiles();
 }
 
 
-async function backToSharedFolders() {
+function backToSharedFolders() {
     activeSharedFolderId = null;
     const search = document.getElementById("sharedFileSearch");
     if (search) search.value = "";
-    await loadSharedSalesFiles();
+    renderSharedFolderSelect();
+    renderSharedSalesFiles();
 }
 
 
