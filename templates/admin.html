@@ -766,6 +766,25 @@
             gap: 16px;
         }
 
+        .shared-files-panel { scroll-margin-top: 18px; }
+        .shared-files-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+        .shared-files-title { color: #1f3c88; font-size: 22px; font-weight: 900; margin: 0; }
+        .shared-files-copy { color: #6b7280; font-size: 13px; font-weight: 700; line-height: 1.55; margin-top: 5px; }
+        .shared-file-upload-box { margin-top: 15px; padding: 14px; border: 1px dashed #93c5fd; border-radius: 14px; background: #f8fbff; }
+        .shared-file-upload-box input[type="file"] { width: 100%; font-size: 13px; font-weight: 700; }
+        .shared-file-upload-status { margin-top: 8px; color: #1d4ed8; font-size: 12px; font-weight: 800; }
+        .shared-file-toolbar { margin-top: 14px; }
+        .shared-file-toolbar input { width: 100%; border: 1px solid #bfdbfe; border-radius: 11px; padding: 10px 12px; font: inherit; }
+        .shared-file-list { display: grid; gap: 9px; margin-top: 14px; }
+        .shared-file-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 12px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; }
+        .shared-file-main { min-width: 0; }
+        .shared-file-name { color: #111827; font-size: 14px; font-weight: 900; word-break: break-word; }
+        .shared-file-meta { margin-top: 4px; color: #64748b; font-size: 12px; font-weight: 700; line-height: 1.5; }
+        .shared-file-actions { display: flex; gap: 8px; flex: 0 0 auto; flex-wrap: wrap; }
+        .shared-file-download, .shared-file-delete { border-radius: 10px; padding: 8px 10px; font-size: 12px; font-weight: 900; text-decoration: none; cursor: pointer; }
+        .shared-file-download { border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; }
+        .shared-file-delete { border: 1px solid #fecaca; background: #fff1f2; color: #be123c; }
+
         .admin-product-card {
             border: 1px solid #e5e7eb;
             border-radius: 18px;
@@ -1024,6 +1043,7 @@
 
         <div class="nav-actions">
             <span class="nav-pill">Current Admin: <b id="adminName"></b></span>
+            <button class="soft-btn" onclick="scrollToSharedFiles()">Shared Files</button>
             <button class="soft-btn" onclick="goProducts()">Products</button>
             <button class="soft-btn" onclick="changeMyPassword()">Change My Password</button>
             <button class="dark-btn" onclick="logout()">Logout</button>
@@ -1055,6 +1075,30 @@
             </div>
         </div>
     </div>
+
+    <section id="sharedFilesSection" class="panel shared-files-panel">
+        <div class="shared-files-header">
+            <div>
+                <h2 class="shared-files-title">Shared Files</h2>
+                <div class="shared-files-copy">
+                    Shared file library for the sales team. Orange can upload, download and remove files here.
+                </div>
+            </div>
+        </div>
+
+        <div class="shared-file-upload-box">
+            <input id="adminSharedFileInput" type="file"
+                accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.zip,.rar,.mp4,.webm,.mov,.m4v"
+                onchange="uploadAdminSharedFile(this)">
+            <div id="adminSharedFileUploadStatus" class="shared-file-upload-status">Select a file to share with all sales users.</div>
+        </div>
+
+        <div class="shared-file-toolbar">
+            <input id="adminSharedFileSearch" type="text" placeholder="Search shared files..." oninput="renderAdminSharedFiles()">
+        </div>
+
+        <div id="adminSharedFileList" class="shared-file-list"></div>
+    </section>
 
     <div class="summary-grid">
         <div class="summary-card card-blue">
@@ -1306,6 +1350,7 @@ let allProductsCache = [];
 let filteredProductsCache = [];
 let productCurrentPage = 1;
 let productPageSize = 20;
+let adminSharedFilesCache = [];
 
 document.getElementById("adminName").innerText = currentUser || "Unknown";
 
@@ -1328,6 +1373,175 @@ async function loadAdminUsers() {
     await loadSalesOptions();
     await loadUserGroups();
     await loadAdminProducts();
+    await loadAdminSharedFiles();
+}
+
+
+async function loadAdminSharedFiles() {
+    const list = document.getElementById("adminSharedFileList");
+
+    try {
+        const response = await fetch("/shared-sales-files/" + encodeURIComponent(currentUser));
+        const data = await response.json();
+
+        if (!response.ok || !data?.success) {
+            throw new Error(data?.message || "Failed to load shared files.");
+        }
+
+        adminSharedFilesCache = Array.isArray(data.files) ? data.files : [];
+        renderAdminSharedFiles();
+    } catch (error) {
+        console.error("Load shared files error:", error);
+        if (list) list.innerHTML = `<div class="empty-message">Failed to load shared files.</div>`;
+    }
+}
+
+
+function renderAdminSharedFiles() {
+    const list = document.getElementById("adminSharedFileList");
+    const keyword = String(document.getElementById("adminSharedFileSearch")?.value || "").trim().toLowerCase();
+    if (!list) return;
+
+    const files = adminSharedFilesCache.filter(file => {
+        const searchable = [file.original_name, file.file_type, file.uploaded_by, file.uploaded_at].join(" ").toLowerCase();
+        return !keyword || searchable.includes(keyword);
+    });
+
+    list.innerHTML = files.length ? files.map(renderAdminSharedFile).join("") : `
+        <div class="empty-message">${keyword ? "No matching files." : "No shared files yet."}</div>
+    `;
+}
+
+
+function renderAdminSharedFile(file) {
+    return `
+        <div class="shared-file-item">
+            <div class="shared-file-main">
+                <div class="shared-file-name">${escapeHtml(file.original_name || "File")}</div>
+                <div class="shared-file-meta">
+                    ${escapeHtml(file.file_type || "Document")} · ${formatAdminSharedFileSize(file.file_size)}<br>
+                    Uploaded by ${escapeHtml(file.uploaded_by || "")}${file.uploaded_at ? " · " + escapeHtml(file.uploaded_at) : ""}
+                </div>
+            </div>
+            <div class="shared-file-actions">
+                <a class="shared-file-download" href="${escapeAttr(file.file_url || file.file_path || "")}" target="_blank" download>Download</a>
+                <button class="shared-file-delete" onclick="deleteAdminSharedFile(${file.id})">Delete</button>
+            </div>
+        </div>
+    `;
+}
+
+
+function formatAdminSharedFileSize(size) {
+    const bytes = Number(size || 0);
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+
+function isAllowedAdminSharedFile(file) {
+    const name = String(file?.name || "").toLowerCase();
+    const extension = name.includes(".") ? name.substring(name.lastIndexOf(".")) : "";
+    return [".jpg", ".jpeg", ".png", ".webp", ".gif", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".csv", ".txt", ".zip", ".rar", ".mp4", ".webm", ".mov", ".m4v"].includes(extension);
+}
+
+
+async function uploadAdminSharedFile(input) {
+    const file = input?.files?.[0];
+    const statusBox = document.getElementById("adminSharedFileUploadStatus");
+    if (!file) return;
+
+    if (!isAllowedAdminSharedFile(file)) {
+        showCenterMessage("Unsupported file type.");
+        input.value = "";
+        if (statusBox) statusBox.innerText = "Unsupported file type";
+        return;
+    }
+
+    if (file.size > 100 * 1024 * 1024) {
+        showCenterMessage("File is too large. Please keep one file under 100MB.");
+        input.value = "";
+        if (statusBox) statusBox.innerText = "File too large";
+        return;
+    }
+
+    try {
+        if (statusBox) statusBox.innerText = "Uploading 0%...";
+        await uploadAdminSharedFileInChunks(file, percent => {
+            if (statusBox) statusBox.innerText = "Uploading " + percent + "%...";
+        });
+        showCenterMessage("Shared file uploaded.");
+        input.value = "";
+        await loadAdminSharedFiles();
+    } catch (error) {
+        console.error("Shared file upload error:", error);
+        showCenterMessage(error.message || "Upload failed.");
+        if (statusBox) statusBox.innerText = "Upload failed";
+        input.value = "";
+    }
+}
+
+
+async function uploadAdminSharedFileInChunks(file, onProgress) {
+    const chunkSize = 384 * 1024;
+    const totalChunks = Math.max(1, Math.ceil(file.size / chunkSize));
+    const uploadId = Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 12);
+
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const start = chunkIndex * chunkSize;
+        const chunk = file.slice(start, Math.min(file.size, start + chunkSize));
+        const chunkData = await readAdminSharedFileAsDataURL(chunk);
+        const response = await fetch("/shared-sales-files/upload-chunk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                username: currentUser,
+                upload_id: uploadId,
+                filename: file.name,
+                chunk_index: chunkIndex,
+                total_chunks: totalChunks,
+                chunk_data: chunkData
+            })
+        });
+        const data = await response.json();
+        if (!response.ok || !data?.success) throw new Error(data?.message || "Upload failed.");
+        if (onProgress) onProgress(Math.round(((chunkIndex + 1) / totalChunks) * 100));
+    }
+}
+
+
+function readAdminSharedFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(reader.error || new Error("File read failed."));
+        reader.readAsDataURL(file);
+    });
+}
+
+
+async function deleteAdminSharedFile(fileId) {
+    const ok = await showCenterConfirm("Delete this shared file? This cannot be undone.");
+    if (!ok) return;
+
+    try {
+        const response = await fetch("/shared-sales-files/" + fileId + "/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: currentUser })
+        });
+        const data = await response.json();
+        if (!response.ok || !data?.success) {
+            showCenterMessage(data?.message || "Delete failed.");
+            return;
+        }
+        showCenterMessage("Shared file deleted.");
+        await loadAdminSharedFiles();
+    } catch (error) {
+        console.error("Delete shared file error:", error);
+        showCenterMessage("Delete failed. Please check server logs.");
+    }
 }
 
 
@@ -2762,6 +2976,11 @@ function escapeForJs(value) {
 
 function goProducts() {
     window.location.href = "products.html";
+}
+
+function scrollToSharedFiles() {
+    const section = document.getElementById("sharedFilesSection");
+    if (section) section.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function logout() {

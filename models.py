@@ -97,3 +97,15 @@ class PIHistory(Base):
     created_by = Column(String, default="")
     created_at = Column(String, default="")
     pdf_path = Column(String, default="")
+
+
+class SharedSalesFile(Base):
+    __tablename__ = "shared_sales_files"
+
+    id = Column(Integer, primary_key=True, index=True)
+    original_name = Column(String, default="")
+    file_path = Column(String, default="")
+    file_type = Column(String, default="")
+    file_size = Column(Integer, default=0)
+    uploaded_by = Column(String, default="")
+    uploaded_at = Column(String, default="")

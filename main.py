@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine, SessionLocal
-from models import Product, User, Order, PricingSetting, ProformaInvoice, PIHistory, Base
+from models import Product, User, Order, PricingSetting, ProformaInvoice, PIHistory, SharedSalesFile, Base
 
 from reportlab.lib.pagesizes import A4
 
@@ -1884,6 +1884,64 @@ def safe_upload_extension(filename, media_type):
     return suffix
 
 
+def safe_shared_file_extension(filename):
+    suffix = Path(str(filename or "")).suffix.lower()
+    allowed_extensions = {
+        ".jpg", ".jpeg", ".png", ".webp", ".gif",
+        ".pdf", ".doc", ".docx", ".xls", ".xlsx",
+        ".ppt", ".pptx", ".csv", ".txt", ".zip", ".rar",
+        ".mp4", ".webm", ".mov", ".m4v"
+    }
+    return suffix if suffix in allowed_extensions else None
+
+
+def get_shared_file_type(filename):
+    suffix = Path(str(filename or "")).suffix.lower()
+
+    if suffix in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+        return "Image"
+    if suffix in {".mp4", ".webm", ".mov", ".m4v"}:
+        return "Video"
+    if suffix == ".pdf":
+        return "PDF"
+    if suffix in {".doc", ".docx"}:
+        return "Word"
+    if suffix in {".xls", ".xlsx", ".csv"}:
+        return "Excel"
+    if suffix in {".ppt", ".pptx"}:
+        return "PowerPoint"
+    if suffix in {".zip", ".rar"}:
+        return "Archive"
+    return "Document"
+
+
+def serialize_shared_file(shared_file):
+    return {
+        "id": shared_file.id,
+        "original_name": shared_file.original_name or "",
+        "file_path": shared_file.file_path or "",
+        "file_url": shared_file.file_path or "",
+        "file_type": shared_file.file_type or "Document",
+        "file_size": int(shared_file.file_size or 0),
+        "uploaded_by": shared_file.uploaded_by or "",
+        "uploaded_at": shared_file.uploaded_at or ""
+    }
+
+
+def can_access_shared_files(db, username, admin_only=False):
+    user = db.query(User).filter(
+        User.username == str(username or "").strip()
+    ).first()
+
+    if not user:
+        return False
+
+    if user.role == "admin":
+        return True
+
+    return not admin_only and user.role == "sales"
+
+
 @app.post("/admin/product-media-upload-chunk")
 def upload_product_media_chunk(data: dict):
     upload_id = str(data.get("upload_id", "") or "").strip()
@@ -2014,6 +2072,170 @@ def upload_product_media_chunk(data: dict):
             "success": False,
             "message": "Upload failed: " + str(e)
         }
+
+
+# =========================
+# SHARED SALES FILE LIBRARY
+# =========================
+
+@app.get("/shared-sales-files/{username}")
+def get_shared_sales_files(username: str):
+    db = SessionLocal()
+
+    if not can_access_shared_files(db, username):
+        db.close()
+        return {"success": False, "message": "Only sales users and admin can access shared files."}
+
+    files = db.query(SharedSalesFile).order_by(
+        SharedSalesFile.id.desc()
+    ).all()
+
+    result = {
+        "success": True,
+        "files": [serialize_shared_file(shared_file) for shared_file in files]
+    }
+    db.close()
+    return result
+
+
+@app.post("/shared-sales-files/upload-chunk")
+def upload_shared_sales_file_chunk(data: dict):
+    db = SessionLocal()
+    username = str(data.get("username", "") or "").strip()
+    upload_id = str(data.get("upload_id", "") or "").strip()
+    filename = Path(str(data.get("filename", "") or "")).name.strip()
+
+    try:
+        chunk_index = int(data.get("chunk_index", 0))
+        total_chunks = int(data.get("total_chunks", 1))
+    except Exception:
+        db.close()
+        return {"success": False, "message": "Invalid chunk information."}
+
+    if not can_access_shared_files(db, username):
+        db.close()
+        return {"success": False, "message": "Only sales users and admin can upload shared files."}
+
+    if not upload_id or not filename:
+        db.close()
+        return {"success": False, "message": "Missing upload id or file name."}
+
+    if chunk_index < 0 or total_chunks <= 0 or chunk_index >= total_chunks:
+        db.close()
+        return {"success": False, "message": "Invalid chunk index."}
+
+    extension = safe_shared_file_extension(filename)
+
+    if not extension:
+        db.close()
+        return {
+            "success": False,
+            "message": "Unsupported file type. Upload images, PDF, Word, Excel, PowerPoint, ZIP, RAR, TXT, CSV or video files."
+        }
+
+    chunk_data = str(data.get("chunk_data", "") or "")
+    if "," in chunk_data:
+        chunk_data = chunk_data.split(",", 1)[1]
+
+    try:
+        chunk_bytes = base64.b64decode(chunk_data)
+    except Exception:
+        db.close()
+        return {"success": False, "message": "Invalid chunk data."}
+
+    safe_upload_id = re.sub(r"[^a-zA-Z0-9_-]", "", upload_id)[:80]
+    if not safe_upload_id:
+        db.close()
+        return {"success": False, "message": "Invalid upload id."}
+
+    root_dir = Path("static") / "uploads" / "shared_sales_files"
+    tmp_dir = root_dir / "_chunks" / safe_upload_id
+
+    try:
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        root_dir.mkdir(parents=True, exist_ok=True)
+        (tmp_dir / f"{chunk_index:06d}.part").write_bytes(chunk_bytes)
+
+        if chunk_index < total_chunks - 1:
+            db.close()
+            return {
+                "success": True,
+                "message": f"Chunk {chunk_index + 1}/{total_chunks} uploaded.",
+                "complete": False
+            }
+
+        missing_chunks = [
+            index for index in range(total_chunks)
+            if not (tmp_dir / f"{index:06d}.part").exists()
+        ]
+        if missing_chunks:
+            db.close()
+            return {"success": False, "message": "Missing upload chunks."}
+
+        final_name = datetime.now().strftime("%Y%m%d%H%M%S") + "_" + uuid.uuid4().hex[:10] + extension
+        final_path = root_dir / final_name
+
+        with final_path.open("wb") as output_file:
+            for index in range(total_chunks):
+                output_file.write((tmp_dir / f"{index:06d}.part").read_bytes())
+
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+        shared_file = SharedSalesFile(
+            original_name=filename[:255],
+            file_path="/" + str(final_path).replace("\\", "/"),
+            file_type=get_shared_file_type(filename),
+            file_size=final_path.stat().st_size,
+            uploaded_by=username,
+            uploaded_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        )
+        db.add(shared_file)
+        db.commit()
+
+        result = {
+            "success": True,
+            "message": "Shared file uploaded successfully.",
+            "complete": True,
+            "file": serialize_shared_file(shared_file)
+        }
+        db.close()
+        return result
+    except Exception as e:
+        db.rollback()
+        db.close()
+        return {"success": False, "message": "Upload failed: " + str(e)}
+
+
+@app.post("/shared-sales-files/{file_id}/delete")
+def delete_shared_sales_file(file_id: int, data: dict):
+    db = SessionLocal()
+    username = str(data.get("username", "") or "").strip()
+
+    if not can_access_shared_files(db, username, admin_only=True):
+        db.close()
+        return {"success": False, "message": "Only admin can delete shared files."}
+
+    shared_file = db.query(SharedSalesFile).filter(
+        SharedSalesFile.id == file_id
+    ).first()
+
+    if not shared_file:
+        db.close()
+        return {"success": False, "message": "Shared file not found."}
+
+    local_path = Path("." + str(shared_file.file_path or ""))
+
+    try:
+        if local_path.exists() and local_path.is_file():
+            local_path.unlink()
+        db.delete(shared_file)
+        db.commit()
+        db.close()
+        return {"success": True, "message": "Shared file deleted."}
+    except Exception as e:
+        db.rollback()
+        db.close()
+        return {"success": False, "message": "Delete failed: " + str(e)}
 
 
 # =========================
