@@ -1616,6 +1616,12 @@ function renderOrderCard(order) {
   const itemSummary = getItemSummary(orderItems, order.status);
   const statusInfo = getOrderStatusInfo(order);
   const productCount = orderItems.length;
+  const piState = getPIState(order);
+  const hasPIHistory = Boolean(
+    piState.has_pi ||
+    piState.current ||
+    (Array.isArray(piState.history) && piState.history.length > 0)
+  );
 
   return `
     <details class="my-order-details" id="order-${order.id}">
@@ -1660,12 +1666,14 @@ function renderOrderCard(order) {
               Details
             </span>
 
-            <button
-              class="delete-order-btn"
-              onclick="deleteOrder(event, ${order.id}, ${order.customer_order_no || order.id})"
-            >
-              Delete
-            </button>
+            ${hasPIHistory ? "" : `
+              <button
+                class="delete-order-btn"
+                onclick="deleteOrder(event, ${order.id}, ${order.customer_order_no || order.id})"
+              >
+                Delete
+              </button>
+            `}
           </div>
         </div>
       </summary>
@@ -1943,8 +1951,7 @@ function renderCustomerPIWorkflow(order) {
   const canRespond =
     current &&
     current.pdf_url &&
-    !statusLower.includes("received") &&
-    !statusLower.includes("back");
+    ["sent", "revised sent"].includes(statusLower);
 
   const viewButton = current && current.pdf_url ? `
     <button class="pi-btn secondary" onclick="openPI('${escapeForJs(current.pdf_url)}')">
@@ -2193,6 +2200,13 @@ function escapeAttr(value) {
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+function escapeForJs(value) {
+  return String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/"/g, "&quot;");
 }
 
 function goCart() {

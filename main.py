@@ -433,6 +433,16 @@ def get_latest_pi(db, order_id):
     ).order_by(ProformaInvoice.id.desc()).first()
 
 
+def pi_waiting_for_customer(pi):
+    if not pi:
+        return False
+
+    return str(pi.status or "").strip().lower() in {
+        "sent",
+        "revised sent"
+    }
+
+
 def serialize_pi(pi):
     if not pi:
         return None
@@ -645,8 +655,14 @@ def generate_pi_pdf_file(order, customer, sales_user, pi_no, version):
 
     header_data = [
         [
-            p(f"<b>S/C NO.:</b> {pi_no}", normal_style),
-            p(f"<b>DATE:</b> {datetime.now().strftime('%b %d, %Y')}", normal_style)
+            Paragraph(
+                f"<b>S/C NO.:</b> {escape_pdf_text(pi_no)}",
+                normal_style
+            ),
+            Paragraph(
+                f"<b>DATE:</b> {datetime.now().strftime('%b %d, %Y')}",
+                normal_style
+            )
         ]
     ]
 
@@ -726,7 +742,7 @@ def generate_pi_pdf_file(order, customer, sales_user, pi_no, version):
             p("Qty", small_center_style),
             p("Meas./ctn", small_center_style),
             p("Meas.", small_center_style),
-            p("Price<br/>FOB NINGBO", small_center_style),
+            Paragraph("Price<br/>FOB NINGBO", small_center_style),
             p("Amount", small_center_style)
         ]
     ]
@@ -2336,6 +2352,17 @@ def delete_customer_order(order_id: int, data: dict):
             "message": "You can only delete your own orders."
         }
 
+    existing_pi = db.query(ProformaInvoice).filter(
+        ProformaInvoice.order_id == order.id
+    ).first()
+
+    if existing_pi:
+        db.close()
+        return {
+            "success": False,
+            "message": "Orders with PI history cannot be deleted."
+        }
+
     db.delete(order)
     db.commit()
     db.close()
@@ -2359,7 +2386,7 @@ def sales_send_pi(order_id: int, data: dict = None):
 
     order = db.query(Order).filter(
         Order.id == order_id
-    ).first()
+    ).with_for_update().first()
 
     if not order:
         db.close()
@@ -2391,6 +2418,22 @@ def sales_send_pi(order_id: int, data: dict = None):
     next_version = 1
 
     if latest_pi:
+        latest_status = str(latest_pi.status or "").strip().lower()
+
+        if latest_status != "sent back":
+            db.close()
+
+            if latest_status == "received":
+                return {
+                    "success": False,
+                    "message": "The customer has already received this PI."
+                }
+
+            return {
+                "success": False,
+                "message": "Please wait for the customer to receive or send back the current PI."
+            }
+
         next_version = int(latest_pi.version or 1) + 1
 
     pi_no = f"PI-{datetime.now().strftime('%Y%m%d')}-{order.id:04d}"
@@ -2484,7 +2527,7 @@ def customer_receive_pi(order_id: int, data: dict):
 
     order = db.query(Order).filter(
         Order.id == order_id
-    ).first()
+    ).with_for_update().first()
 
     if not order:
         db.close()
@@ -2514,6 +2557,13 @@ def customer_receive_pi(order_id: int, data: dict):
         return {
             "success": False,
             "message": "This PI has already been received."
+        }
+
+    if not pi_waiting_for_customer(pi):
+        db.close()
+        return {
+            "success": False,
+            "message": "This PI is not waiting for customer confirmation."
         }
 
     pi.status = "Received"
@@ -2557,7 +2607,7 @@ def customer_send_back_pi(order_id: int, data: dict):
 
     order = db.query(Order).filter(
         Order.id == order_id
-    ).first()
+    ).with_for_update().first()
 
     if not order:
         db.close()
@@ -2587,6 +2637,13 @@ def customer_send_back_pi(order_id: int, data: dict):
         return {
             "success": False,
             "message": "Received PI cannot be sent back."
+        }
+
+    if not pi_waiting_for_customer(pi):
+        db.close()
+        return {
+            "success": False,
+            "message": "This PI has already been sent back or is no longer awaiting a response."
         }
 
     pi.status = "Sent Back"

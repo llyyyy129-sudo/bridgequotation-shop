@@ -2317,7 +2317,8 @@ function renderPIWorkflow(order, statusInfo) {
         statusClass = getPIStatusClass(statusLabel);
     }
 
-    const canSend = !current || String(current.status || "").toLowerCase().includes("back");
+    const currentStatus = String(current?.status || "").trim().toLowerCase();
+    const canSend = !current || currentStatus === "sent back";
     const sendButtonText = current ? "Send Revised PI" : "Send PI";
 
     const viewButton = current && current.pdf_url ? `
