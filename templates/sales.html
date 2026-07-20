@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -1231,7 +1231,7 @@
 
             <div class="hero-sales-line">
                 Current Sales: <b id="salesName"></b>
-                <span class="dot-separator">鈥?/span>
+                <span class="dot-separator">•</span>
                 Email: <b id="salesEmail">Loading...</b>
             </div>
         </div>
@@ -1270,7 +1270,7 @@
                     Create your own folders, then upload and download files inside each folder.
                 </div>
             </div>
-            <span class="shared-files-arrow">鈻?/span>
+            <span class="shared-files-arrow">▶</span>
         </summary>
 
         <div class="shared-files-content">
@@ -1562,10 +1562,10 @@ function renderSharedFolderCard(folder, keyword) {
             <summary>
                 <div class="shared-folder-card-head">
                     <div>
-                        <div class="shared-folder-name">馃搧 ${escapeHtml(folder.name || "Folder")}</div>
+                        <div class="shared-folder-name">📁 ${escapeHtml(folder.name || "Folder")}</div>
                         <div class="shared-folder-count">${Number(folder.file_count || 0)} file(s)</div>
                     </div>
-                    <span class="shared-folder-card-arrow">鈻?/span>
+                    <span class="shared-folder-card-arrow">▶</span>
                 </div>
             </summary>
             <div class="shared-folder-card-content">
@@ -1627,8 +1627,8 @@ function renderSharedSalesFile(file) {
             <div class="shared-file-main">
                 <div class="shared-file-name">${escapeHtml(file.original_name || "File")}</div>
                 <div class="shared-file-meta">
-                    ${escapeHtml(file.file_type || "Document")} 路 ${formatSharedFileSize(file.file_size)}<br>
-                    Uploaded by ${escapeHtml(file.uploaded_by || "")}${file.uploaded_at ? " 路 " + escapeHtml(file.uploaded_at) : ""}
+                    ${escapeHtml(file.file_type || "Document")} · ${formatSharedFileSize(file.file_size)}<br>
+                    Uploaded by ${escapeHtml(file.uploaded_by || "")}${file.uploaded_at ? " · " + escapeHtml(file.uploaded_at) : ""}
                 </div>
             </div>
             <a class="shared-file-download" href="${escapeHtml(file.file_url || file.file_path || "")}" target="_blank" download>Download</a>
@@ -2057,7 +2057,7 @@ function renderCustomerGroups(customerGroups) {
                 <summary>
                     <span class="customer-title-block">
                         <span class="customer-main-row">
-                            馃懁
+                            👤
                             <span class="customer-name-text">
                                 ${escapeHtml(group.customerName)}
                             </span>
@@ -2068,7 +2068,7 @@ function renderCustomerGroups(customerGroups) {
                         ${renderCustomerMeta(group)}
                         ${renderCustomerStats(group)}
                     </span>
-                    <span class="summary-arrow">鈻?/span>
+                    <span class="summary-arrow">▶</span>
                 </summary>
 
                 <div class="customer-content">
@@ -2228,7 +2228,7 @@ function renderOrderSection(order) {
                     </div>
                 </span>
 
-                <span class="summary-arrow">鈻?/span>
+                <span class="summary-arrow">▶</span>
             </summary>
 
             <div class="order-content">
@@ -2330,7 +2330,7 @@ function renderProductStatusSection(order, type, title, productItems, openByDefa
                     <span class="status-dot ${dotClass}"></span>
                     ${title} (${productItems.length})
                 </span>
-                <span class="summary-arrow">鈻?/span>
+                <span class="summary-arrow">▶</span>
             </summary>
 
             <div class="product-status-content">
@@ -2689,7 +2689,7 @@ function renderPIHistory(history) {
             <details class="pi-history-details">
                 <summary>
                     <span>PI History (0)</span>
-                    <span class="summary-arrow">鈻?/span>
+                    <span class="summary-arrow">▶</span>
                 </summary>
                 <div class="pi-history-list">
                     <div class="pi-empty">No PI history yet.</div>
@@ -2702,7 +2702,7 @@ function renderPIHistory(history) {
         <details class="pi-history-details">
             <summary>
                 <span>PI History (${history.length})</span>
-                <span class="summary-arrow">鈻?/span>
+                <span class="summary-arrow">▶</span>
             </summary>
 
             <div class="pi-history-list">
@@ -2917,4 +2917,3 @@ loadSharedSalesFiles();
 
 </body>
 </html>
-
