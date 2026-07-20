@@ -2,6 +2,9 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Sales Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
 
@@ -1495,7 +1498,8 @@ async function loadSharedSalesFiles() {
 
     try {
         const response = await fetch(
-            "/shared-sales-files/" + encodeURIComponent(salesUsername)
+            "/shared-sales-files/" + encodeURIComponent(salesUsername) + "?v=20260720-2",
+            { cache: "no-store" }
         );
         const data = await response.json();
 
@@ -1631,7 +1635,7 @@ function renderSharedSalesFile(file) {
                     Uploaded by ${escapeHtml(file.uploaded_by || "")}${file.uploaded_at ? " · " + escapeHtml(file.uploaded_at) : ""}
                 </div>
             </div>
-            <a class="shared-file-download" href="${escapeAttr(file.file_url || file.file_path || "")}" target="_blank" download>Download</a>
+            <a class="shared-file-download" href="${escapeHtml(file.file_url || file.file_path || "")}" target="_blank" download>Download</a>
         </div>
     `;
 }
@@ -2791,6 +2795,15 @@ function escapeHtml(value) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+}
+
+
+function escapeAttr(value) {
+    return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
 }
 
 
