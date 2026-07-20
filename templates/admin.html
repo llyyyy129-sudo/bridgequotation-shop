@@ -794,8 +794,14 @@
         .shared-folder-create-row input, .shared-file-upload-box select { width: 100%; border: 1px solid #bfdbfe; border-radius: 10px; padding: 10px 12px; font: inherit; }
         .shared-folder-create-row button, .shared-folder-back { border: none; background: #1f3c88; color: #ffffff; border-radius: 10px; padding: 10px 13px; font-weight: 900; cursor: pointer; }
         .shared-folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; margin-top: 14px; }
-        .shared-folder-card { border: 1px solid #bfdbfe; background: #ffffff; border-radius: 13px; padding: 15px; cursor: pointer; text-align: left; }
+        .shared-folder-card { border: 1px solid #bfdbfe; background: #ffffff; border-radius: 13px; padding: 15px; text-align: left; }
         .shared-folder-card:hover { background: #eff6ff; transform: translateY(-1px); }
+        details.shared-folder-card > summary { list-style: none; cursor: pointer; }
+        details.shared-folder-card > summary::-webkit-details-marker { display: none; }
+        .shared-folder-card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .shared-folder-card-arrow { color: #1d4ed8; font-size: 14px; font-weight: 900; transition: transform 0.18s ease; }
+        details.shared-folder-card[open] .shared-folder-card-arrow { transform: rotate(90deg); }
+        .shared-folder-card-content { margin-top: 12px; }
         .shared-folder-name { color: #1e3a8a; font-size: 14px; font-weight: 900; word-break: break-word; }
         .shared-folder-count { color: #64748b; font-size: 12px; font-weight: 800; margin-top: 6px; }
         .shared-folder-view-head { display: flex; align-items: center; gap: 10px; margin-top: 14px; color: #1e3a8a; font-weight: 900; }
@@ -1456,42 +1462,36 @@ function renderAdminSharedFiles() {
     const keyword = String(document.getElementById("adminSharedFileSearch")?.value || "").trim().toLowerCase();
     if (!list) return;
 
-    if (activeAdminSharedFolderId === null) {
-        list.innerHTML = adminSharedFoldersCache.length ? `
-            <div class="shared-folder-grid">
-                ${adminSharedFoldersCache.map(renderAdminSharedFolderCard).join("")}
-            </div>
-        ` : `<div class="empty-message">No folders yet. Create your first folder above.</div>`;
-        return;
-    }
-
-    const files = adminSharedFilesCache.filter(file => {
-        if (Number(file.folder_id || 0) !== Number(activeAdminSharedFolderId)) {
-            return false;
-        }
-        const searchable = [file.original_name, file.file_type, file.uploaded_by, file.uploaded_at].join(" ").toLowerCase();
-        return !keyword || searchable.includes(keyword);
-    });
-
-    const activeFolder = adminSharedFoldersCache.find(folder => Number(folder.id) === Number(activeAdminSharedFolderId));
-    list.innerHTML = `
-        <div class="shared-folder-view-head">
-            <button class="shared-folder-back" type="button" onclick="backToAdminSharedFolders()">← Folders</button>
-            <span>${escapeHtml(activeFolder?.name || "Folder")}</span>
+    list.innerHTML = adminSharedFoldersCache.length ? `
+        <div class="shared-folder-grid">
+            ${adminSharedFoldersCache.map(folder => renderAdminSharedFolderCard(folder, keyword)).join("")}
         </div>
-        ${files.length ? files.map(renderAdminSharedFile).join("") : `
-            <div class="empty-message">${keyword ? "No matching files." : "This folder is empty."}</div>
-        `}
-    `;
+    ` : `<div class="empty-message">No folders yet. Create your first folder above.</div>`;
 }
 
 
-function renderAdminSharedFolderCard(folder) {
+function renderAdminSharedFolderCard(folder, keyword) {
+    const files = adminSharedFilesCache.filter(file => {
+        if (Number(file.folder_id || 0) !== Number(folder.id)) return false;
+        const searchable = [file.original_name, file.file_type, file.uploaded_by, file.uploaded_at].join(" ").toLowerCase();
+        return !keyword || searchable.includes(keyword);
+    });
+    const isOpen = Number(activeAdminSharedFolderId) === Number(folder.id) ? " open" : "";
     return `
-        <button type="button" class="shared-folder-card" onclick="openAdminSharedFolder(${folder.id})">
-            <div class="shared-folder-name">📁 ${escapeHtml(folder.name || "Folder")}</div>
-            <div class="shared-folder-count">${Number(folder.file_count || 0)} file(s)</div>
-        </button>
+        <details class="shared-folder-card"${isOpen}>
+            <summary>
+                <div class="shared-folder-card-head">
+                    <div>
+                        <div class="shared-folder-name">📁 ${escapeHtml(folder.name || "Folder")}</div>
+                        <div class="shared-folder-count">${Number(folder.file_count || 0)} file(s)</div>
+                    </div>
+                    <span class="shared-folder-card-arrow">▶</span>
+                </div>
+            </summary>
+            <div class="shared-folder-card-content">
+                ${files.length ? files.map(renderAdminSharedFile).join("") : `<div class="empty-message">${keyword ? "No matching files." : "This folder is empty."}</div>`}
+            </div>
+        </details>
     `;
 }
 
