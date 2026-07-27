@@ -1295,14 +1295,8 @@
         >
       </div>
 
-      <div class="category-buttons">
+      <div class="category-buttons" id="categoryButtons">
         <button data-category="All" onclick="setCategory('All')">All</button>
-        <button data-category="Electronics" onclick="setCategory('Electronics')">Electronics</button>
-        <button data-category="Coffee" onclick="setCategory('Coffee')">Coffee</button>
-        <button data-category="Storage" onclick="setCategory('Storage')">Storage</button>
-        <button data-category="Bakeware" onclick="setCategory('Bakeware')">Bakeware</button>
-        <button data-category="Decoration" onclick="setCategory('Decoration')">Decoration</button>
-        <button data-category="Food" onclick="setCategory('Food')">Food</button>
       </div>
     </div>
   </section>
@@ -1428,6 +1422,7 @@ fetch("/products?username=" + encodeURIComponent(productPriceUsername))
   .then(response => response.json())
   .then(products => {
     allProducts = Array.isArray(products) ? products : [];
+    renderCategoryButtons();
     updateActiveCategory();
     filterProducts();
   })
@@ -1707,13 +1702,65 @@ function setCategory(category) {
 }
 
 
+function normalizeCategoryName(value) {
+  const category = String(value || "").trim();
+  return category || "General";
+}
+
+
+function renderCategoryButtons() {
+  const box = document.getElementById("categoryButtons");
+  if (!box) return;
+
+  const categoryMap = new Map();
+
+  allProducts.forEach(product => {
+    const category = normalizeCategoryName(product.category);
+    const categoryKey = category.toLocaleLowerCase();
+
+    if (!categoryMap.has(categoryKey)) {
+      categoryMap.set(categoryKey, category);
+    }
+  });
+
+  const categories = Array.from(categoryMap.values()).sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base" })
+  );
+
+  const availableCategoryKeys = new Set(
+    categories.map(category => category.toLocaleLowerCase())
+  );
+
+  if (
+    currentCategory !== "All" &&
+    !availableCategoryKeys.has(currentCategory.toLocaleLowerCase())
+  ) {
+    currentCategory = "All";
+  }
+
+  box.innerHTML = "";
+
+  ["All", ...categories].forEach(category => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.category = category;
+    button.textContent = category;
+    button.addEventListener("click", () => setCategory(category));
+    box.appendChild(button);
+  });
+}
+
+
 function updateActiveCategory() {
   document.getElementById("currentCategoryLabel").innerText = currentCategory;
 
   document.querySelectorAll(".category-buttons button").forEach(button => {
     const buttonCategory = button.getAttribute("data-category");
 
-    if (buttonCategory === currentCategory) {
+    if (
+      String(buttonCategory || "").toLocaleLowerCase() ===
+      String(currentCategory || "").toLocaleLowerCase()
+    ) {
       button.classList.add("active-category");
     } else {
       button.classList.remove("active-category");
@@ -1730,13 +1777,13 @@ function filterProducts() {
 
   const filtered = allProducts.filter(p => {
     const name = (p.name || "").toLowerCase();
-    const category = (p.category || "").trim().toLowerCase();
+    const category = normalizeCategoryName(p.category).toLocaleLowerCase();
 
     const matchName = name.includes(keyword);
 
     const matchCategory =
       currentCategory === "All" ||
-      category === currentCategory.toLowerCase();
+      category === currentCategory.toLocaleLowerCase();
 
     return matchName && matchCategory;
   });
