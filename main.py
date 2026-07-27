@@ -1949,6 +1949,22 @@ def can_access_shared_files(db, username, admin_only=False):
     return not admin_only and user.role == "sales"
 
 
+SHARED_FILES_MANAGER_USERNAMES = {"bill", "orange"}
+
+
+def can_manage_shared_files(db, username):
+    normalized_username = str(username or "").strip().lower()
+
+    if normalized_username not in SHARED_FILES_MANAGER_USERNAMES:
+        return False
+
+    user = db.query(User).filter(
+        func.lower(User.username) == normalized_username
+    ).first()
+
+    return bool(user and user.role in {"sales", "admin"})
+
+
 def get_shared_sales_folders(db):
     count_rows = db.query(
         SharedSalesFile.folder_id,
@@ -2131,9 +2147,9 @@ def create_shared_sales_folder(data: dict):
     username = str(data.get("username", "") or "").strip()
     name = re.sub(r"\s+", " ", str(data.get("name", "") or "").strip())
 
-    if not can_access_shared_files(db, username):
+    if not can_manage_shared_files(db, username):
         db.close()
-        return {"success": False, "message": "Only sales users and admin can create folders."}
+        return {"success": False, "message": "Only BILL and orange can create folders."}
 
     if not name:
         db.close()
@@ -2174,6 +2190,116 @@ def create_shared_sales_folder(data: dict):
     return result
 
 
+@app.post("/shared-sales-folders/{folder_id}/rename")
+def rename_shared_sales_folder(folder_id: int, data: dict):
+    db = SessionLocal()
+    username = str(data.get("username", "") or "").strip()
+    name = re.sub(r"\s+", " ", str(data.get("name", "") or "").strip())
+
+    if not can_manage_shared_files(db, username):
+        db.close()
+        return {"success": False, "message": "Only BILL and orange can rename folders."}
+
+    if folder_id <= 0:
+        db.close()
+        return {"success": False, "message": "The Unfiled Files folder cannot be renamed."}
+
+    if not name:
+        db.close()
+        return {"success": False, "message": "Please enter a folder name."}
+
+    if len(name) > 80:
+        db.close()
+        return {"success": False, "message": "Folder name must be 80 characters or less."}
+
+    folder = db.query(SharedSalesFolder).filter(
+        SharedSalesFolder.id == folder_id
+    ).first()
+
+    if not folder:
+        db.close()
+        return {"success": False, "message": "Folder not found."}
+
+    duplicate = db.query(SharedSalesFolder).filter(
+        func.lower(SharedSalesFolder.name) == name.lower(),
+        SharedSalesFolder.id != folder_id
+    ).first()
+
+    if duplicate:
+        db.close()
+        return {"success": False, "message": "A folder with this name already exists."}
+
+    try:
+        folder.name = name
+        db.commit()
+        result = {
+            "success": True,
+            "message": "Folder renamed.",
+            "folder": {
+                "id": folder.id,
+                "name": folder.name,
+                "created_by": folder.created_by or "",
+                "created_at": folder.created_at or ""
+            }
+        }
+        db.close()
+        return result
+    except Exception as e:
+        db.rollback()
+        db.close()
+        return {"success": False, "message": "Rename failed: " + str(e)}
+
+
+@app.post("/shared-sales-folders/{folder_id}/delete")
+def delete_shared_sales_folder(folder_id: int, data: dict):
+    db = SessionLocal()
+    username = str(data.get("username", "") or "").strip()
+
+    if not can_manage_shared_files(db, username):
+        db.close()
+        return {"success": False, "message": "Only BILL and orange can delete folders."}
+
+    if folder_id <= 0:
+        db.close()
+        return {"success": False, "message": "The Unfiled Files folder cannot be deleted."}
+
+    folder = db.query(SharedSalesFolder).filter(
+        SharedSalesFolder.id == folder_id
+    ).first()
+
+    if not folder:
+        db.close()
+        return {"success": False, "message": "Folder not found."}
+
+    try:
+        files = db.query(SharedSalesFile).filter(
+            SharedSalesFile.folder_id == folder_id
+        ).all()
+
+        deleted_file_count = len(files)
+
+        for shared_file in files:
+            db.delete(shared_file)
+
+        db.delete(folder)
+        db.commit()
+        db.close()
+
+        folder_dir = Path("static") / "uploads" / "shared_sales_files" / f"folder_{folder_id}"
+        if folder_dir.exists() and folder_dir.is_dir():
+            shutil.rmtree(folder_dir, ignore_errors=True)
+
+        return {
+            "success": True,
+            "message": "Folder deleted.",
+            "deleted_file_count": deleted_file_count
+        }
+    except Exception as e:
+        db.rollback()
+        db.close()
+        return {"success": False, "message": "Folder deletion failed: " + str(e)}
+
+
 @app.get("/shared-sales-files/{username}")
 def get_shared_sales_files(username: str, folder_id: int = None):
     db = SessionLocal()
@@ -2191,6 +2317,7 @@ def get_shared_sales_files(username: str, folder_id: int = None):
 
     result = {
         "success": True,
+        "can_manage": can_manage_shared_files(db, username),
         "files": [serialize_shared_file(shared_file) for shared_file in files],
         "folders": get_shared_sales_folders(db)
     }
@@ -2218,9 +2345,9 @@ def upload_shared_sales_file_chunk(data: dict):
         db.close()
         return {"success": False, "message": "Invalid chunk information."}
 
-    if not can_access_shared_files(db, username):
+    if not can_manage_shared_files(db, username):
         db.close()
-        return {"success": False, "message": "Only sales users and admin can upload shared files."}
+        return {"success": False, "message": "Only BILL and orange can upload shared files."}
 
     if not upload_id or not filename:
         db.close()
@@ -2327,9 +2454,9 @@ def delete_shared_sales_file(file_id: int, data: dict):
     db = SessionLocal()
     username = str(data.get("username", "") or "").strip()
 
-    if not can_access_shared_files(db, username, admin_only=True):
+    if not can_manage_shared_files(db, username):
         db.close()
-        return {"success": False, "message": "Only admin can delete shared files."}
+        return {"success": False, "message": "Only BILL and orange can delete shared files."}
 
     shared_file = db.query(SharedSalesFile).filter(
         SharedSalesFile.id == file_id

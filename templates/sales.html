@@ -1127,7 +1127,10 @@
         .shared-file-main { min-width: 0; }
         .shared-file-name { color: #111827; font-size: 14px; font-weight: 900; word-break: break-word; }
         .shared-file-meta { color: #6b7280; font-size: 12px; font-weight: 700; line-height: 1.5; margin-top: 4px; }
-        .shared-file-download { flex: 0 0 auto; border: 1px solid #c7d2fe; background: #eef2ff; color: #3730a3; border-radius: 10px; padding: 8px 11px; font-size: 12px; font-weight: 900; text-decoration: none; }
+        .shared-file-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; flex-wrap: wrap; }
+        .shared-file-download, .shared-file-delete { border-radius: 10px; padding: 8px 11px; font-size: 12px; font-weight: 900; text-decoration: none; cursor: pointer; }
+        .shared-file-download { border: 1px solid #c7d2fe; background: #eef2ff; color: #3730a3; }
+        .shared-file-delete { border: 1px solid #fecaca; background: #fff1f2; color: #be123c; }
         details.shared-files-card > summary { list-style: none; cursor: pointer; }
         details.shared-files-card > summary::-webkit-details-marker { display: none; }
         .shared-files-summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
@@ -1149,6 +1152,10 @@
         .shared-folder-card-content { display: grid; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #e0e7ff; }
         .shared-folder-card-content .shared-file-item { width: 100%; box-sizing: border-box; }
         .shared-folder-card-content .shared-file-main { flex: 1 1 auto; min-width: 0; }
+        .shared-folder-management { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+        .shared-folder-manage-btn { border: 1px solid #c7d2fe; background: #ffffff; color: #3730a3; border-radius: 9px; padding: 7px 10px; font-size: 12px; font-weight: 900; cursor: pointer; }
+        .shared-folder-manage-btn.danger { border-color: #fecaca; background: #fff1f2; color: #be123c; }
+        .shared-files-readonly { margin-bottom: 12px; padding: 10px 12px; border: 1px solid #dbeafe; border-radius: 11px; background: #f8fafc; color: #64748b; font-size: 12px; font-weight: 800; }
         .shared-folder-name { color: #312e81; font-size: 14px; font-weight: 900; word-break: break-word; }
         .shared-folder-count { color: #6b7280; font-size: 12px; font-weight: 800; margin-top: 6px; }
         .shared-folder-view-head { display: flex; align-items: center; gap: 10px; margin-top: 14px; color: #312e81; font-weight: 900; }
@@ -1282,25 +1289,29 @@
             <div>
                 <div class="shared-files-title">Shared Files</div>
                 <div class="shared-files-subtitle">
-                    Create your own folders, then upload and download files inside each folder.
+                    Shared file library for the sales team. BILL and orange manage folders and uploads.
                 </div>
             </div>
             <span class="shared-files-arrow">▶</span>
         </summary>
 
         <div class="shared-files-content">
-            <div class="shared-folder-create-row">
+            <div id="sharedFolderCreateRow" class="shared-folder-create-row">
                 <input id="newSharedFolderName" type="text" placeholder="New folder name, e.g. MARVIN Project">
                 <button type="button" onclick="createSharedSalesFolder()">New Folder</button>
             </div>
 
-            <div class="shared-file-upload-box">
+            <div id="sharedFileUploadBox" class="shared-file-upload-box">
                 <select id="sharedFileFolder"></select>
                 <div style="height:10px"></div>
             <input id="sharedFileInput" type="file"
                 accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.zip,.rar,.mp4,.webm,.mov,.m4v"
                 onchange="uploadSharedSalesFile(this)">
                 <div id="sharedFileUploadStatus" class="shared-file-upload-status">Choose a folder, then select a file to upload.</div>
+            </div>
+
+            <div id="sharedFilesReadOnlyNotice" class="shared-files-readonly" style="display:none;">
+                Read-only access: you can view and download shared files.
             </div>
 
             <div class="shared-file-toolbar">
@@ -1466,6 +1477,7 @@ function showCenterConfirm(message) {
 
 const salesUsername = localStorage.getItem("user");
 const role = localStorage.getItem("role");
+let canManageSharedFiles = ["bill", "orange"].includes(String(salesUsername || "").trim().toLowerCase());
 
 let allSalesCustomerGroups = [];
 let sharedSalesFilesCache = [];
@@ -1521,6 +1533,10 @@ async function loadSharedSalesFiles() {
 
         sharedSalesFilesCache = Array.isArray(data.files) ? data.files : [];
         sharedSalesFoldersCache = Array.isArray(data.folders) ? data.folders : [];
+        if (typeof data.can_manage === "boolean") {
+            canManageSharedFiles = data.can_manage;
+        }
+        applySharedFilesPermissionView();
 
         if (activeSharedFolderId !== null && !sharedSalesFoldersCache.some(folder => Number(folder.id) === Number(activeSharedFolderId))) {
             activeSharedFolderId = null;
@@ -1573,6 +1589,14 @@ function renderSharedFolderCard(folder, keyword) {
         return !keyword || searchable.includes(keyword);
     });
     const isOpen = activeSharedFolderId !== null && Number(activeSharedFolderId) === Number(folder.id) ? " open" : "";
+    const folderManagement = canManageSharedFiles && Number(folder.id) > 0 ? `
+        <div class="shared-folder-management">
+            <button class="shared-folder-manage-btn" type="button"
+                onclick="renameSharedSalesFolder(${folder.id}, '${escapeForJs(folder.name || "")}')">Rename Folder</button>
+            <button class="shared-folder-manage-btn danger" type="button"
+                onclick="deleteSharedSalesFolder(${folder.id}, '${escapeForJs(folder.name || "")}')">Delete Folder</button>
+        </div>
+    ` : "";
     return `
         <details class="shared-folder-card" name="sharedSalesFolder"${isOpen}>
             <summary>
@@ -1585,6 +1609,7 @@ function renderSharedFolderCard(folder, keyword) {
                 </div>
             </summary>
             <div class="shared-folder-card-content">
+                ${folderManagement}
                 ${files.length ? files.map(renderSharedSalesFile).join("") : `<div class="pi-empty">${keyword ? "No matching files." : "This folder is empty."}</div>`}
             </div>
         </details>
@@ -1611,6 +1636,11 @@ function backToSharedFolders() {
 
 
 async function createSharedSalesFolder() {
+    if (!canManageSharedFiles) {
+        showCenterMessage("Only BILL and orange can manage shared files.");
+        return;
+    }
+
     const input = document.getElementById("newSharedFolderName");
     const name = String(input?.value || "").trim();
     if (!name) {
@@ -1637,6 +1667,70 @@ async function createSharedSalesFolder() {
 }
 
 
+function applySharedFilesPermissionView() {
+    const createRow = document.getElementById("sharedFolderCreateRow");
+    const uploadBox = document.getElementById("sharedFileUploadBox");
+    const readOnlyNotice = document.getElementById("sharedFilesReadOnlyNotice");
+
+    if (createRow) createRow.style.display = canManageSharedFiles ? "grid" : "none";
+    if (uploadBox) uploadBox.style.display = canManageSharedFiles ? "block" : "none";
+    if (readOnlyNotice) readOnlyNotice.style.display = canManageSharedFiles ? "none" : "block";
+}
+
+
+async function renameSharedSalesFolder(folderId, currentName) {
+    if (!canManageSharedFiles) return;
+
+    const nextName = window.prompt("Enter the new folder name:", currentName || "");
+    if (nextName === null) return;
+
+    const name = String(nextName || "").trim();
+    if (!name || name === currentName) return;
+
+    try {
+        const response = await fetch("/shared-sales-folders/" + folderId + "/rename", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: salesUsername, name: name })
+        });
+        const data = await response.json();
+        if (!response.ok || !data?.success) throw new Error(data?.message || "Rename failed.");
+
+        activeSharedFolderId = Number(folderId);
+        showCenterMessage("Folder renamed.");
+        await loadSharedSalesFiles();
+    } catch (error) {
+        showCenterMessage(error.message || "Rename failed.");
+    }
+}
+
+
+async function deleteSharedSalesFolder(folderId, folderName) {
+    if (!canManageSharedFiles) return;
+
+    const ok = await showCenterConfirm(
+        `Delete folder "${folderName}"?\n\nAll files inside this folder will be permanently deleted.`
+    );
+    if (!ok) return;
+
+    try {
+        const response = await fetch("/shared-sales-folders/" + folderId + "/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: salesUsername })
+        });
+        const data = await response.json();
+        if (!response.ok || !data?.success) throw new Error(data?.message || "Folder deletion failed.");
+
+        activeSharedFolderId = null;
+        showCenterMessage("Folder deleted.");
+        await loadSharedSalesFiles();
+    } catch (error) {
+        showCenterMessage(error.message || "Folder deletion failed.");
+    }
+}
+
+
 function renderSharedSalesFile(file) {
     return `
         <div class="shared-file-item">
@@ -1647,7 +1741,10 @@ function renderSharedSalesFile(file) {
                     Uploaded by ${escapeHtml(file.uploaded_by || "")}${file.uploaded_at ? " · " + escapeHtml(file.uploaded_at) : ""}
                 </div>
             </div>
-            <a class="shared-file-download" href="${escapeHtml(file.file_url || file.file_path || "")}" target="_blank" download>Download</a>
+            <div class="shared-file-actions">
+                <a class="shared-file-download" href="${escapeHtml(file.file_url || file.file_path || "")}" target="_blank" download>Download</a>
+                ${canManageSharedFiles ? `<button class="shared-file-delete" type="button" onclick="deleteSharedSalesFile(${file.id})">Delete</button>` : ""}
+            </div>
         </div>
     `;
 }
@@ -1669,6 +1766,12 @@ function isAllowedSharedSalesFile(file) {
 
 
 async function uploadSharedSalesFile(input) {
+    if (!canManageSharedFiles) {
+        showCenterMessage("Only BILL and orange can upload shared files.");
+        if (input) input.value = "";
+        return;
+    }
+
     const file = input?.files?.[0];
     const statusBox = document.getElementById("sharedFileUploadStatus");
     const folderId = Number(document.getElementById("sharedFileFolder")?.value || 0);
@@ -1708,6 +1811,29 @@ async function uploadSharedSalesFile(input) {
         showCenterMessage(error.message || "Upload failed.");
         if (statusBox) statusBox.innerText = "Upload failed";
         input.value = "";
+    }
+}
+
+
+async function deleteSharedSalesFile(fileId) {
+    if (!canManageSharedFiles) return;
+
+    const ok = await showCenterConfirm("Delete this shared file? This cannot be undone.");
+    if (!ok) return;
+
+    try {
+        const response = await fetch("/shared-sales-files/" + fileId + "/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: salesUsername })
+        });
+        const data = await response.json();
+        if (!response.ok || !data?.success) throw new Error(data?.message || "Delete failed.");
+
+        showCenterMessage("Shared file deleted.");
+        await loadSharedSalesFiles();
+    } catch (error) {
+        showCenterMessage(error.message || "Delete failed.");
     }
 }
 
@@ -2935,6 +3061,7 @@ async function logout() {
 }
 
 
+applySharedFilesPermissionView();
 loadSalesUserInfo();
 loadSalesOrders();
 loadSharedSalesFiles();
