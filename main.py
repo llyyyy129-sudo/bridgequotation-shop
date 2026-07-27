@@ -911,11 +911,9 @@ def generate_pi_pdf_file(order, customer, sales_user, pi_no, version):
 
 
 
-try:
-    from seed import seed_products
-    seed_products()
-except Exception as e:
-    print("Seed products skipped:", e)
+# Product Excel imports must be run manually from seed.py.
+# Do not seed products during application startup, otherwise products deleted
+# by an administrator are recreated whenever Railway redeploys the service.
 
 
 def sync_product_id_sequence():
