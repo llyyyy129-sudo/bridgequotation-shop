@@ -1946,17 +1946,31 @@ function quickAddToCart(productId) {
 }
 
 
-function formatMoney(value) {
-  const number = Number(value || 0);
+function priceText(value) {
+  const raw = String(value ?? "").trim().replace(/,/g, "");
 
-  if (Number.isNaN(number)) {
-    return "$0.00";
+  if (!raw) return "0";
+
+  if (!/^-?(?:\d+|\d*\.\d+)$/.test(raw)) {
+    const number = Number(raw);
+    return Number.isFinite(number) ? String(number) : "0";
   }
 
-  return "$" + number.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
+  const negative = raw.startsWith("-");
+  const unsigned = negative ? raw.slice(1) : raw;
+  const parts = unsigned.split(".");
+  const whole = (parts[0] || "0").replace(/^0+(?=\d)/, "");
+  const fraction = (parts[1] || "").replace(/0+$/, "");
+  const groupedWhole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+  return (negative ? "-" : "") +
+    groupedWhole +
+    (fraction ? "." + fraction : "");
+}
+
+
+function formatMoney(value) {
+  return "$" + priceText(value);
 }
 
 

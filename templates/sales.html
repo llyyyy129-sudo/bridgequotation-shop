@@ -2460,6 +2460,37 @@ function updateProductStatusBoard(orders) {
 }
 
 
+function money(value) {
+    return Number(value || 0).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+
+function priceText(value) {
+    const raw = String(value ?? "").trim().replace(/,/g, "");
+
+    if (!raw) return "0";
+
+    if (!/^-?(?:\d+|\d*\.\d+)$/.test(raw)) {
+        const number = Number(raw);
+        return Number.isFinite(number) ? String(number) : "0";
+    }
+
+    const negative = raw.startsWith("-");
+    const unsigned = negative ? raw.slice(1) : raw;
+    const parts = unsigned.split(".");
+    const whole = (parts[0] || "0").replace(/^0+(?=\d)/, "");
+    const fraction = (parts[1] || "").replace(/0+$/, "");
+    const groupedWhole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+    return (negative ? "-" : "") +
+        groupedWhole +
+        (fraction ? "." + fraction : "");
+}
+
+
 function renderOrderSection(order) {
     const items = parseItems(order.items);
     const pending = [];
@@ -2498,7 +2529,7 @@ function renderOrderSection(order) {
                     </div>
 
                     <div class="order-meta">
-                        Total: <b>$${Number(order.total || 0).toFixed(2)}</b><br>
+                        Total: <b>$${money(order.total)}</b><br>
                         Order Time: ${escapeHtml(order.created_at || "Not recorded")}<br>
                         Product Status:
                         ${pending.length} Pending /
@@ -2792,12 +2823,12 @@ function renderProductCard(order, item, index, type) {
                         Category: ${escapeHtml(item.category || "")}<br>
                         MOQ: ${escapeHtml(item.moq || "")}<br>
                         Material: ${escapeHtml(item.material || "")}<br>
-                        Size: ${escapeHtml(item.size || "")}<br>
+                        Product Dimension: ${escapeHtml(item.size || "")}<br>
                         Packing: ${escapeHtml(item.packing || "")}<br>
                         Customer Requirements: ${escapeHtml(item.customer_requirement || "")}<br>
                         Quantity: ${quantity.toLocaleString()}<br>
-                        Unit Price: $${unitPrice.toFixed(2)}<br>
-                        Line Total: $${lineTotal.toFixed(2)}
+                        Unit Price: $${priceText(unitPrice)}<br>
+                        Line Total: $${money(lineTotal)}
                     </div>
 
                     <div class="product-status-pill ${pillClass}">

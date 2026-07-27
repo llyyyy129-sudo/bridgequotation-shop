@@ -1102,6 +1102,30 @@ function money(value) {
   });
 }
 
+
+function priceText(value) {
+  const raw = String(value ?? "").trim().replace(/,/g, "");
+
+  if (!raw) return "0";
+
+  if (!/^-?(?:\d+|\d*\.\d+)$/.test(raw)) {
+    const number = Number(raw);
+    return Number.isFinite(number) ? String(number) : "0";
+  }
+
+  const negative = raw.startsWith("-");
+  const unsigned = negative ? raw.slice(1) : raw;
+  const parts = unsigned.split(".");
+  const whole = (parts[0] || "0").replace(/^0+(?=\d)/, "");
+  const fraction = (parts[1] || "").replace(/0+$/, "");
+  const groupedWhole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+  return (negative ? "-" : "") +
+    groupedWhole +
+    (fraction ? "." + fraction : "");
+}
+
+
 function renderCart() {
   cartContainer.innerHTML = "";
 
@@ -1158,7 +1182,7 @@ function renderCart() {
           </div>
 
           <div class="spec-box">
-            <div class="spec-label">Size</div>
+            <div class="spec-label">Product Dimension</div>
             <div class="spec-value">${escapeHtml(item.size || "")}</div>
           </div>
 
@@ -1190,7 +1214,7 @@ function renderCart() {
 
           <div class="price-box">
             <div class="price-label">Unit Price</div>
-            <div class="price-value">$${money(unitPrice)}</div>
+            <div class="price-value">$${priceText(unitPrice)}</div>
           </div>
 
           <div class="price-box">

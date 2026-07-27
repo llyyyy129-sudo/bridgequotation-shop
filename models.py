@@ -7,7 +7,7 @@ class Product(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
-    price = Column(Integer)
+    price = Column(Float)
     description = Column(String)
     slogan = Column(String, default="")
     image = Column(String)

@@ -1021,12 +1021,36 @@ function money(value) {
   });
 }
 
+
+function priceText(value) {
+  const raw = String(value ?? "").trim().replace(/,/g, "");
+
+  if (!raw) return "0";
+
+  if (!/^-?(?:\d+|\d*\.\d+)$/.test(raw)) {
+    const number = Number(raw);
+    return Number.isFinite(number) ? String(number) : "0";
+  }
+
+  const negative = raw.startsWith("-");
+  const unsigned = negative ? raw.slice(1) : raw;
+  const parts = unsigned.split(".");
+  const whole = (parts[0] || "0").replace(/^0+(?=\d)/, "");
+  const fraction = (parts[1] || "").replace(/0+$/, "");
+  const groupedWhole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+  return (negative ? "-" : "") +
+    groupedWhole +
+    (fraction ? "." + fraction : "");
+}
+
+
 function displayMoney(value) {
   if (value === null || value === undefined || value === "") {
     return "-";
   }
 
-  return "$" + money(value);
+  return "$" + priceText(value);
 }
 
 function setupSalesModeBanner() {
@@ -1368,7 +1392,7 @@ function updatePrice(enforceMinimum = false) {
     livePrice.innerHTML = `
       <b>Selected Tier:</b> ${getTierLabel(quantity)}
       <br>
-      <b>Unit Price:</b> $${money(unitPrice)}
+      <b>Unit Price:</b> $${priceText(unitPrice)}
       <br>
       <b>Amount:</b> $${money(total)}
     `;
@@ -1439,7 +1463,7 @@ function addToCart() {
   localStorage.setItem(cartKey, JSON.stringify(cart));
   updateCartCount();
 
-  showCenterMessage(`Added to cart!\nUnit Price: $${money(unitPrice)}`);
+  showCenterMessage(`Added to cart!\nUnit Price: $${priceText(unitPrice)}`);
 }
 
 function goBack() {

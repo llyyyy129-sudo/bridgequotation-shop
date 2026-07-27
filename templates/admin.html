@@ -2022,17 +2022,17 @@ const PRODUCT_FIELDS = [
     { key: "name", label: "Product Name", type: "text", required: true, className: "wide-field" },
     { key: "category", label: "Category", type: "text" },
     { key: "slogan", label: "Product Slogan / Badge", type: "text", className: "wide-field" },
-    { key: "moq", label: "MOQ", type: "number" },
+    { key: "moq", label: "MOQ", type: "number", step: "1" },
     { key: "material", label: "Material", type: "text" },
     { key: "volume", label: "Carton Dimension", type: "text" },
     { key: "size", label: "Product Dimension", type: "text" },
     { key: "packing", label: "Packing", type: "text", className: "wide-field" },
-    { key: "price", label: "Base Price", type: "number" },
-    { key: "price_500", label: "Price 500+", type: "number" },
-    { key: "price_1000", label: "Price 1000+", type: "number" },
-    { key: "price_3000", label: "Price 3000+", type: "number" },
-    { key: "price_10000", label: "Price 10000+", type: "number" },
-    { key: "price_50000", label: "Price 50000+", type: "number" },
+    { key: "price", label: "Base Price", type: "number", step: "any" },
+    { key: "price_500", label: "Price 500+", type: "number", step: "any" },
+    { key: "price_1000", label: "Price 1000+", type: "number", step: "any" },
+    { key: "price_3000", label: "Price 3000+", type: "number", step: "any" },
+    { key: "price_10000", label: "Price 10000+", type: "number", step: "any" },
+    { key: "price_50000", label: "Price 50000+", type: "number", step: "any" },
     { key: "image", label: "Image 1", type: "file", media: "image", accept: "image/*", className: "wide-field" },
     { key: "image_2", label: "Image 2", type: "file", media: "image", accept: "image/*", className: "wide-field" },
     { key: "image_3", label: "Image 3", type: "file", media: "image", accept: "image/*", className: "wide-field" },
@@ -2325,7 +2325,9 @@ function renderProductFields(prefix, product) {
             `;
         }
 
-        const step = field.type === "number" ? ` step="0.01"` : "";
+        const step = field.type === "number"
+            ? ` step="${field.step || "any"}"`
+            : "";
 
         return `
             <div class="field ${fieldClass}">

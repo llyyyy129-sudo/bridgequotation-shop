@@ -10,6 +10,7 @@ from reportlab.lib.pagesizes import A4
 
 from io import BytesIO
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import text, inspect, func
 import json
@@ -182,6 +183,37 @@ def run_migrations():
 run_migrations()
 
 
+def migrate_product_price_to_float():
+    try:
+        if "postgresql" not in str(engine.url):
+            return
+
+        inspector = inspect(engine)
+        columns = {
+            column["name"]: str(column["type"]).lower()
+            for column in inspector.get_columns("products")
+        }
+
+        price_type = columns.get("price", "")
+
+        if "int" not in price_type:
+            return
+
+        with engine.begin() as conn:
+            conn.execute(text("""
+                ALTER TABLE products
+                ALTER COLUMN price TYPE DOUBLE PRECISION
+                USING price::double precision
+            """))
+
+        print("Migrated products.price to DOUBLE PRECISION.")
+    except Exception as e:
+        print("Product price type migration skipped:", e)
+
+
+migrate_product_price_to_float()
+
+
 FULL_ADMIN_ACCOUNTS = {
     "orange": {
         "password": "Orange123456",
@@ -297,7 +329,8 @@ def apply_price_multiplier(value, multiplier):
         return value
 
     try:
-        return round(float(value) * float(multiplier), 2)
+        result = Decimal(str(value)) * Decimal(str(multiplier))
+        return float(result)
     except Exception:
         return value
 
@@ -1784,7 +1817,7 @@ def product_payload_to_values(data: dict):
         "size": str(data.get("size", "") or "").strip(),
         "packing": str(data.get("packing", "") or "").strip(),
         "category": str(data.get("category", "") or "").strip(),
-        "price": to_int(data.get("price"), 0),
+        "price": to_float(data.get("price"), 0.0),
         "price_500": to_float(data.get("price_500"), 0.0),
         "price_1000": to_float(data.get("price_1000"), 0.0),
         "price_3000": to_float(data.get("price_3000"), 0.0),
