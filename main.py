@@ -1256,6 +1256,19 @@ def serialize_user(u):
     }
 
 
+def can_orange_manage_user_passwords(db, requester_username):
+    normalized_username = str(requester_username or "").strip().lower()
+
+    if normalized_username != "orange":
+        return False
+
+    orange = db.query(User).filter(
+        func.lower(User.username) == "orange"
+    ).first()
+
+    return bool(orange and orange.role == "admin")
+
+
 @app.get("/admin/users")
 def get_all_users():
     db = SessionLocal()
@@ -1557,9 +1570,49 @@ def assign_sales_to_customer(customer_id: int, data: dict):
         "message": f"{customer_username} has been assigned to {sales_username}."
     }
 
+@app.post("/admin/users/{user_id}/password-info")
+def get_user_password_info(user_id: int, data: dict):
+    db = SessionLocal()
+    requester_username = str(data.get("requester_username", "") or "").strip()
+
+    if not can_orange_manage_user_passwords(db, requester_username):
+        db.close()
+        return {
+            "success": False,
+            "message": "Only orange can view account passwords."
+        }
+
+    user = db.query(User).filter(
+        User.id == user_id
+    ).first()
+
+    if not user:
+        db.close()
+        return {
+            "success": False,
+            "message": "User not found."
+        }
+
+    result = {
+        "success": True,
+        "username": user.username,
+        "password": user.password or ""
+    }
+    db.close()
+    return result
+
+
 @app.post("/admin/users/{user_id}/change-password")
 def change_user_password(user_id: int, data: dict):
     db = SessionLocal()
+    requester_username = str(data.get("requester_username", "") or "").strip()
+
+    if not can_orange_manage_user_passwords(db, requester_username):
+        db.close()
+        return {
+            "success": False,
+            "message": "Only orange can reset account passwords."
+        }
 
     user = db.query(User).filter(
         User.id == user_id
@@ -1573,14 +1626,6 @@ def change_user_password(user_id: int, data: dict):
         }
 
     username = user.username
-
-    if user.approval_status != "Approved":
-        db.close()
-        return {
-            "success": False,
-            "message": "Only approved users can change password."
-        }
-
     new_password = data.get("password", "").strip()
 
     if not new_password:
@@ -2485,6 +2530,23 @@ def delete_shared_sales_file(file_id: int, data: dict):
 # ORDERS
 # =========================
 
+def can_bill_delete_orders(db, requester_username):
+    normalized_username = str(requester_username or "").strip().lower()
+
+    if normalized_username != "bill":
+        return False
+
+    bill_user = db.query(User).filter(
+        func.lower(User.username) == "bill"
+    ).first()
+
+    return bool(
+        bill_user and
+        bill_user.role == "sales" and
+        bill_user.approval_status == "Approved"
+    )
+
+
 @app.post("/create-order")
 def create_order(data: dict):
     db = SessionLocal()
@@ -2733,6 +2795,97 @@ def return_order(order_id: int, data: dict):
         "success": True,
         "message": "Order returned successfully!"
     }
+
+
+@app.post("/sales/orders/{order_id}/delete")
+def delete_sales_order(order_id: int, data: dict):
+    db = SessionLocal()
+    requester_username = str(
+        data.get("requester_username", "") or ""
+    ).strip()
+
+    if not can_bill_delete_orders(db, requester_username):
+        db.close()
+        return {
+            "success": False,
+            "message": "Only BILL can delete sales orders."
+        }
+
+    order = db.query(Order).filter(
+        Order.id == order_id
+    ).first()
+
+    if not order:
+        db.close()
+        return {
+            "success": False,
+            "message": "Order not found."
+        }
+
+    if str(order.sales_username or "").strip().lower() != "bill":
+        db.close()
+        return {
+            "success": False,
+            "message": "BILL can only delete orders assigned to BILL."
+        }
+
+    try:
+        pi_records = db.query(ProformaInvoice).filter(
+            ProformaInvoice.order_id == order.id
+        ).all()
+
+        pi_histories = db.query(PIHistory).filter(
+            PIHistory.order_id == order.id
+        ).all()
+
+        pi_file_paths = {
+            str(record.pdf_path or "").strip()
+            for record in [*pi_records, *pi_histories]
+            if str(record.pdf_path or "").strip()
+        }
+
+        for history in pi_histories:
+            db.delete(history)
+
+        for pi in pi_records:
+            db.delete(pi)
+
+        db.delete(order)
+        db.commit()
+        db.close()
+
+        pi_root = (Path("static") / "uploads" / "pi").resolve()
+
+        for pdf_path in pi_file_paths:
+            if not pdf_path.startswith("/static/uploads/pi/"):
+                continue
+
+            local_path = (Path(".") / pdf_path.lstrip("/")).resolve()
+
+            if pi_root not in local_path.parents:
+                continue
+
+            try:
+                if local_path.exists() and local_path.is_file():
+                    local_path.unlink()
+            except OSError as file_error:
+                print(
+                    f"Order {order_id} deleted, but PI file cleanup skipped:",
+                    file_error
+                )
+
+        return {
+            "success": True,
+            "message": f"Order #{order_id} has been deleted by BILL."
+        }
+
+    except Exception as error:
+        db.rollback()
+        db.close()
+        return {
+            "success": False,
+            "message": "Delete order failed: " + str(error)
+        }
 
 
 @app.get("/customer/info/{username}")
@@ -3672,26 +3825,7 @@ def make_sales(username: str):
 
 @app.get("/debug/delete-order/{order_id}")
 def delete_order(order_id: int):
-    db = SessionLocal()
-
-    order = db.query(Order).filter(
-        Order.id == order_id
-    ).first()
-
-    if not order:
-        db.close()
-
-        return {
-            "success": False,
-            "message": "Order not found"
-        }
-
-    db.delete(order)
-
-    db.commit()
-    db.close()
-
     return {
-        "success": True,
-        "message": f"Order {order_id} deleted"
+        "success": False,
+        "message": "Debug order deletion is disabled. Use the BILL Sales Dashboard."
     }

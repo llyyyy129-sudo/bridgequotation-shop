@@ -581,6 +581,38 @@
             align-items: center;
         }
 
+        .order-summary-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            flex: 0 0 auto;
+        }
+
+        .delete-order-btn {
+            border: 1px solid #fecaca;
+            background: #fff1f2;
+            color: #be123c;
+            border-radius: 11px;
+            padding: 9px 13px;
+            font-size: 13px;
+            font-weight: 900;
+            cursor: pointer;
+            white-space: nowrap;
+            box-shadow: 0 8px 18px rgba(190, 18, 60, 0.10);
+        }
+
+        .delete-order-btn:hover:not(:disabled) {
+            background: #ffe4e6;
+            transform: translateY(-1px);
+        }
+
+        .delete-order-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .order-title {
             font-size: 19px;
             font-weight: 900;
@@ -1189,6 +1221,8 @@
             .customer-section > summary { font-size: 20px; padding: 18px 20px; }
             .customer-content { padding: 0 18px 18px; }
             .product-header { flex-direction: column; }
+            .order-section > summary { align-items: flex-start; }
+            .order-summary-actions { align-items: flex-end; flex-direction: column-reverse; }
 
             .dashboard-grid,
             .product-dashboard-grid,
@@ -1517,6 +1551,9 @@ function showCenterConfirm(message) {
 const salesUsername = localStorage.getItem("user");
 const role = localStorage.getItem("role");
 let canManageSharedFiles = ["bill", "orange"].includes(String(salesUsername || "").trim().toLowerCase());
+const canDeleteSalesOrders =
+    role === "sales" &&
+    String(salesUsername || "").trim().toLowerCase() === "bill";
 
 let allSalesCustomerGroups = [];
 let sharedSalesFilesCache = [];
@@ -2474,7 +2511,18 @@ function renderOrderSection(order) {
                     </div>
                 </span>
 
-                <span class="summary-arrow">▶</span>
+                <span class="order-summary-actions">
+                    ${canDeleteSalesOrders ? `
+                        <button
+                            class="delete-order-btn"
+                            type="button"
+                            onclick="deleteSalesOrder(event, ${Number(order.id)}, ${Number(order.customer_order_no || order.id)})"
+                        >
+                            Delete Order
+                        </button>
+                    ` : ""}
+                    <span class="summary-arrow">▶</span>
+                </span>
             </summary>
 
             <div class="order-content">
@@ -2487,6 +2535,60 @@ function renderOrderSection(order) {
             </div>
         </details>
     `;
+}
+
+
+async function deleteSalesOrder(clickEvent, orderId, displayOrderNo) {
+    if (clickEvent) {
+        clickEvent.preventDefault();
+        clickEvent.stopPropagation();
+    }
+
+    if (!canDeleteSalesOrders) {
+        showCenterMessage("Only BILL can delete orders.");
+        return;
+    }
+
+    const ok = await showCenterConfirm(
+        "Delete Order #" + displayOrderNo + "?\n\n" +
+        "This will permanently delete the order and its PI history. This cannot be undone."
+    );
+
+    if (!ok) return;
+
+    const button = clickEvent ? clickEvent.currentTarget : null;
+    if (button) button.disabled = true;
+
+    try {
+        const response = await fetch(
+            "/sales/orders/" + orderId + "/delete",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    requester_username: salesUsername
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            showCenterMessage(data.message || "Delete order failed.");
+            if (button && button.isConnected) button.disabled = false;
+            return;
+        }
+
+        showCenterMessage(data.message || "Order deleted.");
+        await loadSalesOrders();
+
+    } catch (error) {
+        console.error("Delete order error:", error);
+        showCenterMessage("Delete order failed. Please check server logs.");
+        if (button && button.isConnected) button.disabled = false;
+    }
 }
 
 
