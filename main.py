@@ -182,40 +182,58 @@ def run_migrations():
 run_migrations()
 
 
-def ensure_orange_admin():
+FULL_ADMIN_ACCOUNTS = {
+    "orange": {
+        "password": "Orange123456",
+        "company_name": "COPEC"
+    },
+    "BILLADMIN": {
+        "password": "NBFuture2023!",
+        "company_name": "COPEC"
+    }
+}
+
+FULL_ADMIN_USERNAMES = {
+    username.lower()
+    for username in FULL_ADMIN_ACCOUNTS
+}
+
+
+def ensure_full_admin_accounts():
     db = SessionLocal()
 
-    orange = db.query(User).filter(
-        User.username == "orange"
-    ).first()
+    for username, settings in FULL_ADMIN_ACCOUNTS.items():
+        admin_user = db.query(User).filter(
+            func.lower(User.username) == username.lower()
+        ).first()
 
-    if orange:
-        orange.role = "admin"
-        orange.account_type = "employee"
-        orange.approval_status = "Approved"
-        orange.assigned_sales = ""
-        orange.company_name = orange.company_name or "COPEC"
-        db.commit()
-        db.close()
-        return
+        if admin_user:
+            admin_user.role = "admin"
+            admin_user.account_type = "employee"
+            admin_user.approval_status = "Approved"
+            admin_user.assigned_sales = ""
+            admin_user.company_name = (
+                admin_user.company_name or settings["company_name"]
+            )
+            continue
 
-    orange = User(
-        username="orange",
-        password="Orange123456",
-        role="admin",
-        assigned_sales="",
-        company_name="COPEC",
-        email="",
-        account_type="employee",
-        approval_status="Approved"
-    )
+        admin_user = User(
+            username=username,
+            password=settings["password"],
+            role="admin",
+            assigned_sales="",
+            company_name=settings["company_name"],
+            email="",
+            account_type="employee",
+            approval_status="Approved"
+        )
+        db.add(admin_user)
 
-    db.add(orange)
     db.commit()
     db.close()
 
 
-ensure_orange_admin()
+ensure_full_admin_accounts()
 
 
 def ensure_pricing_setting():
@@ -1256,17 +1274,21 @@ def serialize_user(u):
     }
 
 
-def can_orange_manage_user_passwords(db, requester_username):
+def can_full_admin_manage_user_passwords(db, requester_username):
     normalized_username = str(requester_username or "").strip().lower()
 
-    if normalized_username != "orange":
+    if normalized_username not in FULL_ADMIN_USERNAMES:
         return False
 
-    orange = db.query(User).filter(
-        func.lower(User.username) == "orange"
+    admin_user = db.query(User).filter(
+        func.lower(User.username) == normalized_username
     ).first()
 
-    return bool(orange and orange.role == "admin")
+    return bool(
+        admin_user and
+        admin_user.role == "admin" and
+        admin_user.approval_status == "Approved"
+    )
 
 
 @app.get("/admin/users")
@@ -1311,6 +1333,13 @@ def approve_user(user_id: int):
 
     username = user.username
 
+    if str(username or "").strip().lower() in FULL_ADMIN_USERNAMES:
+        db.close()
+        return {
+            "success": False,
+            "message": "Full admin accounts are already approved and cannot be changed."
+        }
+
     user.approval_status = "Approved"
 
     if user.account_type == "employee":
@@ -1347,7 +1376,7 @@ def reject_user(user_id: int):
 
     username = user.username
 
-    if username == "orange":
+    if str(username or "").strip().lower() in FULL_ADMIN_USERNAMES:
         db.close()
         return {
             "success": False,
@@ -1384,7 +1413,7 @@ def get_sales_users():
             "email": u.email
         }
         for u in users
-        if u.username != "orange"
+        if str(u.username or "").strip().lower() not in FULL_ADMIN_USERNAMES
     ]
 
     db.close()
@@ -1575,11 +1604,11 @@ def get_user_password_info(user_id: int, data: dict):
     db = SessionLocal()
     requester_username = str(data.get("requester_username", "") or "").strip()
 
-    if not can_orange_manage_user_passwords(db, requester_username):
+    if not can_full_admin_manage_user_passwords(db, requester_username):
         db.close()
         return {
             "success": False,
-            "message": "Only orange can view account passwords."
+            "message": "Only Orange and BILLADMIN can view account passwords."
         }
 
     user = db.query(User).filter(
@@ -1607,11 +1636,11 @@ def change_user_password(user_id: int, data: dict):
     db = SessionLocal()
     requester_username = str(data.get("requester_username", "") or "").strip()
 
-    if not can_orange_manage_user_passwords(db, requester_username):
+    if not can_full_admin_manage_user_passwords(db, requester_username):
         db.close()
         return {
             "success": False,
-            "message": "Only orange can reset account passwords."
+            "message": "Only Orange and BILLADMIN can reset account passwords."
         }
 
     user = db.query(User).filter(
@@ -1669,7 +1698,7 @@ def delete_user(user_id: int):
 
     username = user.username
 
-    if username == "orange":
+    if str(username or "").strip().lower() in FULL_ADMIN_USERNAMES:
         db.close()
         return {
             "success": False,
@@ -1994,7 +2023,10 @@ def can_access_shared_files(db, username, admin_only=False):
     return not admin_only and user.role == "sales"
 
 
-SHARED_FILES_MANAGER_USERNAMES = {"bill", "orange"}
+SHARED_FILES_MANAGER_USERNAMES = {
+    "bill",
+    *FULL_ADMIN_USERNAMES
+}
 
 
 def can_manage_shared_files(db, username):
@@ -2194,7 +2226,7 @@ def create_shared_sales_folder(data: dict):
 
     if not can_manage_shared_files(db, username):
         db.close()
-        return {"success": False, "message": "Only BILL and orange can create folders."}
+        return {"success": False, "message": "Only BILL, Orange and BILLADMIN can create folders."}
 
     if not name:
         db.close()
@@ -2243,7 +2275,7 @@ def rename_shared_sales_folder(folder_id: int, data: dict):
 
     if not can_manage_shared_files(db, username):
         db.close()
-        return {"success": False, "message": "Only BILL and orange can rename folders."}
+        return {"success": False, "message": "Only BILL, Orange and BILLADMIN can rename folders."}
 
     if folder_id <= 0:
         db.close()
@@ -2302,7 +2334,7 @@ def delete_shared_sales_folder(folder_id: int, data: dict):
 
     if not can_manage_shared_files(db, username):
         db.close()
-        return {"success": False, "message": "Only BILL and orange can delete folders."}
+        return {"success": False, "message": "Only BILL, Orange and BILLADMIN can delete folders."}
 
     if folder_id <= 0:
         db.close()
@@ -2392,7 +2424,7 @@ def upload_shared_sales_file_chunk(data: dict):
 
     if not can_manage_shared_files(db, username):
         db.close()
-        return {"success": False, "message": "Only BILL and orange can upload shared files."}
+        return {"success": False, "message": "Only BILL, Orange and BILLADMIN can upload shared files."}
 
     if not upload_id or not filename:
         db.close()
@@ -2501,7 +2533,7 @@ def delete_shared_sales_file(file_id: int, data: dict):
 
     if not can_manage_shared_files(db, username):
         db.close()
-        return {"success": False, "message": "Only BILL and orange can delete shared files."}
+        return {"success": False, "message": "Only BILL, Orange and BILLADMIN can delete shared files."}
 
     shared_file = db.query(SharedSalesFile).filter(
         SharedSalesFile.id == file_id

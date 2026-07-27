@@ -1026,6 +1026,97 @@
             flex-wrap: wrap;
         }
 
+        .account-password-box {
+            width: min(540px, 92vw);
+            text-align: left;
+        }
+
+        .account-password-title {
+            color: #111827;
+            font-size: 21px;
+            font-weight: 900;
+        }
+
+        .account-password-copy {
+            margin-top: 7px;
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.55;
+        }
+
+        .account-password-field {
+            margin-top: 16px;
+        }
+
+        .account-password-label {
+            display: block;
+            margin-bottom: 7px;
+            color: #334155;
+            font-size: 13px;
+            font-weight: 900;
+        }
+
+        .account-password-row {
+            display: flex;
+            gap: 9px;
+            align-items: stretch;
+        }
+
+        .account-password-input {
+            width: 100%;
+            min-width: 0;
+            height: 46px;
+            box-sizing: border-box;
+            border: 1px solid #bfdbfe;
+            border-radius: 11px;
+            padding: 10px 12px;
+            background: #ffffff;
+            color: #111827;
+            font: inherit;
+            outline: none;
+        }
+
+        .account-password-input[readonly] {
+            background: #f8fafc;
+        }
+
+        .account-password-input:focus {
+            border-color: #1f3c88;
+            box-shadow: 0 0 0 3px rgba(31, 60, 136, 0.12);
+        }
+
+        .account-password-toggle {
+            min-width: 76px;
+            padding-left: 12px;
+            padding-right: 12px;
+        }
+
+        .account-password-status {
+            min-height: 21px;
+            margin-top: 10px;
+            color: #475569;
+            font-size: 13px;
+            font-weight: 800;
+            line-height: 1.55;
+        }
+
+        .account-password-status.error {
+            color: #dc2626;
+        }
+
+        .account-password-status.success {
+            color: #15803d;
+        }
+
+        .account-password-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
         @media (max-width: 980px) {
             .admin-shell { padding: 18px; }
             .admin-nav { align-items: flex-start; flex-direction: column; }
@@ -1055,6 +1146,9 @@
             .shared-file-actions { width: 100%; }
             .shared-folder-create-row { align-items: stretch; flex-direction: column; }
             .shared-folder-create-row button { width: 100%; }
+            .account-password-row { align-items: stretch; flex-direction: column; }
+            .account-password-toggle { width: 100%; }
+            .account-password-actions button { flex: 1; }
         }
     </style>
 </head>
@@ -1081,6 +1175,48 @@
         <div class="shared-folder-rename-actions">
             <button id="adminSharedFolderRenameCancel" class="soft-btn" type="button">Cancel</button>
             <button id="adminSharedFolderRenameSave" class="primary-btn" type="button">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<div id="accountPasswordOverlay" class="center-confirm-overlay">
+    <div class="center-confirm-box account-password-box">
+        <div class="account-password-title">Manage Account Password</div>
+        <div class="account-password-copy">
+            Account: <b id="accountPasswordUsername"></b>. Only Orange and BILLADMIN can view or reset this password.
+        </div>
+
+        <div class="account-password-field">
+            <label class="account-password-label" for="accountCurrentPassword">Current Password</label>
+            <div class="account-password-row">
+                <input id="accountCurrentPassword" class="account-password-input" type="password" readonly
+                       autocomplete="off" placeholder="Loading current password...">
+                <button id="accountCurrentPasswordToggle" class="soft-btn account-password-toggle"
+                        type="button">Show</button>
+            </div>
+        </div>
+
+        <div class="account-password-field">
+            <label class="account-password-label" for="accountNewPassword">New Password</label>
+            <div class="account-password-row">
+                <input id="accountNewPassword" class="account-password-input" type="password"
+                       minlength="6" autocomplete="new-password" placeholder="At least 6 characters">
+                <button id="accountNewPasswordToggle" class="soft-btn account-password-toggle"
+                        type="button">Show</button>
+            </div>
+        </div>
+
+        <div class="account-password-field">
+            <label class="account-password-label" for="accountConfirmPassword">Confirm New Password</label>
+            <input id="accountConfirmPassword" class="account-password-input" type="password"
+                   minlength="6" autocomplete="new-password" placeholder="Enter the new password again">
+        </div>
+
+        <div id="accountPasswordStatus" class="account-password-status"></div>
+
+        <div class="account-password-actions">
+            <button id="accountPasswordCancel" class="soft-btn" type="button">Cancel</button>
+            <button id="accountPasswordSave" class="primary-btn" type="button">Reset Password</button>
         </div>
     </div>
 </div>
@@ -1136,7 +1272,7 @@
             <div>
                 <h2 class="shared-files-title">Shared Files</h2>
                 <div class="shared-files-copy">
-                    Shared file library for the sales team. BILL and orange manage folders and uploads.
+                    Shared file library for the sales team. BILL, Orange and BILLADMIN manage folders and uploads.
                 </div>
             </div>
             <span class="shared-files-arrow">▶</span>
@@ -1411,7 +1547,10 @@ function showCenterConfirm(message) {
 
 const currentUser = localStorage.getItem("user");
 const currentRole = localStorage.getItem("role");
-let canManageAdminSharedFiles = ["bill", "orange"].includes(String(currentUser || "").trim().toLowerCase());
+const fullAdminUsernames = ["orange", "billadmin"];
+const currentAdminUsername = String(currentUser || "").trim().toLowerCase();
+const canManageAccountPasswords = fullAdminUsernames.includes(currentAdminUsername);
+let canManageAdminSharedFiles = ["bill", ...fullAdminUsernames].includes(currentAdminUsername);
 
 let allUsersCache = [];
 let salesUsersCache = [];
@@ -1423,6 +1562,8 @@ let productPageSize = 20;
 let adminSharedFilesCache = [];
 let adminSharedFoldersCache = [];
 let activeAdminSharedFolderId = null;
+let managedPasswordUserId = null;
+let managedPasswordUsername = "";
 
 document.getElementById("adminName").innerText = currentUser || "Unknown";
 
@@ -1574,7 +1715,7 @@ function backToAdminSharedFolders() {
 
 async function createAdminSharedFolder() {
     if (!canManageAdminSharedFiles) {
-        showCenterMessage("Only BILL and orange can manage shared files.");
+        showCenterMessage("Only BILL, Orange and BILLADMIN can manage shared files.");
         return;
     }
 
@@ -1762,7 +1903,7 @@ async function uploadAdminSharedFile(input) {
 
 async function uploadAdminSharedFileToFolder(input, folderId, statusElementId) {
     if (!canManageAdminSharedFiles) {
-        showCenterMessage("Only BILL and orange can upload shared files.");
+        showCenterMessage("Only BILL, Orange and BILLADMIN can upload shared files.");
         if (input) input.value = "";
         return;
     }
@@ -2564,7 +2705,11 @@ async function loadUserGroups() {
     const response = await fetch("/admin/users");
     const users = await response.json();
 
-    allUsersCache = users.filter(user => user.username !== "orange");
+    allUsersCache = users.filter(user => {
+        return !fullAdminUsernames.includes(
+            String(user.username || "").trim().toLowerCase()
+        );
+    });
     updateAdminBoard(allUsersCache);
     applyAdminFilters();
 }
@@ -2900,9 +3045,7 @@ function renderActionButtons(user) {
         `);
     }
 
-    if (status === "Approved") {
-        buttons.push(renderChangePasswordButton(user));
-    }
+    buttons.push(renderChangePasswordButton(user));
 
     buttons.push(renderDeleteButton(user));
 
@@ -2910,17 +3053,17 @@ function renderActionButtons(user) {
 }
 
 function renderChangePasswordButton(user) {
-    if (user.approval_status !== "Approved") return "";
-
     return `
-        <button class="soft-btn" onclick="changePassword(${user.id}, '${escapeForJs(user.username)}')">
-            Change Password
+        <button class="soft-btn" onclick="openAccountPasswordManager(${user.id}, '${escapeForJs(user.username)}')">
+            Manage Password
         </button>
     `;
 }
 
 function renderDeleteButton(user) {
-    if (user.username === "orange") return "";
+    if (fullAdminUsernames.includes(
+        String(user.username || "").trim().toLowerCase()
+    )) return "";
 
     return `
         <button class="dark-btn" onclick="deleteUser(${user.id}, '${escapeForJs(user.username)}')">
@@ -3105,52 +3248,193 @@ async function rejectUser(userId) {
     }
 }
 
-async function changePassword(userId, username) {
-    const newPassword = prompt(
-        "Enter new password for: " + username + "\n\nPassword must be at least 6 characters."
-    );
+function setAccountPasswordStatus(message, type = "") {
+    const status = document.getElementById("accountPasswordStatus");
+    if (!status) return;
 
-    if (newPassword === null) return;
+    status.innerText = message || "";
+    status.className = "account-password-status" + (type ? " " + type : "");
+}
 
-    const password = newPassword.trim();
+function setPasswordInputVisibility(inputId, buttonId, visible) {
+    const input = document.getElementById(inputId);
+    const button = document.getElementById(buttonId);
+    if (!input || !button) return;
+
+    input.type = visible ? "text" : "password";
+    button.innerText = visible ? "Hide" : "Show";
+}
+
+function togglePasswordInputVisibility(inputId, buttonId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    setPasswordInputVisibility(inputId, buttonId, input.type === "password");
+}
+
+function closeAccountPasswordManager() {
+    const overlay = document.getElementById("accountPasswordOverlay");
+    const saveButton = document.getElementById("accountPasswordSave");
+    const cancelButton = document.getElementById("accountPasswordCancel");
+    const currentToggle = document.getElementById("accountCurrentPasswordToggle");
+    const newToggle = document.getElementById("accountNewPasswordToggle");
+
+    if (overlay) {
+        overlay.style.display = "none";
+        overlay.onclick = null;
+    }
+
+    if (saveButton) saveButton.onclick = null;
+    if (cancelButton) cancelButton.onclick = null;
+    if (currentToggle) currentToggle.onclick = null;
+    if (newToggle) newToggle.onclick = null;
+
+    managedPasswordUserId = null;
+    managedPasswordUsername = "";
+}
+
+async function openAccountPasswordManager(userId, username) {
+    if (!canManageAccountPasswords) {
+        showCenterMessage("Only Orange and BILLADMIN can manage account passwords.");
+        return;
+    }
+
+    const overlay = document.getElementById("accountPasswordOverlay");
+    const usernameBox = document.getElementById("accountPasswordUsername");
+    const currentPassword = document.getElementById("accountCurrentPassword");
+    const newPassword = document.getElementById("accountNewPassword");
+    const confirmPassword = document.getElementById("accountConfirmPassword");
+    const saveButton = document.getElementById("accountPasswordSave");
+    const cancelButton = document.getElementById("accountPasswordCancel");
+    const currentToggle = document.getElementById("accountCurrentPasswordToggle");
+    const newToggle = document.getElementById("accountNewPasswordToggle");
+
+    if (!overlay || !usernameBox || !currentPassword || !newPassword || !confirmPassword ||
+        !saveButton || !cancelButton || !currentToggle || !newToggle) {
+        showCenterMessage("Password manager could not be opened.");
+        return;
+    }
+
+    managedPasswordUserId = userId;
+    managedPasswordUsername = username;
+    usernameBox.innerText = username;
+    currentPassword.value = "";
+    currentPassword.placeholder = "Loading current password...";
+    newPassword.value = "";
+    confirmPassword.value = "";
+    saveButton.disabled = true;
+    setPasswordInputVisibility("accountCurrentPassword", "accountCurrentPasswordToggle", false);
+    setPasswordInputVisibility("accountNewPassword", "accountNewPasswordToggle", false);
+    setAccountPasswordStatus("Loading current password...");
+    overlay.style.display = "flex";
+
+    cancelButton.onclick = closeAccountPasswordManager;
+    currentToggle.onclick = () => {
+        togglePasswordInputVisibility("accountCurrentPassword", "accountCurrentPasswordToggle");
+    };
+    newToggle.onclick = () => {
+        togglePasswordInputVisibility("accountNewPassword", "accountNewPasswordToggle");
+    };
+    saveButton.onclick = saveManagedAccountPassword;
+    overlay.onclick = (event) => {
+        if (event.target === overlay) closeAccountPasswordManager();
+    };
+
+    try {
+        const response = await fetch("/admin/users/" + userId + "/password-info", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ requester_username: currentUser })
+        });
+        const data = await response.json();
+
+        if (managedPasswordUserId !== userId) return;
+
+        if (!response.ok || !data.success) {
+            currentPassword.placeholder = "Password unavailable";
+            setAccountPasswordStatus(
+                data.message || data.detail || "Could not load the current password.",
+                "error"
+            );
+            return;
+        }
+
+        currentPassword.value = String(data.password || "");
+        currentPassword.placeholder = "";
+        saveButton.disabled = false;
+        setAccountPasswordStatus("Current password loaded. Click Show to view it.");
+        newPassword.focus();
+    } catch (error) {
+        console.error("Load account password error:", error);
+        currentPassword.placeholder = "Password unavailable";
+        setAccountPasswordStatus("Could not load the current password. Please check server logs.", "error");
+    }
+}
+
+async function saveManagedAccountPassword() {
+    const userId = managedPasswordUserId;
+    const currentPassword = document.getElementById("accountCurrentPassword");
+    const newPassword = document.getElementById("accountNewPassword");
+    const confirmPassword = document.getElementById("accountConfirmPassword");
+    const saveButton = document.getElementById("accountPasswordSave");
+
+    if (!userId || !currentPassword || !newPassword || !confirmPassword || !saveButton) return;
+
+    const password = newPassword.value.trim();
+    const confirmation = confirmPassword.value.trim();
 
     if (!password) {
-        showCenterMessage("Password cannot be empty.");
+        setAccountPasswordStatus("New password cannot be empty.", "error");
+        newPassword.focus();
         return;
     }
 
     if (password.length < 6) {
-        showCenterMessage("Password must be at least 6 characters.");
+        setAccountPasswordStatus("Password must be at least 6 characters.", "error");
+        newPassword.focus();
         return;
     }
 
-    setProcessing(userId, true);
+    if (password !== confirmation) {
+        setAccountPasswordStatus("The two new passwords do not match.", "error");
+        confirmPassword.focus();
+        return;
+    }
+
+    saveButton.disabled = true;
+    setAccountPasswordStatus("Resetting password...");
 
     try {
-        const response = await fetch(
-            "/admin/users/" + userId + "/change-password",
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ password: password })
-            }
-        );
-
+        const response = await fetch("/admin/users/" + userId + "/change-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                requester_username: currentUser,
+                password: password
+            })
+        });
         const data = await response.json();
 
-        if (!data.success) {
-            showCenterMessage(data.message || data.detail || "Password update failed. Please check server logs.");
-            setProcessing(userId, false);
+        if (!response.ok || !data.success) {
+            setAccountPasswordStatus(
+                data.message || data.detail || "Password reset failed.",
+                "error"
+            );
+            saveButton.disabled = false;
             return;
         }
 
-        await loadAdminUsers();
-        showToast(data.message);
-
+        currentPassword.value = password;
+        newPassword.value = "";
+        confirmPassword.value = "";
+        setPasswordInputVisibility("accountCurrentPassword", "accountCurrentPasswordToggle", false);
+        setPasswordInputVisibility("accountNewPassword", "accountNewPasswordToggle", false);
+        setAccountPasswordStatus("Password reset successfully. The current password is now updated.", "success");
+        showToast(data.message || "Password reset successfully.");
+        saveButton.disabled = false;
     } catch (error) {
-        console.error("Change password error:", error);
-        showCenterMessage("Password update failed. Please check server logs.");
-        setProcessing(userId, false);
+        console.error("Reset account password error:", error);
+        setAccountPasswordStatus("Password reset failed. Please check server logs.", "error");
+        saveButton.disabled = false;
     }
 }
 
