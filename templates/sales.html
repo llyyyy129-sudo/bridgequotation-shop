@@ -38,6 +38,9 @@
             gap: 18px;
             margin-bottom: 22px;
             backdrop-filter: blur(12px);
+            position: sticky;
+            top: 12px;
+            z-index: 1000;
         }
 
         .brand-block {
@@ -114,6 +117,11 @@
             background: #fff1f2;
             color: #be123c;
             border-color: #fecdd3;
+        }
+
+        .sales-hero,
+        #sharedFilesSection {
+            scroll-margin-top: 120px;
         }
 
         .sales-hero {
@@ -3052,10 +3060,10 @@ function goCart() {
 
 
 function scrollToDashboard() {
-    const firstBoard = document.querySelector(".summary-card");
+    const dashboard = document.querySelector(".sales-hero");
 
-    if (firstBoard) {
-        firstBoard.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (dashboard) {
+        dashboard.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 }
 
@@ -3065,6 +3073,13 @@ function scrollToSharedFiles() {
     if (section) {
         section.open = true;
         section.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+}
+
+
+function handleSalesNavigationHash() {
+    if (window.location.hash === "#sharedFilesSection") {
+        setTimeout(scrollToSharedFiles, 80);
     }
 }
 
@@ -3161,6 +3176,8 @@ applySharedFilesPermissionView();
 loadSalesUserInfo();
 loadSalesOrders();
 loadSharedSalesFiles();
+handleSalesNavigationHash();
+window.addEventListener("hashchange", handleSalesNavigationHash);
 </script>
 
 </body>

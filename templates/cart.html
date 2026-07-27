@@ -154,6 +154,59 @@
       min-width: 280px;
     }
 
+    .sales-global-nav {
+      display: none;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-left: auto;
+    }
+
+    .sales-global-btn {
+      border: 1px solid #dbeafe;
+      background: #ffffff;
+      color: var(--brand-blue);
+      border-radius: 13px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 900;
+      cursor: pointer;
+      white-space: nowrap;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+      transition: transform 0.16s ease, background 0.16s ease;
+    }
+
+    .sales-global-btn:hover {
+      background: var(--soft-blue);
+      transform: translateY(-1px);
+    }
+
+    .sales-global-btn.active {
+      background: var(--brand-blue);
+      color: #ffffff;
+      border-color: var(--brand-blue);
+    }
+
+    .sales-global-btn.danger {
+      background: var(--danger-soft);
+      color: #be123c;
+      border-color: #fecdd3;
+    }
+
+    body.sales-role .sales-global-nav {
+      display: flex;
+    }
+
+    body.sales-role .nav-links,
+    body.sales-role .nav-user {
+      display: none;
+    }
+
+    body.sales-role .brand-area {
+      min-width: 0;
+    }
+
     .user-pill {
       display: inline-flex;
       align-items: center;
@@ -678,6 +731,12 @@
         justify-content: flex-start;
         min-width: 0;
       }
+
+      body.sales-role .sales-global-nav {
+        width: 100%;
+        justify-content: flex-start;
+        margin-left: 0;
+      }
     }
 
     @media (max-width: 760px) {
@@ -709,6 +768,10 @@
         width: 100%;
         max-width: 230px;
       }
+
+      .sales-global-btn {
+        flex: 1 1 130px;
+      }
     }
   </style>
 </head>
@@ -727,6 +790,14 @@
         <div class="brand-title">Bridge Quotation</div>
         <div class="brand-subtitle">Product selection and quotation platform</div>
       </div>
+    </div>
+
+    <div class="sales-global-nav" aria-label="Sales navigation">
+      <button class="sales-global-btn" onclick="goSalesDashboard()">Dashboard</button>
+      <button class="sales-global-btn" onclick="goSalesSharedFiles()">Shared Files</button>
+      <button class="sales-global-btn" onclick="goSalesProducts()">Products</button>
+      <button class="sales-global-btn active" onclick="window.location.href='cart.html'">Cart</button>
+      <button class="sales-global-btn danger" onclick="logout()">Logout</button>
     </div>
 
     <div class="nav-links">
@@ -870,6 +941,8 @@ const currentUser = localStorage.getItem("user") || "";
 const currentRole = localStorage.getItem("role") || "";
 
 if (currentRole === "sales") {
+  document.body.classList.add("sales-role");
+
   const ordersNavBtn = document.getElementById("ordersNavBtn");
   if (ordersNavBtn) {
     ordersNavBtn.innerText = "Sales Dashboard";
@@ -1261,6 +1334,18 @@ function goBack() {
 
 function backToSalesDashboard() {
   window.location.href = "sales.html";
+}
+
+function goSalesDashboard() {
+  window.location.href = "sales.html";
+}
+
+function goSalesSharedFiles() {
+  window.location.href = "sales.html#sharedFilesSection";
+}
+
+function goSalesProducts() {
+  window.location.href = "products.html";
 }
 
 function goMyOrders() {
