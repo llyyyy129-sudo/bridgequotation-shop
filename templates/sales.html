@@ -1137,9 +1137,11 @@
         .shared-files-arrow { color: #4f46e5; font-size: 18px; font-weight: 900; transition: transform 0.18s ease; }
         details.shared-files-card[open] .shared-files-arrow { transform: rotate(90deg); }
         .shared-files-content { margin-top: 16px; }
-        .shared-folder-create-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin-bottom: 12px; }
-        .shared-folder-create-row input, .shared-file-upload-box select { width: 100%; border: 1px solid #c7d2fe; border-radius: 10px; padding: 10px 12px; font: inherit; }
-        .shared-folder-create-row button, .shared-folder-back { border: none; background: #4f46e5; color: #ffffff; border-radius: 10px; padding: 10px 13px; font-weight: 900; cursor: pointer; }
+        .shared-folder-create-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 12px; border: 1px solid #e0e7ff; border-radius: 14px; background: #fafaff; }
+        .shared-folder-create-row input { flex: 1 1 auto; min-width: 0; height: 46px; box-sizing: border-box; border: 1px solid #c7d2fe; border-radius: 10px; padding: 10px 12px; font: inherit; }
+        .shared-file-upload-box select { width: 100%; box-sizing: border-box; border: 1px solid #c7d2fe; border-radius: 10px; padding: 10px 12px; font: inherit; }
+        .shared-folder-create-row button { position: static !important; flex: 0 0 auto; min-width: 126px; height: 46px; margin: 0 !important; border: none; background: #4f46e5; color: #ffffff; border-radius: 10px; padding: 10px 16px; font-weight: 900; cursor: pointer; transform: none !important; }
+        .shared-folder-back { border: none; background: #4f46e5; color: #ffffff; border-radius: 10px; padding: 10px 13px; font-weight: 900; cursor: pointer; }
         .shared-folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); align-items: start; gap: 12px; margin-top: 14px; }
         .shared-folder-card { min-width: 0; border: 1px solid #c7d2fe; background: #ffffff; border-radius: 13px; padding: 15px; text-align: left; transition: background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease; }
         .shared-folder-card:hover { background: #eef2ff; transform: translateY(-1px); }
@@ -1154,8 +1156,16 @@
         .shared-folder-card-content .shared-file-main { flex: 1 1 auto; min-width: 0; }
         .shared-folder-management { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
         .shared-folder-manage-btn { border: 1px solid #c7d2fe; background: #ffffff; color: #3730a3; border-radius: 9px; padding: 7px 10px; font-size: 12px; font-weight: 900; cursor: pointer; }
+        .shared-folder-manage-btn.primary { border-color: #4f46e5; background: #4f46e5; color: #ffffff; }
         .shared-folder-manage-btn.danger { border-color: #fecaca; background: #fff1f2; color: #be123c; }
+        .shared-folder-upload-status { display: inline-flex; align-items: center; min-height: 32px; color: #4f46e5; font-size: 12px; font-weight: 800; }
         .shared-files-readonly { margin-bottom: 12px; padding: 10px 12px; border: 1px solid #dbeafe; border-radius: 11px; background: #f8fafc; color: #64748b; font-size: 12px; font-weight: 800; }
+        .shared-folder-rename-box { width: min(440px, 90vw); text-align: left; }
+        .shared-folder-rename-title { color: #111827; font-size: 20px; font-weight: 900; }
+        .shared-folder-rename-copy { margin-top: 7px; color: #6b7280; font-size: 13px; font-weight: 700; line-height: 1.5; }
+        .shared-folder-rename-input { width: 100%; height: 46px; box-sizing: border-box; margin-top: 18px; border: 1px solid #c7d2fe; border-radius: 11px; padding: 10px 12px; color: #111827; font: inherit; outline: none; }
+        .shared-folder-rename-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12); }
+        .shared-folder-rename-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
         .shared-folder-name { color: #312e81; font-size: 14px; font-weight: 900; word-break: break-word; }
         .shared-folder-count { color: #6b7280; font-size: 12px; font-weight: 800; margin-top: 6px; }
         .shared-folder-view-head { display: flex; align-items: center; gap: 10px; margin-top: 14px; color: #312e81; font-weight: 900; }
@@ -1194,6 +1204,15 @@
                 align-items: flex-start;
                 flex-direction: column;
             }
+
+            .shared-folder-create-row {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .shared-folder-create-row button {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -1209,6 +1228,18 @@
         <div class="center-confirm-actions">
             <button id="centerConfirmOk" class="center-confirm-ok" type="button">Confirm</button>
             <button id="centerConfirmCancel" class="center-confirm-cancel" type="button">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div id="sharedFolderRenameOverlay" class="center-confirm-overlay">
+    <div class="center-confirm-box shared-folder-rename-box">
+        <div class="shared-folder-rename-title">Rename Folder</div>
+        <div class="shared-folder-rename-copy">Enter a new name for this shared folder.</div>
+        <input id="sharedFolderRenameInput" class="shared-folder-rename-input" type="text" maxlength="80">
+        <div class="shared-folder-rename-actions">
+            <button id="sharedFolderRenameCancel" class="center-confirm-cancel" type="button">Cancel</button>
+            <button id="sharedFolderRenameSave" class="center-confirm-ok" type="button">Save Changes</button>
         </div>
     </div>
 </div>
@@ -1591,6 +1622,12 @@ function renderSharedFolderCard(folder, keyword) {
     const isOpen = activeSharedFolderId !== null && Number(activeSharedFolderId) === Number(folder.id) ? " open" : "";
     const folderManagement = canManageSharedFiles && Number(folder.id) > 0 ? `
         <div class="shared-folder-management">
+            <input id="sharedFolderUploadInput-${folder.id}" type="file" hidden
+                accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.zip,.rar,.mp4,.webm,.mov,.m4v"
+                onchange="uploadSharedSalesFileToFolder(this, ${folder.id}, 'sharedFolderUploadStatus-${folder.id}')">
+            <span id="sharedFolderUploadStatus-${folder.id}" class="shared-folder-upload-status"></span>
+            <button class="shared-folder-manage-btn primary" type="button"
+                onclick="document.getElementById('sharedFolderUploadInput-${folder.id}').click()">Upload File</button>
             <button class="shared-folder-manage-btn" type="button"
                 onclick="renameSharedSalesFolder(${folder.id}, '${escapeForJs(folder.name || "")}')">Rename Folder</button>
             <button class="shared-folder-manage-btn danger" type="button"
@@ -1678,10 +1715,62 @@ function applySharedFilesPermissionView() {
 }
 
 
+function showSharedFolderRenameDialog(currentName) {
+    return new Promise(resolve => {
+        const overlay = document.getElementById("sharedFolderRenameOverlay");
+        const input = document.getElementById("sharedFolderRenameInput");
+        const saveButton = document.getElementById("sharedFolderRenameSave");
+        const cancelButton = document.getElementById("sharedFolderRenameCancel");
+
+        if (!overlay || !input || !saveButton || !cancelButton) {
+            resolve(null);
+            return;
+        }
+
+        input.value = currentName || "";
+        overlay.style.display = "flex";
+
+        const close = value => {
+            overlay.style.display = "none";
+            saveButton.onclick = null;
+            cancelButton.onclick = null;
+            overlay.onclick = null;
+            input.onkeydown = null;
+            resolve(value);
+        };
+
+        const save = () => {
+            const value = String(input.value || "").trim();
+            if (!value) {
+                showCenterMessage("Please enter a folder name.");
+                input.focus();
+                return;
+            }
+            close(value);
+        };
+
+        saveButton.onclick = save;
+        cancelButton.onclick = () => close(null);
+        overlay.onclick = event => {
+            if (event.target === overlay) close(null);
+        };
+        input.onkeydown = event => {
+            if (event.key === "Enter") save();
+            if (event.key === "Escape") close(null);
+        };
+
+        setTimeout(() => {
+            input.focus();
+            input.select();
+        }, 0);
+    });
+}
+
+
 async function renameSharedSalesFolder(folderId, currentName) {
     if (!canManageSharedFiles) return;
 
-    const nextName = window.prompt("Enter the new folder name:", currentName || "");
+    const nextName = await showSharedFolderRenameDialog(currentName);
     if (nextName === null) return;
 
     const name = String(nextName || "").trim();
@@ -1766,6 +1855,12 @@ function isAllowedSharedSalesFile(file) {
 
 
 async function uploadSharedSalesFile(input) {
+    const folderId = Number(document.getElementById("sharedFileFolder")?.value || 0);
+    await uploadSharedSalesFileToFolder(input, folderId, "sharedFileUploadStatus");
+}
+
+
+async function uploadSharedSalesFileToFolder(input, folderId, statusElementId) {
     if (!canManageSharedFiles) {
         showCenterMessage("Only BILL and orange can upload shared files.");
         if (input) input.value = "";
@@ -1773,8 +1868,9 @@ async function uploadSharedSalesFile(input) {
     }
 
     const file = input?.files?.[0];
-    const statusBox = document.getElementById("sharedFileUploadStatus");
-    const folderId = Number(document.getElementById("sharedFileFolder")?.value || 0);
+    const statusBox =
+        document.getElementById(statusElementId || "") ||
+        document.getElementById("sharedFileUploadStatus");
     if (!file) return;
 
     if (!folderId) {
