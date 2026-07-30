@@ -214,7 +214,11 @@ def migrate_product_price_to_float():
 migrate_product_price_to_float()
 
 
-FULL_ADMIN_ACCOUNTS = {
+# Bootstrap administrators guarantee that the original owner accounts remain
+# available after a new deployment. New administrators should be created from
+# the Admin Dashboard and are stored in PostgreSQL, so adding them does not
+# require another code change or Railway deployment.
+BOOTSTRAP_ADMIN_ACCOUNTS = {
     "orange": {
         "password": "Orange123456",
         "company_name": "COPEC"
@@ -222,50 +226,69 @@ FULL_ADMIN_ACCOUNTS = {
     "BILLADMIN": {
         "password": "NBFuture2023!",
         "company_name": "COPEC"
+    },
+    "clover": {
+        "password": "12345678",
+        "company_name": "COPEC"
     }
 }
 
-FULL_ADMIN_USERNAMES = {
+PROTECTED_BOOTSTRAP_ADMIN_USERNAMES = {
     username.lower()
-    for username in FULL_ADMIN_ACCOUNTS
+    for username in BOOTSTRAP_ADMIN_ACCOUNTS
 }
 
 
-def ensure_full_admin_accounts():
+def ensure_bootstrap_admin_accounts():
     db = SessionLocal()
 
-    for username, settings in FULL_ADMIN_ACCOUNTS.items():
-        admin_user = db.query(User).filter(
-            func.lower(User.username) == username.lower()
-        ).first()
+    try:
+        for username, settings in BOOTSTRAP_ADMIN_ACCOUNTS.items():
+            admin_user = db.query(User).filter(
+                func.lower(User.username) == username.lower()
+            ).first()
 
-        if admin_user:
-            admin_user.role = "admin"
-            admin_user.account_type = "employee"
-            admin_user.approval_status = "Approved"
-            admin_user.assigned_sales = ""
-            admin_user.company_name = (
-                admin_user.company_name or settings["company_name"]
+            if admin_user:
+                was_approved_admin = (
+                    str(admin_user.role or "").strip().lower() == "admin" and
+                    str(admin_user.approval_status or "Approved").strip() == "Approved"
+                )
+
+                admin_user.role = "admin"
+                admin_user.account_type = "employee"
+                admin_user.approval_status = "Approved"
+                admin_user.assigned_sales = ""
+                admin_user.company_name = (
+                    admin_user.company_name or settings["company_name"]
+                )
+
+                # If the username already existed as a customer or sales account,
+                # promote it with the requested bootstrap password. Existing admin
+                # password changes are preserved on later deployments.
+                if not was_approved_admin:
+                    admin_user.password = settings["password"]
+
+                continue
+
+            admin_user = User(
+                username=username,
+                password=settings["password"],
+                role="admin",
+                assigned_sales="",
+                company_name=settings["company_name"],
+                email="",
+                account_type="employee",
+                approval_status="Approved",
+                customer_level="A"
             )
-            continue
+            db.add(admin_user)
 
-        admin_user = User(
-            username=username,
-            password=settings["password"],
-            role="admin",
-            assigned_sales="",
-            company_name=settings["company_name"],
-            email="",
-            account_type="employee",
-            approval_status="Approved"
-        )
-        db.add(admin_user)
-
-    db.commit()
-    db.close()
+        db.commit()
+    finally:
+        db.close()
 
 
-ensure_full_admin_accounts()
+ensure_bootstrap_admin_accounts()
 
 
 def ensure_pricing_setting():
@@ -1292,6 +1315,8 @@ def change_password(data: dict):
 # =========================
 
 def serialize_user(u):
+    normalized_username = str(u.username or "").strip().lower()
+
     return {
         "id": u.id,
         "username": u.username,
@@ -1301,25 +1326,134 @@ def serialize_user(u):
         "role": u.role,
         "assigned_sales": u.assigned_sales,
         "approval_status": u.approval_status,
-        "customer_level": u.customer_level
+        "customer_level": u.customer_level,
+        "is_protected_admin": (
+            u.role == "admin" and
+            normalized_username in PROTECTED_BOOTSTRAP_ADMIN_USERNAMES
+        )
     }
 
 
-def can_full_admin_manage_user_passwords(db, requester_username):
-    normalized_username = str(requester_username or "").strip().lower()
+def get_user_by_username_case_insensitive(db, username):
+    normalized_username = str(username or "").strip().lower()
 
-    if normalized_username not in FULL_ADMIN_USERNAMES:
-        return False
+    if not normalized_username:
+        return None
 
-    admin_user = db.query(User).filter(
+    return db.query(User).filter(
         func.lower(User.username) == normalized_username
     ).first()
 
+
+def can_approved_admin(db, requester_username):
+    admin_user = get_user_by_username_case_insensitive(
+        db,
+        requester_username
+    )
+
     return bool(
         admin_user and
-        admin_user.role == "admin" and
-        admin_user.approval_status == "Approved"
+        str(admin_user.role or "").strip().lower() == "admin" and
+        str(admin_user.approval_status or "Approved").strip() == "Approved"
     )
+
+
+def can_admin_manage_user_passwords(db, requester_username):
+    return can_approved_admin(db, requester_username)
+
+
+@app.post("/admin/users/create-admin")
+def create_admin_account(data: dict):
+    db = SessionLocal()
+
+    try:
+        requester_username = str(
+            data.get("requester_username", "") or ""
+        ).strip()
+
+        if not can_approved_admin(db, requester_username):
+            return {
+                "success": False,
+                "message": "Only an approved admin can create another admin account."
+            }
+
+        username = str(data.get("username", "") or "").strip()
+        password = str(data.get("password", "") or "").strip()
+        company_name = str(
+            data.get("company_name", "COPEC") or "COPEC"
+        ).strip()
+        email = str(data.get("email", "") or "").strip()
+
+        if not username or not password:
+            return {
+                "success": False,
+                "message": "Username and password are required."
+            }
+
+        if not re.fullmatch(r"[A-Za-z0-9_.-]{3,50}", username):
+            return {
+                "success": False,
+                "message": "Username must be 3-50 characters and can only contain letters, numbers, dots, underscores or hyphens."
+            }
+
+        if len(password) < 8:
+            return {
+                "success": False,
+                "message": "Admin password must be at least 8 characters."
+            }
+
+        existing_username = get_user_by_username_case_insensitive(
+            db,
+            username
+        )
+
+        if existing_username:
+            return {
+                "success": False,
+                "message": "Username already exists."
+            }
+
+        if email:
+            existing_email = db.query(User).filter(
+                func.lower(User.email) == email.lower()
+            ).first()
+
+            if existing_email:
+                return {
+                    "success": False,
+                    "message": "Email already exists."
+                }
+
+        new_admin = User(
+            username=username,
+            password=password,
+            role="admin",
+            assigned_sales="",
+            company_name=company_name or "COPEC",
+            email=email,
+            account_type="employee",
+            approval_status="Approved",
+            customer_level="A"
+        )
+
+        db.add(new_admin)
+        db.commit()
+        db.refresh(new_admin)
+
+        return {
+            "success": True,
+            "message": f"Admin account {new_admin.username} has been created.",
+            "user": serialize_user(new_admin)
+        }
+
+    except Exception as e:
+        db.rollback()
+        return {
+            "success": False,
+            "message": "Create admin account failed: " + str(e)
+        }
+    finally:
+        db.close()
 
 
 @app.get("/admin/users")
@@ -1364,7 +1498,7 @@ def approve_user(user_id: int):
 
     username = user.username
 
-    if str(username or "").strip().lower() in FULL_ADMIN_USERNAMES:
+    if str(user.role or "").strip().lower() == "admin":
         db.close()
         return {
             "success": False,
@@ -1407,7 +1541,7 @@ def reject_user(user_id: int):
 
     username = user.username
 
-    if str(username or "").strip().lower() in FULL_ADMIN_USERNAMES:
+    if str(user.role or "").strip().lower() == "admin":
         db.close()
         return {
             "success": False,
@@ -1444,7 +1578,6 @@ def get_sales_users():
             "email": u.email
         }
         for u in users
-        if str(u.username or "").strip().lower() not in FULL_ADMIN_USERNAMES
     ]
 
     db.close()
@@ -1635,11 +1768,11 @@ def get_user_password_info(user_id: int, data: dict):
     db = SessionLocal()
     requester_username = str(data.get("requester_username", "") or "").strip()
 
-    if not can_full_admin_manage_user_passwords(db, requester_username):
+    if not can_admin_manage_user_passwords(db, requester_username):
         db.close()
         return {
             "success": False,
-            "message": "Only Orange and BILLADMIN can view account passwords."
+            "message": "Only an approved admin can view account passwords."
         }
 
     user = db.query(User).filter(
@@ -1667,11 +1800,11 @@ def change_user_password(user_id: int, data: dict):
     db = SessionLocal()
     requester_username = str(data.get("requester_username", "") or "").strip()
 
-    if not can_full_admin_manage_user_passwords(db, requester_username):
+    if not can_admin_manage_user_passwords(db, requester_username):
         db.close()
         return {
             "success": False,
-            "message": "Only Orange and BILLADMIN can reset account passwords."
+            "message": "Only an approved admin can reset account passwords."
         }
 
     user = db.query(User).filter(
@@ -1713,37 +1846,62 @@ def change_user_password(user_id: int, data: dict):
     }
 
 @app.post("/admin/users/{user_id}/delete")
-def delete_user(user_id: int):
+def delete_user(user_id: int, data: dict):
     db = SessionLocal()
 
-    user = db.query(User).filter(
-        User.id == user_id
-    ).first()
+    try:
+        requester_username = str(
+            data.get("requester_username", "") or ""
+        ).strip()
 
-    if not user:
-        db.close()
+        if not can_approved_admin(db, requester_username):
+            return {
+                "success": False,
+                "message": "Only an approved admin can delete accounts."
+            }
+
+        user = db.query(User).filter(
+            User.id == user_id
+        ).first()
+
+        if not user:
+            return {
+                "success": False,
+                "message": "User not found."
+            }
+
+        username = user.username
+        normalized_username = str(username or "").strip().lower()
+        normalized_requester = requester_username.lower()
+
+        if normalized_username in PROTECTED_BOOTSTRAP_ADMIN_USERNAMES:
+            return {
+                "success": False,
+                "message": "This bootstrap admin account is protected and cannot be deleted."
+            }
+
+        if normalized_username == normalized_requester:
+            return {
+                "success": False,
+                "message": "You cannot delete the admin account currently in use."
+            }
+
+        db.delete(user)
+        db.commit()
+
         return {
-            "success": False,
-            "message": "User not found."
+            "success": True,
+            "message": f"{username} has been deleted."
         }
 
-    username = user.username
-
-    if str(username or "").strip().lower() in FULL_ADMIN_USERNAMES:
-        db.close()
+    except Exception as e:
+        db.rollback()
         return {
             "success": False,
-            "message": "Admin user cannot be deleted."
+            "message": "Delete account failed: " + str(e)
         }
-
-    db.delete(user)
-    db.commit()
-    db.close()
-
-    return {
-        "success": True,
-        "message": f"{username} has been deleted."
-    }
+    finally:
+        db.close()
 
 
 
@@ -2054,23 +2212,25 @@ def can_access_shared_files(db, username, admin_only=False):
     return not admin_only and user.role == "sales"
 
 
-SHARED_FILES_MANAGER_USERNAMES = {
-    "bill",
-    *FULL_ADMIN_USERNAMES
-}
-
-
 def can_manage_shared_files(db, username):
     normalized_username = str(username or "").strip().lower()
+    user = get_user_by_username_case_insensitive(db, normalized_username)
 
-    if normalized_username not in SHARED_FILES_MANAGER_USERNAMES:
+    if not user:
         return False
 
-    user = db.query(User).filter(
-        func.lower(User.username) == normalized_username
-    ).first()
+    role = str(user.role or "").strip().lower()
+    approval_status = str(
+        user.approval_status or "Approved"
+    ).strip()
 
-    return bool(user and user.role in {"sales", "admin"})
+    if approval_status != "Approved":
+        return False
+
+    if role == "admin":
+        return True
+
+    return normalized_username == "bill" and role == "sales"
 
 
 def get_shared_sales_folders(db):
@@ -2257,7 +2417,7 @@ def create_shared_sales_folder(data: dict):
 
     if not can_manage_shared_files(db, username):
         db.close()
-        return {"success": False, "message": "Only BILL, Orange and BILLADMIN can create folders."}
+        return {"success": False, "message": "Only BILL and approved admin users can create folders."}
 
     if not name:
         db.close()
@@ -2306,7 +2466,7 @@ def rename_shared_sales_folder(folder_id: int, data: dict):
 
     if not can_manage_shared_files(db, username):
         db.close()
-        return {"success": False, "message": "Only BILL, Orange and BILLADMIN can rename folders."}
+        return {"success": False, "message": "Only BILL and approved admin users can rename folders."}
 
     if folder_id <= 0:
         db.close()
@@ -2365,7 +2525,7 @@ def delete_shared_sales_folder(folder_id: int, data: dict):
 
     if not can_manage_shared_files(db, username):
         db.close()
-        return {"success": False, "message": "Only BILL, Orange and BILLADMIN can delete folders."}
+        return {"success": False, "message": "Only BILL and approved admin users can delete folders."}
 
     if folder_id <= 0:
         db.close()
@@ -2455,7 +2615,7 @@ def upload_shared_sales_file_chunk(data: dict):
 
     if not can_manage_shared_files(db, username):
         db.close()
-        return {"success": False, "message": "Only BILL, Orange and BILLADMIN can upload shared files."}
+        return {"success": False, "message": "Only BILL and approved admin users can upload shared files."}
 
     if not upload_id or not filename:
         db.close()
@@ -2564,7 +2724,7 @@ def delete_shared_sales_file(file_id: int, data: dict):
 
     if not can_manage_shared_files(db, username):
         db.close()
-        return {"success": False, "message": "Only BILL, Orange and BILLADMIN can delete shared files."}
+        return {"success": False, "message": "Only BILL and approved admin users can delete shared files."}
 
     shared_file = db.query(SharedSalesFile).filter(
         SharedSalesFile.id == file_id

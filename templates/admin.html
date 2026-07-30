@@ -216,7 +216,7 @@
 
         .summary-grid {
             display: grid;
-            grid-template-columns: repeat(6, minmax(140px, 1fr));
+            grid-template-columns: repeat(7, minmax(130px, 1fr));
             gap: 14px;
             margin-bottom: 22px;
         }
@@ -250,6 +250,7 @@
         .card-red { background: #fff1f2; border-color: #fecdd3; }
         .card-purple { background: #f5f3ff; border-color: #ddd6fe; }
         .card-slate { background: #f8fafc; border-color: #e5e7eb; }
+        .card-teal { background: #f0fdfa; border-color: #99f6e4; }
 
         .panel {
             background: #ffffff;
@@ -301,6 +302,20 @@
 
         .profile-grid {
             grid-template-columns: minmax(220px, 1fr) minmax(260px, 1fr) auto;
+        }
+
+        .admin-create-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(180px, 1fr));
+            gap: 14px;
+            align-items: end;
+        }
+
+        .admin-create-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 16px;
         }
 
         .field label {
@@ -508,6 +523,7 @@
         .status-rejected { background: #fff1f2; color: #dc2626; border-color: #fecdd3; }
         .role-customer { background: #eef4ff; color: #1f3c88; border-color: #bfdbfe; }
         .role-sales { background: #f5f3ff; color: #6d28d9; border-color: #ddd6fe; }
+        .role-admin { background: #f0fdfa; color: #0f766e; border-color: #99f6e4; }
 
         .user-meta-grid {
             display: grid;
@@ -1125,6 +1141,7 @@
             .filter-grid,
             .pricing-row,
             .profile-grid,
+            .admin-create-grid,
             .user-meta-grid,
             .product-panel-tools,
             .product-form-grid { grid-template-columns: 1fr; }
@@ -1183,7 +1200,7 @@
     <div class="center-confirm-box account-password-box">
         <div class="account-password-title">Manage Account Password</div>
         <div class="account-password-copy">
-            Account: <b id="accountPasswordUsername"></b>. Only Orange and BILLADMIN can view or reset this password.
+            Account: <b id="accountPasswordUsername"></b>. Any approved admin can view or reset this password.
         </div>
 
         <div class="account-password-field">
@@ -1272,7 +1289,7 @@
             <div>
                 <h2 class="shared-files-title">Shared Files</h2>
                 <div class="shared-files-copy">
-                    Shared file library for the sales team. BILL, Orange and BILLADMIN manage folders and uploads.
+                    Shared file library for the sales team. BILL and approved admin users can manage folders and uploads.
                 </div>
             </div>
             <span class="shared-files-arrow">▶</span>
@@ -1330,6 +1347,10 @@
             <div class="summary-label">Sales Users</div>
             <div id="boardSalesUsers" class="summary-number">0</div>
         </div>
+        <div class="summary-card card-teal">
+            <div class="summary-label">Admin Users</div>
+            <div id="boardAdminUsers" class="summary-number">0</div>
+        </div>
     </div>
 
     <div class="panel">
@@ -1359,6 +1380,49 @@
     <div class="panel">
         <div class="panel-header">
             <div>
+                <h2 class="panel-title">Create Admin Account</h2>
+                <div class="panel-desc">
+                    Create a new approved administrator directly in PostgreSQL. Future admin accounts created here do not require a code change or Railway redeployment.
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-create-grid">
+            <div class="field">
+                <label for="newAdminUsername">Username</label>
+                <input id="newAdminUsername" type="text" minlength="3" maxlength="50"
+                       autocomplete="off" placeholder="e.g. clover">
+            </div>
+
+            <div class="field">
+                <label for="newAdminPassword">Password</label>
+                <input id="newAdminPassword" type="password" minlength="8"
+                       autocomplete="new-password" placeholder="At least 8 characters">
+            </div>
+
+            <div class="field">
+                <label for="newAdminCompany">Company</label>
+                <input id="newAdminCompany" type="text" value="COPEC"
+                       placeholder="Company name">
+            </div>
+
+            <div class="field">
+                <label for="newAdminEmail">Email (Optional)</label>
+                <input id="newAdminEmail" type="email" placeholder="name@company.com">
+            </div>
+        </div>
+
+        <div class="admin-create-actions">
+            <button id="createAdminAccountButton" class="primary-btn" type="button" onclick="createAdminAccount()">
+                Create Admin
+            </button>
+            <button class="soft-btn" type="button" onclick="clearAdminAccountForm()">Clear</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <div>
                 <h2 class="panel-title">User Search & Filter</h2>
                 <div class="panel-desc">
                     Search by username, company, email, role, customer level or assigned sales.
@@ -1378,6 +1442,7 @@
                     <option value="all">All Roles</option>
                     <option value="customer">Customers</option>
                     <option value="sales">Sales Users</option>
+                    <option value="admin">Admin Users</option>
                 </select>
             </div>
 
@@ -1472,6 +1537,14 @@
 
     <details class="user-section">
         <summary>
+            <span id="adminUsersTitle" class="section-title">Admin Users (0)</span>
+            <span class="section-arrow">▶</span>
+        </summary>
+        <div id="adminUsers" class="user-list"></div>
+    </details>
+
+    <details class="user-section">
+        <summary>
             <span id="customerUsersTitle" class="section-title">Customer Users (0)</span>
             <span class="section-arrow">▶</span>
         </summary>
@@ -1547,10 +1620,10 @@ function showCenterConfirm(message) {
 
 const currentUser = localStorage.getItem("user");
 const currentRole = localStorage.getItem("role");
-const fullAdminUsernames = ["orange", "billadmin"];
 const currentAdminUsername = String(currentUser || "").trim().toLowerCase();
-const canManageAccountPasswords = fullAdminUsernames.includes(currentAdminUsername);
-let canManageAdminSharedFiles = ["bill", ...fullAdminUsernames].includes(currentAdminUsername);
+const isCurrentUserAdmin = String(currentRole || "").trim().toLowerCase() === "admin";
+const canManageAccountPasswords = isCurrentUserAdmin;
+let canManageAdminSharedFiles = isCurrentUserAdmin;
 
 let allUsersCache = [];
 let salesUsersCache = [];
@@ -1715,7 +1788,7 @@ function backToAdminSharedFolders() {
 
 async function createAdminSharedFolder() {
     if (!canManageAdminSharedFiles) {
-        showCenterMessage("Only BILL, Orange and BILLADMIN can manage shared files.");
+        showCenterMessage("Only BILL and approved admin users can manage shared files.");
         return;
     }
 
@@ -1903,7 +1976,7 @@ async function uploadAdminSharedFile(input) {
 
 async function uploadAdminSharedFileToFolder(input, folderId, statusElementId) {
     if (!canManageAdminSharedFiles) {
-        showCenterMessage("Only BILL, Orange and BILLADMIN can upload shared files.");
+        showCenterMessage("Only BILL and approved admin users can upload shared files.");
         if (input) input.value = "";
         return;
     }
@@ -2707,13 +2780,86 @@ async function loadUserGroups() {
     const response = await fetch("/admin/users");
     const users = await response.json();
 
-    allUsersCache = users.filter(user => {
-        return !fullAdminUsernames.includes(
-            String(user.username || "").trim().toLowerCase()
-        );
-    });
+    allUsersCache = Array.isArray(users) ? users : [];
     updateAdminBoard(allUsersCache);
     applyAdminFilters();
+}
+
+function clearAdminAccountForm() {
+    const username = document.getElementById("newAdminUsername");
+    const password = document.getElementById("newAdminPassword");
+    const company = document.getElementById("newAdminCompany");
+    const email = document.getElementById("newAdminEmail");
+
+    if (username) username.value = "";
+    if (password) password.value = "";
+    if (company) company.value = "COPEC";
+    if (email) email.value = "";
+}
+
+async function createAdminAccount() {
+    const usernameInput = document.getElementById("newAdminUsername");
+    const passwordInput = document.getElementById("newAdminPassword");
+    const companyInput = document.getElementById("newAdminCompany");
+    const emailInput = document.getElementById("newAdminEmail");
+    const createButton = document.getElementById("createAdminAccountButton");
+
+    const username = String(usernameInput?.value || "").trim();
+    const password = String(passwordInput?.value || "").trim();
+    const companyName = String(companyInput?.value || "COPEC").trim();
+    const email = String(emailInput?.value || "").trim();
+
+    if (!username || !password) {
+        showCenterMessage("Username and password are required.");
+        return;
+    }
+
+    if (!/^[A-Za-z0-9_.-]{3,50}$/.test(username)) {
+        showCenterMessage("Username must be 3-50 characters using letters, numbers, dots, underscores or hyphens.");
+        return;
+    }
+
+    if (password.length < 8) {
+        showCenterMessage("Admin password must be at least 8 characters.");
+        return;
+    }
+
+    if (email && !email.includes("@")) {
+        showCenterMessage("Please enter a valid email address.");
+        return;
+    }
+
+    if (createButton) createButton.disabled = true;
+
+    try {
+        const response = await fetch("/admin/users/create-admin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                requester_username: currentUser,
+                username: username,
+                password: password,
+                company_name: companyName || "COPEC",
+                email: email
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data?.success) {
+            showCenterMessage(data?.message || data?.detail || "Admin account creation failed.");
+            return;
+        }
+
+        clearAdminAccountForm();
+        await loadUserGroups();
+        showToast(data.message || "Admin account created.");
+    } catch (error) {
+        console.error("Create admin account error:", error);
+        showCenterMessage("Admin account creation failed. Please check server logs.");
+    } finally {
+        if (createButton) createButton.disabled = false;
+    }
 }
 
 function updateAdminBoard(users) {
@@ -2723,7 +2869,8 @@ function updateAdminBoard(users) {
         approved: 0,
         rejected: 0,
         customers: 0,
-        sales: 0
+        sales: 0,
+        admins: 0
     };
 
     users.forEach(user => {
@@ -2736,7 +2883,8 @@ function updateAdminBoard(users) {
         else board.approved += 1;
 
         if (role === "customer" || accountType === "customer") board.customers += 1;
-        if (role === "sales" || accountType === "employee") board.sales += 1;
+        if (role === "sales") board.sales += 1;
+        if (role === "admin") board.admins += 1;
     });
 
     document.getElementById("boardTotalUsers").innerText = board.total;
@@ -2745,6 +2893,7 @@ function updateAdminBoard(users) {
     document.getElementById("boardRejectedUsers").innerText = board.rejected;
     document.getElementById("boardCustomerUsers").innerText = board.customers;
     document.getElementById("boardSalesUsers").innerText = board.sales;
+    document.getElementById("boardAdminUsers").innerText = board.admins;
 }
 
 function applyAdminFilters() {
@@ -2795,7 +2944,11 @@ function userMatchesRole(user, roleFilter) {
     }
 
     if (roleFilter === "sales") {
-        return user.role === "sales" || user.account_type === "employee";
+        return user.role === "sales";
+    }
+
+    if (roleFilter === "admin") {
+        return user.role === "admin";
     }
 
     return true;
@@ -2817,19 +2970,26 @@ function updateFilterResultText(users) {
 function renderUserSections(users) {
     const pendingUsers = users.filter(user => user.approval_status === "Pending");
     const rejectedUsers = users.filter(user => user.approval_status === "Rejected");
+    const adminUsers = users.filter(user =>
+        user.role === "admin" &&
+        user.approval_status !== "Pending" &&
+        user.approval_status !== "Rejected"
+    );
     const customerUsers = users.filter(user =>
         (user.role === "customer" || user.account_type === "customer") &&
         user.approval_status !== "Pending" &&
         user.approval_status !== "Rejected"
     );
     const salesUsers = users.filter(user =>
-        (user.role === "sales" || user.account_type === "employee") &&
+        user.role === "sales" &&
         user.approval_status !== "Pending" &&
         user.approval_status !== "Rejected"
     );
 
     document.getElementById("pendingTitle").innerText =
         "Pending User Approval (" + pendingUsers.length + ")";
+    document.getElementById("adminUsersTitle").innerText =
+        "Admin Users (" + adminUsers.length + ")";
     document.getElementById("customerUsersTitle").innerText =
         "Customer Users (" + customerUsers.length + ")";
     document.getElementById("salesUsersTitle").innerText =
@@ -2838,6 +2998,7 @@ function renderUserSections(users) {
         "Rejected Users (" + rejectedUsers.length + ")";
 
     renderUserList("pendingUsers", pendingUsers, "No pending users.");
+    renderUserList("adminUsers", adminUsers, "No admin users.");
     renderUserList("customerUsers", customerUsers, "No customer users.");
     renderUserList("salesUsers", salesUsers, "No sales users.");
     renderUserList("rejectedUsers", rejectedUsers, "No rejected users.");
@@ -2862,7 +3023,8 @@ function renderUserCard(user) {
     const role = user.role || "";
     const accountType = user.account_type || "";
     const isCustomer = role === "customer" || accountType === "customer";
-    const isSales = role === "sales" || accountType === "employee";
+    const isSales = role === "sales";
+    const isAdmin = role === "admin";
 
     return `
         <details class="user-card compact-user-card" id="all-user-card-${user.id}">
@@ -2876,7 +3038,7 @@ function renderUserCard(user) {
 
                 <div class="pill-row">
                     ${formatStatusPill(status)}
-                    <span class="pill ${isCustomer ? "role-customer" : isSales ? "role-sales" : ""}">
+                    <span class="pill ${isCustomer ? "role-customer" : isSales ? "role-sales" : isAdmin ? "role-admin" : ""}">
                         ${escapeHtml(formatRoleLabel(user))}
                     </span>
                     <span class="pill">${escapeHtml(formatAccountType(accountType))}</span>
@@ -3030,8 +3192,9 @@ function renderAssignSalesBox(user) {
 function renderActionButtons(user) {
     const status = user.approval_status || "Approved";
     const buttons = [];
+    const isAdmin = user.role === "admin";
 
-    if (status === "Pending" || status === "Rejected") {
+    if (!isAdmin && (status === "Pending" || status === "Rejected")) {
         buttons.push(`
             <button class="success-btn" onclick="approveUser(${user.id})">
                 Approve
@@ -3039,7 +3202,7 @@ function renderActionButtons(user) {
         `);
     }
 
-    if (status !== "Rejected") {
+    if (!isAdmin && status !== "Rejected") {
         buttons.push(`
             <button class="warning-btn" onclick="rejectUser(${user.id})">
                 Reject
@@ -3048,7 +3211,6 @@ function renderActionButtons(user) {
     }
 
     buttons.push(renderChangePasswordButton(user));
-
     buttons.push(renderDeleteButton(user));
 
     return `<div class="button-row">${buttons.join("")}</div>`;
@@ -3063,9 +3225,11 @@ function renderChangePasswordButton(user) {
 }
 
 function renderDeleteButton(user) {
-    if (fullAdminUsernames.includes(
-        String(user.username || "").trim().toLowerCase()
-    )) return "";
+    const normalizedUsername = String(user.username || "").trim().toLowerCase();
+
+    if (user.is_protected_admin || normalizedUsername === currentAdminUsername) {
+        return "";
+    }
 
     return `
         <button class="dark-btn" onclick="deleteUser(${user.id}, '${escapeForJs(user.username)}')">
@@ -3296,7 +3460,7 @@ function closeAccountPasswordManager() {
 
 async function openAccountPasswordManager(userId, username) {
     if (!canManageAccountPasswords) {
-        showCenterMessage("Only Orange and BILLADMIN can manage account passwords.");
+        showCenterMessage("Only an approved admin can manage account passwords.");
         return;
     }
 
@@ -3451,7 +3615,9 @@ async function deleteUser(userId, username) {
 
     try {
         const response = await fetch("/admin/users/" + userId + "/delete", {
-            method: "POST"
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ requester_username: currentUser })
         });
 
         const data = await response.json();
