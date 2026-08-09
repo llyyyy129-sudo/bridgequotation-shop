@@ -301,7 +301,7 @@
         }
 
         .profile-grid {
-            grid-template-columns: minmax(220px, 1fr) minmax(260px, 1fr) auto;
+            grid-template-columns: minmax(180px, 0.85fr) minmax(220px, 1fr) minmax(260px, 1fr) auto;
         }
 
         .admin-create-grid {
@@ -1618,9 +1618,9 @@ function showCenterConfirm(message) {
     });
 }
 
-const currentUser = localStorage.getItem("user");
+let currentUser = localStorage.getItem("user");
 const currentRole = localStorage.getItem("role");
-const currentAdminUsername = String(currentUser || "").trim().toLowerCase();
+let currentAdminUsername = String(currentUser || "").trim().toLowerCase();
 const isCurrentUserAdmin = String(currentRole || "").trim().toLowerCase() === "admin";
 const canManageAccountPasswords = isCurrentUserAdmin;
 let canManageAdminSharedFiles = isCurrentUserAdmin;
@@ -3094,9 +3094,25 @@ function renderUserCard(user) {
 function renderProfileEditBox(user) {
     return `
         <div class="edit-box">
-            <div class="edit-title">Edit Company & Email</div>
+            <div class="edit-title">Edit Account Profile</div>
+            <div class="panel-desc" style="margin: -4px 0 12px;">
+                Username is the login name. Only an approved admin can change it.
+            </div>
 
             <div class="profile-grid">
+                <div class="field">
+                    <label for="username-${user.id}">Username</label>
+                    <input
+                        id="username-${user.id}"
+                        class="profile-input"
+                        type="text"
+                        value="${escapeAttr(user.username || "")}"
+                        placeholder="Login username"
+                        minlength="3"
+                        maxlength="50"
+                    >
+                </div>
+
                 <div class="field">
                     <label for="company-${user.id}">Company</label>
                     <input
@@ -3239,15 +3255,35 @@ function renderDeleteButton(user) {
 }
 
 async function saveUserProfile(userId) {
+    const usernameInput = document.getElementById("username-" + userId);
     const companyInput = document.getElementById("company-" + userId);
     const emailInput = document.getElementById("email-" + userId);
 
+    const username = usernameInput ? usernameInput.value.trim() : "";
     const companyName = companyInput ? companyInput.value.trim() : "";
     const email = emailInput ? emailInput.value.trim() : "";
+
+    if (!/^[A-Za-z0-9_.-]{3,50}$/.test(username)) {
+        showCenterMessage(
+            "Username must be 3-50 characters and can only contain letters, numbers, dots, underscores or hyphens."
+        );
+        return;
+    }
 
     if (email && !email.includes("@")) {
         showCenterMessage("Please enter a valid email address.");
         return;
+    }
+
+    const cachedUser = allUsersCache.find(item => Number(item.id) === Number(userId));
+    const oldUsername = String(cachedUser?.username || "").trim();
+
+    if (oldUsername && username.toLowerCase() !== oldUsername.toLowerCase()) {
+        const confirmed = await showCenterConfirm(
+            `Change login username from "${oldUsername}" to "${username}"?\n\nThe user must use the new username the next time they log in.`
+        );
+
+        if (!confirmed) return;
     }
 
     setProcessing(userId, true);
@@ -3259,6 +3295,8 @@ async function saveUserProfile(userId) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                    requester_username: currentUser,
+                    username: username,
                     company_name: companyName,
                     email: email
                 })
@@ -3271,6 +3309,17 @@ async function saveUserProfile(userId) {
             showCenterMessage(data.message || data.detail || "Profile update failed.");
             setProcessing(userId, false);
             return;
+        }
+
+        if (
+            data.renamed &&
+            String(data.old_username || "").trim().toLowerCase() ===
+                String(currentUser || "").trim().toLowerCase()
+        ) {
+            currentUser = data.username;
+            currentAdminUsername = String(data.username || "").trim().toLowerCase();
+            localStorage.setItem("user", data.username);
+            document.getElementById("adminName").innerText = data.username;
         }
 
         await loadAdminUsers();

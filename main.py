@@ -243,17 +243,23 @@ def ensure_bootstrap_admin_accounts():
     db = SessionLocal()
 
     try:
+        # Bootstrap accounts are only a recovery mechanism for a brand-new or
+        # empty database. Once at least one approved admin exists, usernames are
+        # fully database-managed and may be renamed from the Admin Dashboard.
+        existing_admin = db.query(User).filter(
+            func.lower(User.role) == "admin",
+            User.approval_status == "Approved"
+        ).first()
+
+        if existing_admin:
+            return
+
         for username, settings in BOOTSTRAP_ADMIN_ACCOUNTS.items():
             admin_user = db.query(User).filter(
                 func.lower(User.username) == username.lower()
             ).first()
 
             if admin_user:
-                was_approved_admin = (
-                    str(admin_user.role or "").strip().lower() == "admin" and
-                    str(admin_user.approval_status or "Approved").strip() == "Approved"
-                )
-
                 admin_user.role = "admin"
                 admin_user.account_type = "employee"
                 admin_user.approval_status = "Approved"
@@ -261,13 +267,7 @@ def ensure_bootstrap_admin_accounts():
                 admin_user.company_name = (
                     admin_user.company_name or settings["company_name"]
                 )
-
-                # If the username already existed as a customer or sales account,
-                # promote it with the requested bootstrap password. Existing admin
-                # password changes are preserved on later deployments.
-                if not was_approved_admin:
-                    admin_user.password = settings["password"]
-
+                admin_user.password = admin_user.password or settings["password"]
                 continue
 
             admin_user = User(
@@ -1327,10 +1327,7 @@ def serialize_user(u):
         "assigned_sales": u.assigned_sales,
         "approval_status": u.approval_status,
         "customer_level": u.customer_level,
-        "is_protected_admin": (
-            u.role == "admin" and
-            normalized_username in PROTECTED_BOOTSTRAP_ADMIN_USERNAMES
-        )
+        "is_protected_admin": False
     }
 
 
@@ -1874,17 +1871,23 @@ def delete_user(user_id: int, data: dict):
         normalized_username = str(username or "").strip().lower()
         normalized_requester = requester_username.lower()
 
-        if normalized_username in PROTECTED_BOOTSTRAP_ADMIN_USERNAMES:
-            return {
-                "success": False,
-                "message": "This bootstrap admin account is protected and cannot be deleted."
-            }
-
         if normalized_username == normalized_requester:
             return {
                 "success": False,
                 "message": "You cannot delete the admin account currently in use."
             }
+
+        if str(user.role or "").strip().lower() == "admin":
+            approved_admin_count = db.query(User).filter(
+                func.lower(User.role) == "admin",
+                User.approval_status == "Approved"
+            ).count()
+
+            if approved_admin_count <= 1:
+                return {
+                    "success": False,
+                    "message": "The last approved admin account cannot be deleted."
+                }
 
         db.delete(user)
         db.commit()
@@ -1909,30 +1912,135 @@ def delete_user(user_id: int, data: dict):
 def update_user_profile(user_id: int, data: dict):
     db = SessionLocal()
 
-    user = db.query(User).filter(
-        User.id == user_id
-    ).first()
+    try:
+        requester_username = str(
+            data.get("requester_username", "") or ""
+        ).strip()
 
-    if not user:
-        db.close()
+        if not can_approved_admin(db, requester_username):
+            return {
+                "success": False,
+                "message": "Only an approved admin can edit account profiles or usernames."
+            }
+
+        user = db.query(User).filter(
+            User.id == user_id
+        ).first()
+
+        if not user:
+            return {
+                "success": False,
+                "message": "User not found."
+            }
+
+        old_username = str(user.username or "").strip()
+        new_username = str(
+            data.get("username", old_username) or old_username
+        ).strip()
+        company_name = str(data.get("company_name", "") or "").strip()
+        email = str(data.get("email", "") or "").strip()
+
+        if not re.fullmatch(r"[A-Za-z0-9_.-]{3,50}", new_username):
+            return {
+                "success": False,
+                "message": "Username must be 3-50 characters and can only contain letters, numbers, dots, underscores or hyphens."
+            }
+
+        existing_username = db.query(User).filter(
+            func.lower(User.username) == new_username.lower(),
+            User.id != user_id
+        ).first()
+
+        if existing_username:
+            return {
+                "success": False,
+                "message": "Username already exists."
+            }
+
+        renamed = new_username != old_username
+
+        if renamed:
+            old_username_lower = old_username.lower()
+
+            # Keep all username-based relationships valid after a rename.
+            db.query(User).filter(
+                func.lower(User.assigned_sales) == old_username_lower
+            ).update(
+                {User.assigned_sales: new_username},
+                synchronize_session=False
+            )
+
+            db.query(Order).filter(
+                func.lower(Order.username) == old_username_lower
+            ).update(
+                {Order.username: new_username},
+                synchronize_session=False
+            )
+
+            db.query(Order).filter(
+                func.lower(Order.sales_username) == old_username_lower
+            ).update(
+                {Order.sales_username: new_username},
+                synchronize_session=False
+            )
+
+            db.query(ProformaInvoice).filter(
+                func.lower(ProformaInvoice.sent_by) == old_username_lower
+            ).update(
+                {ProformaInvoice.sent_by: new_username},
+                synchronize_session=False
+            )
+
+            db.query(PIHistory).filter(
+                func.lower(PIHistory.created_by) == old_username_lower
+            ).update(
+                {PIHistory.created_by: new_username},
+                synchronize_session=False
+            )
+
+            db.query(SharedSalesFile).filter(
+                func.lower(SharedSalesFile.uploaded_by) == old_username_lower
+            ).update(
+                {SharedSalesFile.uploaded_by: new_username},
+                synchronize_session=False
+            )
+
+            db.query(SharedSalesFolder).filter(
+                func.lower(SharedSalesFolder.created_by) == old_username_lower
+            ).update(
+                {SharedSalesFolder.created_by: new_username},
+                synchronize_session=False
+            )
+
+            user.username = new_username
+
+        user.company_name = company_name
+        user.email = email
+
+        db.commit()
+        db.refresh(user)
+
         return {
-            "success": False,
-            "message": "User not found."
+            "success": True,
+            "message": (
+                f"Username changed from {old_username} to {user.username}."
+                if renamed
+                else f"Profile for {user.username} has been updated."
+            ),
+            "old_username": old_username,
+            "username": user.username,
+            "renamed": renamed,
+            "user": serialize_user(user)
         }
 
-    company_name = data.get("company_name", "")
-    email = data.get("email", "")
-
-    user.company_name = str(company_name or "").strip()
-    user.email = str(email or "").strip()
-
-    db.commit()
-    db.close()
-
-    return {
-        "success": True,
-        "message": f"Profile for {user.username} has been updated."
-    }
+    except Exception as e:
+        db.rollback()
+        return {
+            "success": False,
+            "message": "Profile update failed: " + str(e)
+        }
+    finally:
+        db.close()
 
 
 # =========================
