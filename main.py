@@ -3224,7 +3224,7 @@ def toggle_admin_product(product_id: int, data: dict):
     }
 
 
-@app.post("/admin/products/bulk-delete")
+@app.post("/admin/products/bulk/delete")
 def bulk_delete_admin_products(data: dict):
     raw_ids = data.get("product_ids", [])
 

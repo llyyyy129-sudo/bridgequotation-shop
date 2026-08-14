@@ -3699,7 +3699,7 @@ async function deleteSelectedProducts() {
     }
 
     try {
-        const response = await fetch("/admin/products/bulk-delete", {
+        const response = await fetch("/admin/products/bulk/delete", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
