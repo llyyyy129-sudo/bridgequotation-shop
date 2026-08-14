@@ -2862,6 +2862,7 @@ def parse_product_excel(file_path):
             "matched_columns": matched_columns,
             "unmatched_columns": unmatched_columns,
             "rows": valid_rows,
+            "editor_rows": all_records,
             "preview_rows": all_records[:30],
             "valid_rows": len(valid_rows),
             "error_rows": len(error_records),

@@ -794,6 +794,133 @@
             white-space: nowrap;
         }
 
+        .excel-editor-toolbar {
+            margin-top: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 10px 12px;
+            border: 1px solid #dbe3ef;
+            border-radius: 14px;
+            background: #f8fbff;
+        }
+
+        .excel-editor-toolbar-left,
+        .excel-editor-toolbar-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .excel-editor-toolbar button {
+            min-height: 34px;
+            padding: 7px 11px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 900;
+        }
+
+        .excel-editor-count {
+            color: #1f3c88;
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .excel-editor-help {
+            color: #667085;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .excel-edit-input,
+        .excel-edit-textarea {
+            width: 100%;
+            min-width: 118px;
+            box-sizing: border-box;
+            border: 1px solid #cfd8e8;
+            border-radius: 8px;
+            background: #ffffff;
+            color: #111827;
+            font: inherit;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.4;
+            padding: 7px 8px;
+            outline: none;
+        }
+
+        .excel-edit-input:focus,
+        .excel-edit-textarea:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10);
+        }
+
+        .excel-edit-textarea {
+            min-width: 210px;
+            min-height: 72px;
+            resize: vertical;
+            white-space: pre-wrap;
+        }
+
+        .excel-edit-input.wide {
+            min-width: 190px;
+        }
+
+        .excel-import-check {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #2563eb;
+        }
+
+        .excel-row-excluded {
+            color: #667085;
+            font-weight: 900;
+        }
+
+        .excel-row-edited {
+            color: #2563eb;
+            font-weight: 900;
+        }
+
+        .excel-editor-error-row td {
+            background: #fff8f8;
+        }
+
+        .excel-editor-excluded-row td {
+            opacity: 0.58;
+            background: #f8fafc;
+        }
+
+        .excel-editor-pagination {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            color: #667085;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .excel-editor-pagination-buttons {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .excel-editor-pagination button {
+            min-height: 32px;
+            padding: 6px 10px;
+            border-radius: 9px;
+            font-size: 11px;
+            font-weight: 900;
+        }
+
         .excel-row-ok {
             color: #0f9d58;
             font-weight: 900;
@@ -2017,6 +2144,9 @@ let productPageSize = 20;
 let selectedProductIds = new Set();
 let excelImportRows = [];
 let excelImportMeta = null;
+let excelImportEditorRows = [];
+let excelEditorPage = 1;
+const excelEditorPageSize = 20;
 let adminSharedFilesCache = [];
 let adminSharedFoldersCache = [];
 let activeAdminSharedFolderId = null;
@@ -2623,11 +2753,336 @@ function clearProductExcelImport() {
 
     excelImportRows = [];
     excelImportMeta = null;
+    excelImportEditorRows = [];
+    excelEditorPage = 1;
 }
 
 function excelPreviewText(value) {
     if (value === null || value === undefined || value === "") return "-";
     return String(value);
+}
+
+const EXCEL_EDITOR_COLUMNS = [
+    { key: "name", label: "Product Name", multiline: true },
+    { key: "category", label: "Category", wide: true },
+    { key: "moq", label: "MOQ", numeric: true },
+    { key: "material", label: "Material", multiline: true },
+    { key: "size", label: "Product Dimension", wide: true },
+    { key: "packing", label: "Packing", multiline: true },
+    { key: "carton_length", label: "Carton L", numeric: true },
+    { key: "carton_width", label: "Carton W", numeric: true },
+    { key: "carton_height", label: "Carton H", numeric: true },
+    { key: "carton_cbm", label: "CBM / Carton", numeric: true },
+    { key: "pcs_per_carton", label: "PCS/CTN", numeric: true },
+    { key: "loading_20gp", label: "20GP PCS", numeric: true },
+    { key: "loading_40gp", label: "40GP PCS", numeric: true },
+    { key: "loading_40hq", label: "40HQ PCS", numeric: true },
+    { key: "nearest_port", label: "Nearest Port", wide: true },
+    { key: "lead_time", label: "Lead Time", multiline: true },
+    { key: "price", label: "Base Price", numeric: true },
+    { key: "price_500", label: "Price 500+", numeric: true },
+    { key: "price_1000", label: "Price 1000+", numeric: true },
+    { key: "price_3000", label: "Price 3000+", numeric: true },
+    { key: "price_10000", label: "Price 10000+", numeric: true },
+    { key: "price_50000", label: "Price 50000+", numeric: true },
+    { key: "description", label: "Specification", multiline: true }
+];
+
+const EXCEL_EDITOR_NUMERIC_KEYS = new Set(
+    EXCEL_EDITOR_COLUMNS.filter(column => column.numeric).map(column => column.key)
+);
+
+function normalizeExcelEditorRows(data) {
+    const source = Array.isArray(data.editor_rows) && data.editor_rows.length
+        ? data.editor_rows
+        : (Array.isArray(data.rows) ? data.rows.map((row, index) => ({
+            sheet_name: row.category || data.sheet_name || "Products",
+            excel_row: index + 1,
+            excel_row_end: index + 1,
+            valid: true,
+            errors: [],
+            data: row
+        })) : []);
+
+    return source.map((record, index) => ({
+        sheet_name: String(record && record.sheet_name || ""),
+        excel_row: Number(record && record.excel_row || index + 1),
+        excel_row_end: Number(record && record.excel_row_end || record && record.excel_row || index + 1),
+        source_errors: Array.isArray(record && record.errors) ? [...record.errors] : [],
+        enabled: true,
+        edited: false,
+        data: { ...(record && record.data ? record.data : {}) }
+    }));
+}
+
+function isValidExcelEditorNumber(value) {
+    if (value === null || value === undefined || String(value).trim() === "") return true;
+    const cleaned = String(value)
+        .replace(/,/g, "")
+        .replace(/\$/g, "")
+        .replace(/\bUSD\b/ig, "")
+        .trim();
+    if (!cleaned) return true;
+    const number = Number(cleaned);
+    return Number.isFinite(number) && number >= 0;
+}
+
+function validateExcelEditorRow(record) {
+    const row = record && record.data ? record.data : {};
+    const errors = [];
+
+    if (!String(row.name || "").trim()) {
+        errors.push("Product Name is required");
+    }
+
+    EXCEL_EDITOR_NUMERIC_KEYS.forEach(key => {
+        if (!isValidExcelEditorNumber(row[key])) {
+            const column = EXCEL_EDITOR_COLUMNS.find(item => item.key === key);
+            errors.push(`${column ? column.label : key} must be a valid number`);
+        }
+    });
+
+    return errors;
+}
+
+function getExcelEditorStats() {
+    let included = 0;
+    let ready = 0;
+    let needsFix = 0;
+    let excluded = 0;
+
+    excelImportEditorRows.forEach(record => {
+        if (!record.enabled) {
+            excluded += 1;
+            return;
+        }
+
+        included += 1;
+        if (validateExcelEditorRow(record).length) needsFix += 1;
+        else ready += 1;
+    });
+
+    return { included, ready, needsFix, excluded };
+}
+
+function recalculateExcelEditorCbm(record) {
+    if (!record || !record.data) return;
+    const l = Number(String(record.data.carton_length || "").replace(/,/g, ""));
+    const w = Number(String(record.data.carton_width || "").replace(/,/g, ""));
+    const h = Number(String(record.data.carton_height || "").replace(/,/g, ""));
+
+    if (Number.isFinite(l) && l > 0 && Number.isFinite(w) && w > 0 && Number.isFinite(h) && h > 0) {
+        record.data.carton_cbm = (l * w * h / 1000000).toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
+    }
+}
+
+function excelEditorStatusHtml(record) {
+    if (!record.enabled) {
+        return `<span class="excel-row-excluded">Excluded</span>`;
+    }
+
+    const errors = validateExcelEditorRow(record);
+    if (errors.length) {
+        return `<span class="excel-row-error">${escapeHtml(errors.join("; "))}</span>`;
+    }
+
+    if (record.edited) {
+        return `<span class="excel-row-edited">Edited · Ready</span>`;
+    }
+
+    return `<span class="excel-row-ok">Ready</span>`;
+}
+
+function renderExcelEditorField(recordIndex, column) {
+    const record = excelImportEditorRows[recordIndex];
+    const value = record && record.data ? (record.data[column.key] ?? "") : "";
+    const safeValue = escapeHtml(String(value));
+
+    if (column.multiline) {
+        return `<textarea class="excel-edit-textarea" oninput="updateExcelEditorCell(${recordIndex}, '${column.key}', this.value)">${safeValue}</textarea>`;
+    }
+
+    const wideClass = column.wide ? " wide" : "";
+    return `<input class="excel-edit-input${wideClass}" type="text" value="${safeValue}" oninput="updateExcelEditorCell(${recordIndex}, '${column.key}', this.value)">`;
+}
+
+function refreshExcelEditorSummary() {
+    const stats = getExcelEditorStats();
+    const includedEl = document.getElementById("excelEditorIncludedCount");
+    const readyEl = document.getElementById("excelEditorReadyCount");
+    const errorsEl = document.getElementById("excelEditorErrorCount");
+    const excludedEl = document.getElementById("excelEditorExcludedCount");
+    const confirmButton = document.getElementById("confirmExcelImportButton");
+
+    if (includedEl) includedEl.innerText = stats.included;
+    if (readyEl) readyEl.innerText = stats.ready;
+    if (errorsEl) errorsEl.innerText = stats.needsFix;
+    if (excludedEl) excludedEl.innerText = stats.excluded;
+
+    excelImportRows = excelImportEditorRows
+        .filter(record => record.enabled && validateExcelEditorRow(record).length === 0)
+        .map(record => ({ ...record.data }));
+
+    if (confirmButton) {
+        confirmButton.disabled = stats.ready === 0 || stats.needsFix > 0;
+        if (stats.needsFix > 0) {
+            confirmButton.innerText = `Fix ${stats.needsFix} Row${stats.needsFix === 1 ? "" : "s"} Before Import`;
+        } else {
+            confirmButton.innerText = `Import ${stats.ready} Product${stats.ready === 1 ? "" : "s"}`;
+        }
+    }
+}
+
+function refreshExcelEditorRowStatus(recordIndex) {
+    const record = excelImportEditorRows[recordIndex];
+    const statusCell = document.getElementById(`excelEditorStatus-${recordIndex}`);
+    const rowEl = document.getElementById(`excelEditorRow-${recordIndex}`);
+
+    if (statusCell && record) statusCell.innerHTML = excelEditorStatusHtml(record);
+    if (rowEl && record) {
+        const hasErrors = record.enabled && validateExcelEditorRow(record).length > 0;
+        rowEl.classList.toggle("excel-editor-error-row", hasErrors);
+        rowEl.classList.toggle("excel-editor-excluded-row", !record.enabled);
+    }
+}
+
+function updateExcelEditorCell(recordIndex, key, value) {
+    const record = excelImportEditorRows[recordIndex];
+    if (!record || !record.data) return;
+
+    record.data[key] = value;
+    record.edited = true;
+
+    if (["carton_length", "carton_width", "carton_height"].includes(key)) {
+        recalculateExcelEditorCbm(record);
+        const cbmInput = document.getElementById(`excelEditorInput-${recordIndex}-carton_cbm`);
+        if (cbmInput) cbmInput.value = record.data.carton_cbm || "";
+    }
+
+    refreshExcelEditorRowStatus(recordIndex);
+    refreshExcelEditorSummary();
+}
+
+function toggleExcelEditorRow(recordIndex, enabled) {
+    const record = excelImportEditorRows[recordIndex];
+    if (!record) return;
+    record.enabled = !!enabled;
+    refreshExcelEditorRowStatus(recordIndex);
+    refreshExcelEditorSummary();
+}
+
+function setExcelEditorPage(page) {
+    const totalPages = Math.max(1, Math.ceil(excelImportEditorRows.length / excelEditorPageSize));
+    excelEditorPage = Math.min(Math.max(1, Number(page) || 1), totalPages);
+    renderExcelEditorTable();
+}
+
+function setExcelEditorPageIncluded(enabled) {
+    const start = (excelEditorPage - 1) * excelEditorPageSize;
+    const end = Math.min(start + excelEditorPageSize, excelImportEditorRows.length);
+    for (let index = start; index < end; index += 1) {
+        excelImportEditorRows[index].enabled = !!enabled;
+    }
+    renderExcelEditorTable();
+    refreshExcelEditorSummary();
+}
+
+function includeAllExcelEditorRows() {
+    excelImportEditorRows.forEach(record => { record.enabled = true; });
+    renderExcelEditorTable();
+    refreshExcelEditorSummary();
+}
+
+function renderExcelEditorTable() {
+    const preview = document.getElementById("excelImportPreviewArea");
+    if (!preview) return;
+
+    if (!excelImportEditorRows.length) {
+        preview.innerHTML = `<div class="empty-message">No product rows found.</div>`;
+        return;
+    }
+
+    const totalPages = Math.max(1, Math.ceil(excelImportEditorRows.length / excelEditorPageSize));
+    if (excelEditorPage > totalPages) excelEditorPage = totalPages;
+
+    const start = (excelEditorPage - 1) * excelEditorPageSize;
+    const end = Math.min(start + excelEditorPageSize, excelImportEditorRows.length);
+    const visibleRows = excelImportEditorRows.slice(start, end);
+
+    const headerHtml = EXCEL_EDITOR_COLUMNS.map(column => `<th>${escapeHtml(column.label)}</th>`).join("");
+
+    const bodyHtml = visibleRows.map((record, localIndex) => {
+        const recordIndex = start + localIndex;
+        const rowClass = !record.enabled
+            ? "excel-editor-excluded-row"
+            : (validateExcelEditorRow(record).length ? "excel-editor-error-row" : "");
+
+        const excelRowLabel = record.excel_row_end && Number(record.excel_row_end) !== Number(record.excel_row)
+            ? `${Number(record.excel_row || 0)}-${Number(record.excel_row_end || 0)}`
+            : Number(record.excel_row || 0);
+
+        return `
+            <tr id="excelEditorRow-${recordIndex}" class="${rowClass}">
+                <td style="text-align:center; min-width:64px;">
+                    <input class="excel-import-check" type="checkbox" ${record.enabled ? "checked" : ""}
+                        onchange="toggleExcelEditorRow(${recordIndex}, this.checked)">
+                </td>
+                <td>${escapeHtml(record.sheet_name || "-")}</td>
+                <td>${excelRowLabel}</td>
+                <td id="excelEditorStatus-${recordIndex}">${excelEditorStatusHtml(record)}</td>
+                ${EXCEL_EDITOR_COLUMNS.map(column => {
+                    const fieldHtml = renderExcelEditorField(recordIndex, column);
+                    if (column.key === "carton_cbm") {
+                        return `<td><input id="excelEditorInput-${recordIndex}-carton_cbm" class="excel-edit-input" type="text" value="${escapeHtml(String(record.data.carton_cbm ?? ""))}" oninput="updateExcelEditorCell(${recordIndex}, 'carton_cbm', this.value)"></td>`;
+                    }
+                    return `<td>${fieldHtml}</td>`;
+                }).join("")}
+            </tr>
+        `;
+    }).join("");
+
+    preview.innerHTML = `
+        <div class="excel-editor-toolbar">
+            <div class="excel-editor-toolbar-left">
+                <span class="excel-editor-count">Edit before import</span>
+                <span class="excel-editor-help">Every change below is used for the final import. Uncheck a row to skip it.</span>
+            </div>
+            <div class="excel-editor-toolbar-right">
+                <button class="secondary-btn" type="button" onclick="setExcelEditorPageIncluded(true)">Include Current Page</button>
+                <button class="secondary-btn" type="button" onclick="setExcelEditorPageIncluded(false)">Exclude Current Page</button>
+                <button class="secondary-btn" type="button" onclick="includeAllExcelEditorRows()">Include All</button>
+            </div>
+        </div>
+
+        <div class="excel-import-preview-wrap">
+            <table class="excel-import-preview-table">
+                <thead>
+                    <tr>
+                        <th>Import?</th>
+                        <th>Sheet / Category</th>
+                        <th>Excel Row</th>
+                        <th>Status</th>
+                        ${headerHtml}
+                    </tr>
+                </thead>
+                <tbody>${bodyHtml}</tbody>
+            </table>
+        </div>
+
+        <div class="excel-editor-pagination">
+            <span>Editing ${start + 1}-${end} of ${excelImportEditorRows.length} products · Page ${excelEditorPage} of ${totalPages}</span>
+            <div class="excel-editor-pagination-buttons">
+                <button class="secondary-btn" type="button" ${excelEditorPage <= 1 ? "disabled" : ""} onclick="setExcelEditorPage(${excelEditorPage - 1})">Previous</button>
+                <button class="secondary-btn" type="button" ${excelEditorPage >= totalPages ? "disabled" : ""} onclick="setExcelEditorPage(${excelEditorPage + 1})">Next</button>
+            </div>
+        </div>
+
+        <div class="excel-import-note">
+            This editor contains all parsed products, not only the first 30. Correct any field here before importing. Rows with errors cannot be imported until fixed or excluded.
+        </div>
+    `;
+
+    refreshExcelEditorSummary();
 }
 
 function renderExcelImportPreview(data) {
@@ -2644,15 +3099,15 @@ function renderExcelImportPreview(data) {
         <div class="excel-import-status-grid">
             <div class="excel-stat-card">
                 <div class="excel-stat-label">Rows Found</div>
-                <div class="excel-stat-value">${Number(data.total_rows || 0)}</div>
+                <div class="excel-stat-value">${excelImportEditorRows.length}</div>
             </div>
             <div class="excel-stat-card">
-                <div class="excel-stat-label">Valid Products</div>
-                <div class="excel-stat-value">${Number(data.valid_rows || 0)}</div>
+                <div class="excel-stat-label">Ready to Import</div>
+                <div id="excelEditorReadyCount" class="excel-stat-value">0</div>
             </div>
             <div class="excel-stat-card">
-                <div class="excel-stat-label">Rows With Errors</div>
-                <div class="excel-stat-value">${Number(data.error_rows || 0)}</div>
+                <div class="excel-stat-label">Needs Fix</div>
+                <div id="excelEditorErrorCount" class="excel-stat-value">0</div>
             </div>
             <div class="excel-stat-card">
                 <div class="excel-stat-label">Sheets</div>
@@ -2663,6 +3118,8 @@ function renderExcelImportPreview(data) {
         <div class="excel-mapping-box">
             <b>Format:</b> ${escapeHtml(data.import_format || "Excel")}<br>
             <b>Detected sheets / categories:</b> ${escapeHtml((Array.isArray(data.sheet_names) && data.sheet_names.length ? data.sheet_names.join(", ") : (data.sheet_name || "Products")))}<br>
+            <b>Included:</b> <span id="excelEditorIncludedCount">0</span> ·
+            <b>Excluded:</b> <span id="excelEditorExcludedCount">0</span><br>
             <b>Matched columns:</b><br>
             ${matched.length
                 ? matched.map(item => `<span class="excel-mapping-chip">${escapeHtml(item.excel_column)} → ${escapeHtml(item.website_field)}</span>`).join("")
@@ -2679,76 +3136,13 @@ function renderExcelImportPreview(data) {
         </div>
     `;
 
-    const previewRows = Array.isArray(data.preview_rows) ? data.preview_rows : [];
-
-    if (!previewRows.length) {
-        preview.innerHTML = `<div class="empty-message">No preview rows found.</div>`;
+    if (!excelImportEditorRows.length) {
+        preview.innerHTML = `<div class="empty-message">No product rows found.</div>`;
         confirmButton.disabled = true;
         return;
     }
 
-    const columns = [
-        ["name", "Product Name"],
-        ["category", "Category"],
-        ["moq", "MOQ"],
-        ["material", "Material"],
-        ["size", "Product Dimension"],
-        ["packing", "Packing"],
-        ["carton_length", "Carton L"],
-        ["carton_width", "Carton W"],
-        ["carton_height", "Carton H"],
-        ["pcs_per_carton", "PCS/CTN"],
-        ["loading_20gp", "20GP PCS"],
-        ["loading_40gp", "40GP PCS"],
-        ["loading_40hq", "40HQ PCS"],
-        ["nearest_port", "Nearest Port"],
-        ["lead_time", "Lead Time"],
-        ["price", "Base Price"],
-        ["description", "Specification"]
-    ];
-
-    const headerHtml = columns.map(([, label]) => `<th>${escapeHtml(label)}</th>`).join("");
-
-    const bodyHtml = previewRows.map(record => {
-        const row = record && record.data ? record.data : {};
-        const errors = Array.isArray(record.errors) ? record.errors : [];
-        const statusHtml = record.valid
-            ? `<span class="excel-row-ok">Ready</span>`
-            : `<span class="excel-row-error">${escapeHtml(errors.join("; ") || "Error")}</span>`;
-
-        return `
-            <tr>
-                <td>${escapeHtml(record.sheet_name || "-")}</td>
-                <td>${record.excel_row_end && Number(record.excel_row_end) !== Number(record.excel_row)
-                    ? `${Number(record.excel_row || 0)}-${Number(record.excel_row_end || 0)}`
-                    : Number(record.excel_row || 0)}</td>
-                <td>${statusHtml}</td>
-                ${columns.map(([key]) => `<td>${escapeHtml(excelPreviewText(row[key]))}</td>`).join("")}
-            </tr>
-        `;
-    }).join("");
-
-    preview.innerHTML = `
-        <div class="excel-import-preview-wrap">
-            <table class="excel-import-preview-table">
-                <thead>
-                    <tr>
-                        <th>Sheet / Category</th>
-                        <th>Excel Row</th>
-                        <th>Status</th>
-                        ${headerHtml}
-                    </tr>
-                </thead>
-                <tbody>${bodyHtml}</tbody>
-            </table>
-        </div>
-        <div class="excel-import-note">Preview shows up to the first 30 products. COPEC continuation rows are grouped into the previous priced product. Images are ignored.</div>
-    `;
-
-    confirmButton.disabled = !excelImportRows.length;
-    confirmButton.innerText = excelImportRows.length
-        ? `Import ${excelImportRows.length} Product${excelImportRows.length === 1 ? "" : "s"}`
-        : "Import Products";
+    renderExcelEditorTable();
 }
 
 async function previewProductExcelImport() {
@@ -2809,8 +3203,10 @@ async function previewProductExcelImport() {
             throw new Error(data.message || data.detail || "Excel preview failed.");
         }
 
-        excelImportRows = Array.isArray(data.rows) ? data.rows : [];
         excelImportMeta = data;
+        excelImportEditorRows = normalizeExcelEditorRows(data);
+        excelEditorPage = 1;
+        excelImportRows = [];
         renderExcelImportPreview(data);
         setExcelUploadProgress({
             percent: 100,
@@ -2842,13 +3238,32 @@ async function confirmProductExcelImport() {
         return;
     }
 
-    if (!excelImportRows.length) {
-        showCenterMessage("Preview a valid Excel file before importing.");
+    const stats = getExcelEditorStats();
+    if (!excelImportEditorRows.length || stats.included === 0) {
+        showCenterMessage("There are no included Excel products to import.");
         return;
     }
 
+    if (stats.needsFix > 0) {
+        showCenterMessage(`Please fix or exclude the ${stats.needsFix} row${stats.needsFix === 1 ? "" : "s"} marked with errors before importing.`);
+        return;
+    }
+
+    excelImportRows = excelImportEditorRows
+        .filter(record => record.enabled && validateExcelEditorRow(record).length === 0)
+        .map(record => ({ ...record.data }));
+
+    if (!excelImportRows.length) {
+        showCenterMessage("There are no valid products ready to import.");
+        return;
+    }
+
+    const editedCount = excelImportEditorRows.filter(record => record.enabled && record.edited).length;
     const ok = await showCenterConfirm(
-        `Import ${excelImportRows.length} product${excelImportRows.length === 1 ? "" : "s"} into the website?\n\nThis version creates new products and does not import images.`
+        `Import ${excelImportRows.length} product${excelImportRows.length === 1 ? "" : "s"} into the website?\n\n` +
+        `${editedCount} included row${editedCount === 1 ? " was" : "s were"} edited in the preview. ` +
+        `The website will use the values currently shown in the editable table, not the original Excel values.\n\n` +
+        `Images are not imported.`
     );
     if (!ok) return;
 
@@ -2880,10 +3295,7 @@ async function confirmProductExcelImport() {
     } catch (error) {
         console.error("Excel import error:", error);
         showCenterMessage(error.message || "Excel import failed. Please check server logs.");
-        if (button) {
-            button.disabled = false;
-            button.innerText = `Import ${excelImportRows.length} Product${excelImportRows.length === 1 ? "" : "s"}`;
-        }
+        refreshExcelEditorSummary();
     }
 }
 
