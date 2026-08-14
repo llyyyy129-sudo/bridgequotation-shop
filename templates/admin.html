@@ -766,6 +766,73 @@
             cursor: not-allowed;
         }
 
+        .excel-upload-progress {
+            display: none;
+            margin-top: 14px;
+            padding: 13px 14px;
+            border: 1px solid #dbe3ef;
+            border-radius: 14px;
+            background: #ffffff;
+        }
+
+        .excel-upload-progress.show {
+            display: block;
+        }
+
+        .excel-upload-progress-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 9px;
+            color: #1f3c88;
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .excel-upload-progress-meta {
+            color: #667085;
+            font-size: 11px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .excel-upload-progress-track {
+            width: 100%;
+            height: 12px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: #e8eef9;
+            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+        }
+
+        .excel-upload-progress-bar {
+            width: 0%;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #2563eb, #5b8def);
+            transition: width 0.16s ease;
+        }
+
+        .excel-upload-progress-bar.processing {
+            width: 100% !important;
+            background: linear-gradient(90deg, #2563eb 0%, #8fb3ff 45%, #2563eb 100%);
+            background-size: 220% 100%;
+            animation: excelProgressProcessing 1.25s linear infinite;
+        }
+
+        .excel-upload-progress-sub {
+            margin-top: 8px;
+            color: #7b8494;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        @keyframes excelProgressProcessing {
+            from { background-position: 100% 0; }
+            to { background-position: -100% 0; }
+        }
+
         .product-form-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(180px, 1fr));
@@ -1726,6 +1793,20 @@
                 </button>
             </div>
 
+            <div id="excelUploadProgress" class="excel-upload-progress" aria-live="polite">
+                <div class="excel-upload-progress-head">
+                    <span id="excelUploadProgressLabel">Preparing upload...</span>
+                    <span id="excelUploadProgressPercent">0%</span>
+                </div>
+                <div class="excel-upload-progress-track">
+                    <div id="excelUploadProgressBar" class="excel-upload-progress-bar"></div>
+                </div>
+                <div class="excel-upload-progress-sub">
+                    <span id="excelUploadProgressBytes">0 MB / 0 MB</span>
+                    <span id="excelUploadProgressPhase"></span>
+                </div>
+            </div>
+
             <div id="excelImportStatusArea"></div>
             <div id="excelImportPreviewArea"></div>
 
@@ -2367,6 +2448,106 @@ function downloadProductExcelTemplate() {
     window.location.href = "/admin/products/import-excel/template";
 }
 
+function formatExcelUploadBytes(bytes) {
+    const value = Number(bytes || 0);
+    if (!Number.isFinite(value) || value <= 0) return "0 MB";
+    return `${(value / (1024 * 1024)).toFixed(value >= 10 * 1024 * 1024 ? 1 : 2)} MB`;
+}
+
+function setExcelUploadProgress({ percent = 0, loaded = 0, total = 0, label = "Uploading Excel...", processing = false, visible = true } = {}) {
+    const wrap = document.getElementById("excelUploadProgress");
+    const bar = document.getElementById("excelUploadProgressBar");
+    const labelEl = document.getElementById("excelUploadProgressLabel");
+    const percentEl = document.getElementById("excelUploadProgressPercent");
+    const bytesEl = document.getElementById("excelUploadProgressBytes");
+    const phaseEl = document.getElementById("excelUploadProgressPhase");
+
+    if (!wrap || !bar || !labelEl || !percentEl || !bytesEl || !phaseEl) return;
+
+    wrap.classList.toggle("show", Boolean(visible));
+
+    const safePercent = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
+    bar.style.width = `${safePercent}%`;
+    bar.classList.toggle("processing", Boolean(processing));
+    labelEl.innerText = label;
+    percentEl.innerText = processing ? "100%" : `${safePercent}%`;
+
+    if (total > 0) {
+        bytesEl.innerText = `${formatExcelUploadBytes(loaded)} / ${formatExcelUploadBytes(total)}`;
+    } else {
+        bytesEl.innerText = formatExcelUploadBytes(loaded);
+    }
+
+    phaseEl.innerText = processing ? " · Upload complete, server is reading workbook" : " · Uploading";
+}
+
+function resetExcelUploadProgress() {
+    setExcelUploadProgress({ visible: false, percent: 0, loaded: 0, total: 0 });
+}
+
+function uploadExcelPreviewWithProgress(file, url) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true);
+        xhr.responseType = "json";
+        xhr.setRequestHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
+        xhr.upload.onprogress = (event) => {
+            if (!event.lengthComputable) {
+                setExcelUploadProgress({
+                    percent: 0,
+                    loaded: event.loaded || 0,
+                    total: file.size || 0,
+                    label: "Uploading Excel...",
+                    visible: true
+                });
+                return;
+            }
+
+            const percent = event.total > 0 ? (event.loaded / event.total) * 100 : 0;
+            setExcelUploadProgress({
+                percent,
+                loaded: event.loaded,
+                total: event.total,
+                label: "Uploading Excel...",
+                visible: true
+            });
+        };
+
+        xhr.upload.onload = () => {
+            setExcelUploadProgress({
+                percent: 100,
+                loaded: file.size,
+                total: file.size,
+                label: "Upload complete · Reading Excel...",
+                processing: true,
+                visible: true
+            });
+        };
+
+        xhr.onload = () => {
+            let data = xhr.response;
+            if (!data) {
+                try {
+                    data = JSON.parse(xhr.responseText || "{}");
+                } catch (_) {
+                    data = {};
+                }
+            }
+
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve(data || {});
+            } else {
+                reject(new Error((data && (data.message || data.detail)) || `Excel preview failed (${xhr.status}).`));
+            }
+        };
+
+        xhr.onerror = () => reject(new Error("Excel upload failed. Please check your connection and try again."));
+        xhr.onabort = () => reject(new Error("Excel upload was cancelled."));
+        xhr.send(file);
+    });
+}
+
 function clearProductExcelImport() {
     const input = document.getElementById("productExcelImportFile");
     const status = document.getElementById("excelImportStatusArea");
@@ -2377,6 +2558,7 @@ function clearProductExcelImport() {
     if (status) status.innerHTML = "";
     if (preview) preview.innerHTML = "";
     if (confirmButton) confirmButton.disabled = true;
+    resetExcelUploadProgress();
 
     excelImportRows = [];
     excelImportMeta = null;
@@ -2549,22 +2731,36 @@ async function previewProductExcelImport() {
             filename: file.name
         });
 
-        const response = await fetch(`/admin/products/import-excel/preview?${query.toString()}`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            },
-            body: file
+        setExcelUploadProgress({
+            percent: 0,
+            loaded: 0,
+            total: file.size,
+            label: "Starting Excel upload...",
+            visible: true
         });
 
-        const data = await response.json();
-        if (!response.ok || !data.success) {
+        const data = await uploadExcelPreviewWithProgress(
+            file,
+            `/admin/products/import-excel/preview?${query.toString()}`
+        );
+
+        if (!data.success) {
             throw new Error(data.message || data.detail || "Excel preview failed.");
         }
 
         excelImportRows = Array.isArray(data.rows) ? data.rows : [];
         excelImportMeta = data;
         renderExcelImportPreview(data);
+        setExcelUploadProgress({
+            percent: 100,
+            loaded: file.size,
+            total: file.size,
+            label: `Excel ready · ${excelImportRows.length} valid product${excelImportRows.length === 1 ? "" : "s"} found`,
+            processing: false,
+            visible: true
+        });
+        const phaseEl = document.getElementById("excelUploadProgressPhase");
+        if (phaseEl) phaseEl.innerText = " · Preview complete";
         showToast(`Excel preview ready: ${excelImportRows.length} valid product(s).`);
 
     } catch (error) {
