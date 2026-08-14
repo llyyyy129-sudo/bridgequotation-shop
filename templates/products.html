@@ -2,6 +2,9 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Products List</title>
   <link rel="stylesheet" href="/static/style.css">
 
@@ -851,6 +854,18 @@
       text-overflow: ellipsis;
     }
 
+    .material-spec-pill {
+      align-items: flex-start;
+      min-height: 36px;
+    }
+
+    .material-spec-pill span {
+      white-space: pre-line;
+      overflow: visible;
+      text-overflow: clip;
+      line-height: 1.45;
+    }
+
     .product-action-row {
       margin-top: auto;
       display: grid;
@@ -1418,7 +1433,15 @@ setupSalesModeBanner();
 loadCustomerInfo();
 updateCartCount();
 
-fetch("/products?username=" + encodeURIComponent(productPriceUsername))
+fetch(
+  "/products?username=" +
+  encodeURIComponent(productPriceUsername) +
+  "&_=" +
+  Date.now(),
+  {
+    cache: "no-store"
+  }
+)
   .then(response => response.json())
   .then(products => {
     allProducts = Array.isArray(products) ? products : [];
@@ -2052,7 +2075,7 @@ function renderProducts(products) {
             <span>MOQ: ${escapeHtml(moq)}</span>
           </div>
 
-          <div class="spec-pill">
+          <div class="spec-pill material-spec-pill">
             <span>Material: ${escapeHtml(material)}</span>
           </div>
         </div>

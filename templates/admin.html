@@ -650,6 +650,53 @@
             box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
         }
 
+        .carton-dimension-box {
+            grid-column: 1 / -1;
+            border: 1.5px solid #dbe3ef;
+            border-radius: 16px;
+            padding: 16px;
+            background: #f8fafc;
+        }
+
+        .carton-dimension-title {
+            color: #1f3c88;
+            font-size: 14px;
+            font-weight: 900;
+            margin-bottom: 12px;
+        }
+
+        .carton-dimension-subtitle {
+            color: #667085;
+            font-size: 12px;
+            font-weight: 700;
+            margin: -5px 0 14px;
+            line-height: 1.5;
+        }
+
+        .carton-dimension-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(135px, 1fr));
+            gap: 12px;
+        }
+
+        .carton-dimension-grid .field {
+            margin: 0;
+        }
+
+        .carton-dimension-grid input[readonly] {
+            background: #eef4ff;
+            color: #1f3c88;
+            font-weight: 900;
+        }
+
+        .field-help {
+            margin-top: 6px;
+            color: #7b8494;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.4;
+        }
+
 
         .product-file-box {
             border: 1.5px dashed #cbd5e1;
@@ -1149,6 +1196,7 @@
             .pagination-row { align-items: stretch; flex-direction: column; }
             .product-form-grid .wide-field,
             .product-form-grid .full-field { grid-column: 1 / -1; }
+            .carton-dimension-grid { grid-template-columns: 1fr 1fr; }
             .nav-actions { justify-content: flex-start; }
         }
 
@@ -2096,10 +2144,13 @@ const PRODUCT_FIELDS = [
     { key: "category", label: "Category", type: "text" },
     { key: "slogan", label: "Product Slogan / Badge", type: "text", className: "wide-field" },
     { key: "moq", label: "MOQ", type: "number", step: "1" },
-    { key: "material", label: "Material", type: "text" },
-    { key: "volume", label: "Carton Dimension", type: "text" },
+    { key: "material", label: "Material", type: "textarea", className: "wide-field", placeholder: "Example:\nPP\nPS\nPVC" },
     { key: "size", label: "Product Dimension", type: "text" },
     { key: "packing", label: "Packing", type: "text", className: "wide-field" },
+    { key: "carton_dimensions", label: "Carton Dimension", type: "carton" },
+    { key: "volume", label: "Legacy Carton Dimension", type: "hidden" },
+    { key: "nearest_port", label: "Nearest Port", type: "text", placeholder: "Example: Ningbo / Shanghai" },
+    { key: "lead_time", label: "Lead Time", type: "textarea", className: "wide-field", placeholder: "Example: 30-35 days after deposit and artwork confirmation" },
     { key: "price", label: "Base Price", type: "number", step: "any" },
     { key: "price_500", label: "Price 500+", type: "number", step: "any" },
     { key: "price_1000", label: "Price 1000+", type: "number", step: "any" },
@@ -2155,6 +2206,8 @@ function applyProductFilters() {
             product.material,
             product.size,
             product.packing,
+            product.nearest_port,
+            product.lead_time,
             product.description
         ].join(" ").toLowerCase();
 
@@ -2320,7 +2373,7 @@ function renderAdminProductCard(product) {
                         </div>
                         <div class="admin-product-sub">
                             Category: ${escapeHtml(product.category || "Not set")}<br>
-                            MOQ: ${escapeHtml(product.moq || "")} | Material: ${escapeHtml(product.material || "")} | Packing: ${escapeHtml(product.packing || "")}
+                            MOQ: ${escapeHtml(product.moq || "")} | Material: ${escapeHtml(String(product.material || "").replace(/\n+/g, " / "))} | Packing: ${escapeHtml(product.packing || "")}
                             ${product.slogan ? `<br>Slogan: ${escapeHtml(product.slogan)}` : ""}
                         </div>
                     </div>
@@ -2358,12 +2411,21 @@ function renderProductFields(prefix, product) {
         const value = product[field.key] ?? "";
         const id = prefix + "-" + field.key;
         const fieldClass = field.className || "";
+        const placeholder = field.placeholder || field.label || "";
+
+        if (field.type === "hidden") {
+            return `<input id="${id}" type="hidden" value="${escapeAttr(value)}">`;
+        }
+
+        if (field.type === "carton") {
+            return renderCartonDimensionFields(prefix, product);
+        }
 
         if (field.type === "textarea") {
             return `
                 <div class="field ${fieldClass}">
                     <label for="${id}">${field.label}</label>
-                    <textarea id="${id}" class="product-textarea" placeholder="${field.label}">${escapeHtml(value)}</textarea>
+                    <textarea id="${id}" class="product-textarea" placeholder="${escapeAttr(placeholder)}">${escapeHtml(value)}</textarea>
                 </div>
             `;
         }
@@ -2405,10 +2467,114 @@ function renderProductFields(prefix, product) {
         return `
             <div class="field ${fieldClass}">
                 <label for="${id}">${field.label}</label>
-                <input id="${id}" class="product-input" type="${field.type}"${step} value="${escapeAttr(value)}" placeholder="${field.label}">
+                <input id="${id}" class="product-input" type="${field.type}"${step} value="${escapeAttr(value)}" placeholder="${escapeAttr(placeholder)}">
             </div>
         `;
     }).join("");
+}
+
+function displayInputNumber(value) {
+    const number = Number(value || 0);
+    if (!Number.isFinite(number) || number === 0) return "";
+    return String(number);
+}
+
+function renderCartonDimensionFields(prefix, product) {
+    const length = displayInputNumber(product.carton_length);
+    const width = displayInputNumber(product.carton_width);
+    const height = displayInputNumber(product.carton_height);
+    const cbm = displayInputNumber(product.carton_cbm);
+    const load20 = Number(product.loading_20gp || 0) > 0 ? String(product.loading_20gp) : "";
+    const load40 = Number(product.loading_40gp || 0) > 0 ? String(product.loading_40gp) : "";
+    const load40hq = Number(product.loading_40hq || 0) > 0 ? String(product.loading_40hq) : "";
+
+    return `
+        <div class="carton-dimension-box">
+            <div class="carton-dimension-title">Carton Dimension</div>
+            <div class="carton-dimension-subtitle">
+                Enter L × W × H in centimeters. CBM is calculated automatically. Container loading quantities are estimated in cartons (CTNS) and may be edited manually.
+            </div>
+
+            <div class="carton-dimension-grid">
+                <div class="field">
+                    <label for="${prefix}-carton_length">L (cm)</label>
+                    <input id="${prefix}-carton_length" class="product-input" type="number" step="any" value="${escapeAttr(length)}" placeholder="L" oninput="recalculateCarton('${escapeForJs(prefix)}')">
+                </div>
+
+                <div class="field">
+                    <label for="${prefix}-carton_width">W (cm)</label>
+                    <input id="${prefix}-carton_width" class="product-input" type="number" step="any" value="${escapeAttr(width)}" placeholder="W" oninput="recalculateCarton('${escapeForJs(prefix)}')">
+                </div>
+
+                <div class="field">
+                    <label for="${prefix}-carton_height">H (cm)</label>
+                    <input id="${prefix}-carton_height" class="product-input" type="number" step="any" value="${escapeAttr(height)}" placeholder="H" oninput="recalculateCarton('${escapeForJs(prefix)}')">
+                </div>
+
+                <div class="field">
+                    <label for="${prefix}-carton_cbm">CBM / Carton</label>
+                    <input id="${prefix}-carton_cbm" class="product-input" type="number" step="0.000001" value="${escapeAttr(cbm)}" placeholder="Auto" readonly>
+                </div>
+
+                <div class="field">
+                    <label for="${prefix}-loading_20gp">20GP Loading Qty</label>
+                    <input id="${prefix}-loading_20gp" class="product-input" type="number" step="1" min="0" value="${escapeAttr(load20)}" placeholder="Estimated CTNS">
+                    <div class="field-help">Estimated using 28 CBM usable volume.</div>
+                </div>
+
+                <div class="field">
+                    <label for="${prefix}-loading_40gp">40GP Loading Qty</label>
+                    <input id="${prefix}-loading_40gp" class="product-input" type="number" step="1" min="0" value="${escapeAttr(load40)}" placeholder="Estimated CTNS">
+                    <div class="field-help">Estimated using 58 CBM usable volume.</div>
+                </div>
+
+                <div class="field">
+                    <label for="${prefix}-loading_40hq">40HQ Loading Qty</label>
+                    <input id="${prefix}-loading_40hq" class="product-input" type="number" step="1" min="0" value="${escapeAttr(load40hq)}" placeholder="Estimated CTNS">
+                    <div class="field-help">Estimated using 68 CBM usable volume.</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function recalculateCarton(prefix) {
+    const readNumber = key => {
+        const input = document.getElementById(prefix + "-" + key);
+        const value = Number(input ? input.value : 0);
+        return Number.isFinite(value) ? value : 0;
+    };
+
+    const length = readNumber("carton_length");
+    const width = readNumber("carton_width");
+    const height = readNumber("carton_height");
+
+    const cbm = length > 0 && width > 0 && height > 0
+        ? (length * width * height) / 1000000
+        : 0;
+
+    const cbmInput = document.getElementById(prefix + "-carton_cbm");
+    const volumeInput = document.getElementById(prefix + "-volume");
+
+    if (cbmInput) {
+        cbmInput.value = cbm > 0 ? cbm.toFixed(6).replace(/0+$/, "").replace(/\.$/, "") : "";
+    }
+
+    if (volumeInput && length > 0 && width > 0 && height > 0) {
+        volumeInput.value = `${length} x ${width} x ${height} cm`;
+    }
+
+    const estimates = {
+        loading_20gp: 28,
+        loading_40gp: 58,
+        loading_40hq: 68
+    };
+
+    Object.entries(estimates).forEach(([key, usableCbm]) => {
+        const input = document.getElementById(prefix + "-" + key);
+        if (!input) return;
+        input.value = cbm > 0 ? String(Math.floor(usableCbm / cbm)) : "";
+    });
 }
 
 async function uploadProductMedia(prefix, key, input, mediaType) {
@@ -2578,8 +2744,22 @@ function getProductPayload(prefix) {
     const payload = {};
 
     PRODUCT_FIELDS.forEach(field => {
+        if (field.type === "carton") return;
         const input = document.getElementById(prefix + "-" + field.key);
         payload[field.key] = input ? input.value.trim() : "";
+    });
+
+    [
+        "carton_length",
+        "carton_width",
+        "carton_height",
+        "carton_cbm",
+        "loading_20gp",
+        "loading_40gp",
+        "loading_40hq"
+    ].forEach(key => {
+        const input = document.getElementById(prefix + "-" + key);
+        payload[key] = input ? input.value.trim() : "";
     });
 
     return payload;

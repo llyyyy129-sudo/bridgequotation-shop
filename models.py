@@ -7,7 +7,7 @@ class Product(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
-    price = Column(Float)
+    price = Column(Integer)
     description = Column(String)
     slogan = Column(String, default="")
     image = Column(String)
@@ -21,7 +21,16 @@ class Product(Base):
 
     moq = Column(Integer)
     material = Column(String)
-    volume = Column(String)
+    volume = Column(String)  # Legacy carton dimension text, kept for old products
+    carton_length = Column(Float, default=0.0)
+    carton_width = Column(Float, default=0.0)
+    carton_height = Column(Float, default=0.0)
+    carton_cbm = Column(Float, default=0.0)
+    loading_20gp = Column(Integer, default=0)
+    loading_40gp = Column(Integer, default=0)
+    loading_40hq = Column(Integer, default=0)
+    nearest_port = Column(String, default="")
+    lead_time = Column(Text, default="")
     size = Column(String)
     packing = Column(String, default="")
     category = Column(String)

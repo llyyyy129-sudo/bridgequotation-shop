@@ -127,58 +127,6 @@
       flex-wrap: wrap;
     }
 
-    .sales-global-nav {
-      display: none;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .sales-global-btn {
-      border: 1px solid #dbeafe;
-      background: #ffffff;
-      color: #1f3c88;
-      border-radius: 13px;
-      padding: 10px 16px;
-      font-size: 14px;
-      font-weight: 900;
-      cursor: pointer;
-      white-space: nowrap;
-      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
-      transition: transform 0.16s ease, background 0.16s ease;
-    }
-
-    .sales-global-btn:hover {
-      background: #eef4ff;
-      transform: translateY(-1px);
-    }
-
-    .sales-global-btn.active {
-      background: #1f3c88;
-      color: #ffffff;
-      border-color: #1f3c88;
-    }
-
-    .sales-global-btn.danger {
-      background: #fff1f2;
-      color: #be123c;
-      border-color: #fecdd3;
-    }
-
-    body.sales-role .commerce-nav {
-      grid-template-columns: minmax(0, 1fr) auto;
-    }
-
-    body.sales-role .sales-global-nav {
-      display: flex;
-    }
-
-    body.sales-role .nav-center,
-    body.sales-role .nav-right {
-      display: none;
-    }
-
     .user-chip {
       background: #f8fafc;
       border: 1px solid #e5e7eb;
@@ -416,6 +364,58 @@
       font-weight: 900;
       line-height: 1.35;
       word-break: break-word;
+    }
+
+    .quick-spec-value.multiline-value {
+      white-space: pre-line;
+      line-height: 1.55;
+    }
+
+    .quick-spec.full-spec {
+      grid-column: 1 / -1;
+    }
+
+    .carton-detail-grid,
+    .loading-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .loading-detail-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .carton-detail-item,
+    .loading-detail-item {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      background: #ffffff;
+      padding: 10px;
+    }
+
+    .carton-detail-item span,
+    .loading-detail-item span {
+      display: block;
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 800;
+      margin-bottom: 3px;
+    }
+
+    .carton-detail-item strong,
+    .loading-detail-item strong {
+      color: #111827;
+      font-size: 14px;
+    }
+
+    .spec-note {
+      margin-top: 8px;
+      color: #7b8494;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.45;
     }
 
     .price-table-wrap {
@@ -740,14 +740,6 @@
         grid-template-columns: 1fr;
       }
 
-      body.sales-role .commerce-nav {
-        grid-template-columns: 1fr;
-      }
-
-      body.sales-role .sales-global-nav {
-        justify-content: flex-start;
-      }
-
       .nav-center,
       .nav-right {
         justify-content: flex-start;
@@ -782,10 +774,6 @@
         width: 100%;
       }
 
-      .sales-global-btn {
-        flex: 1 1 130px;
-      }
-
       .media-gallery {
         grid-template-columns: 1fr;
       }
@@ -808,6 +796,11 @@
 
       .quick-spec-grid {
         grid-template-columns: 1fr;
+      }
+
+      .carton-detail-grid,
+      .loading-detail-grid {
+        grid-template-columns: 1fr 1fr;
       }
 
       .action-area {
@@ -849,14 +842,6 @@
         <div class="brand-name">Bridge Quotation</div>
         <div class="brand-subtitle">Product selection and quotation platform</div>
       </div>
-    </div>
-
-    <div class="sales-global-nav" aria-label="Sales navigation">
-      <button class="sales-global-btn" onclick="goSalesDashboard()">Dashboard</button>
-      <button class="sales-global-btn" onclick="goSalesSharedFiles()">Shared Files</button>
-      <button class="sales-global-btn active" onclick="goSalesProducts()">Products</button>
-      <button class="sales-global-btn" onclick="goCart()">Cart</button>
-      <button class="sales-global-btn danger" onclick="logout()">Logout</button>
     </div>
 
     <div class="nav-center">
@@ -964,8 +949,6 @@ const user = localStorage.getItem("user") || "";
 const role = localStorage.getItem("role") || "";
 
 if (role === "sales") {
-  document.body.classList.add("sales-role");
-
   const ordersNavBtn = document.getElementById("ordersNavBtn");
   if (ordersNavBtn) {
     ordersNavBtn.innerText = "Sales Dashboard";
@@ -1021,36 +1004,12 @@ function money(value) {
   });
 }
 
-
-function priceText(value) {
-  const raw = String(value ?? "").trim().replace(/,/g, "");
-
-  if (!raw) return "0";
-
-  if (!/^-?(?:\d+|\d*\.\d+)$/.test(raw)) {
-    const number = Number(raw);
-    return Number.isFinite(number) ? String(number) : "0";
-  }
-
-  const negative = raw.startsWith("-");
-  const unsigned = negative ? raw.slice(1) : raw;
-  const parts = unsigned.split(".");
-  const whole = (parts[0] || "0").replace(/^0+(?=\d)/, "");
-  const fraction = (parts[1] || "").replace(/0+$/, "");
-  const groupedWhole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-
-  return (negative ? "-" : "") +
-    groupedWhole +
-    (fraction ? "." + fraction : "");
-}
-
-
 function displayMoney(value) {
   if (value === null || value === undefined || value === "") {
     return "-";
   }
 
-  return "$" + priceText(value);
+  return "$" + money(value);
 }
 
 function setupSalesModeBanner() {
@@ -1100,6 +1059,44 @@ fetch(`/products/${id}?username=${encodeURIComponent(productPriceUsername)}`)
 
     updatePrice();
   });
+
+function displaySpecNumber(value, decimals = 3) {
+  const number = Number(value || 0);
+  if (!Number.isFinite(number) || number <= 0) return "-";
+  return number.toFixed(decimals).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+function displayLoadingQty(value) {
+  const number = Number(value || 0);
+  if (!Number.isFinite(number) || number <= 0) return "-";
+  return Math.floor(number).toLocaleString() + " CTNS";
+}
+
+function cartonDimensionHtml(product) {
+  const length = displaySpecNumber(product.carton_length);
+  const width = displaySpecNumber(product.carton_width);
+  const height = displaySpecNumber(product.carton_height);
+  const cbm = displaySpecNumber(product.carton_cbm, 6);
+
+  const hasDetailedDimensions =
+    length !== "-" && width !== "-" && height !== "-";
+
+  if (!hasDetailedDimensions) {
+    return `
+      <div class="quick-spec-value">${escapeHtml(product.volume || "-")}</div>
+      ${product.volume ? `<div class="spec-note">Legacy carton dimension</div>` : ""}
+    `;
+  }
+
+  return `
+    <div class="carton-detail-grid">
+      <div class="carton-detail-item"><span>L</span><strong>${escapeHtml(length)} cm</strong></div>
+      <div class="carton-detail-item"><span>W</span><strong>${escapeHtml(width)} cm</strong></div>
+      <div class="carton-detail-item"><span>H</span><strong>${escapeHtml(height)} cm</strong></div>
+      <div class="carton-detail-item"><span>CBM / Carton</span><strong>${escapeHtml(cbm)} m³</strong></div>
+    </div>
+  `;
+}
 
 function renderProductDetail(product) {
   const images = getGalleryImages(product);
@@ -1164,7 +1161,7 @@ function renderProductDetail(product) {
 
           <div class="quick-spec">
             <div class="quick-spec-label">Material</div>
-            <div class="quick-spec-value">${escapeHtml(product.material || "-")}</div>
+            <div class="quick-spec-value multiline-value">${escapeHtml(product.material || "-")}</div>
           </div>
 
           <div class="quick-spec">
@@ -1173,8 +1170,28 @@ function renderProductDetail(product) {
           </div>
 
           <div class="quick-spec">
+            <div class="quick-spec-label">Nearest Port</div>
+            <div class="quick-spec-value">${escapeHtml(product.nearest_port || "-")}</div>
+          </div>
+
+          <div class="quick-spec full-spec">
             <div class="quick-spec-label">Carton Dimension</div>
-            <div class="quick-spec-value">${escapeHtml(product.volume || "-")}</div>
+            ${cartonDimensionHtml(product)}
+          </div>
+
+          <div class="quick-spec full-spec">
+            <div class="quick-spec-label">Estimated Container Loading</div>
+            <div class="loading-detail-grid">
+              <div class="loading-detail-item"><span>20GP</span><strong>${displayLoadingQty(product.loading_20gp)}</strong></div>
+              <div class="loading-detail-item"><span>40GP</span><strong>${displayLoadingQty(product.loading_40gp)}</strong></div>
+              <div class="loading-detail-item"><span>40HQ</span><strong>${displayLoadingQty(product.loading_40hq)}</strong></div>
+            </div>
+            <div class="spec-note">Loading quantities are estimates in cartons (CTNS) and may vary by actual loading method.</div>
+          </div>
+
+          <div class="quick-spec full-spec">
+            <div class="quick-spec-label">Lead Time</div>
+            <div class="quick-spec-value multiline-value">${escapeHtml(product.lead_time || "-")}</div>
           </div>
         </div>
 
@@ -1392,7 +1409,7 @@ function updatePrice(enforceMinimum = false) {
     livePrice.innerHTML = `
       <b>Selected Tier:</b> ${getTierLabel(quantity)}
       <br>
-      <b>Unit Price:</b> $${priceText(unitPrice)}
+      <b>Unit Price:</b> $${money(unitPrice)}
       <br>
       <b>Amount:</b> $${money(total)}
     `;
@@ -1463,7 +1480,7 @@ function addToCart() {
   localStorage.setItem(cartKey, JSON.stringify(cart));
   updateCartCount();
 
-  showCenterMessage(`Added to cart!\nUnit Price: $${priceText(unitPrice)}`);
+  showCenterMessage(`Added to cart!\nUnit Price: $${money(unitPrice)}`);
 }
 
 function goBack() {
@@ -1512,18 +1529,6 @@ function goCart() {
   }
 
   window.location.href = "cart.html";
-}
-
-function goSalesDashboard() {
-  window.location.href = "sales.html";
-}
-
-function goSalesSharedFiles() {
-  window.location.href = "sales.html#sharedFilesSection";
-}
-
-function goSalesProducts() {
-  window.location.href = "products.html";
 }
 
 function backToSalesDashboard() {

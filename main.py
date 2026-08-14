@@ -149,6 +149,18 @@ def run_migrations():
         "INTEGER DEFAULT 1"
     )
 
+    # Detailed carton / shipping information. These are additive migrations so
+    # existing products and the legacy `volume` field remain untouched.
+    add_column_if_missing("products", "carton_length", "DOUBLE PRECISION DEFAULT 0")
+    add_column_if_missing("products", "carton_width", "DOUBLE PRECISION DEFAULT 0")
+    add_column_if_missing("products", "carton_height", "DOUBLE PRECISION DEFAULT 0")
+    add_column_if_missing("products", "carton_cbm", "DOUBLE PRECISION DEFAULT 0")
+    add_column_if_missing("products", "loading_20gp", "INTEGER DEFAULT 0")
+    add_column_if_missing("products", "loading_40gp", "INTEGER DEFAULT 0")
+    add_column_if_missing("products", "loading_40hq", "INTEGER DEFAULT 0")
+    add_column_if_missing("products", "nearest_port", "VARCHAR DEFAULT ''")
+    add_column_if_missing("products", "lead_time", "TEXT DEFAULT ''")
+
     add_column_if_missing(
         "orders",
         "sales_username",
@@ -475,6 +487,15 @@ def serialize_product(product, multiplier=1.0):
         "moq": product.moq,
         "material": product.material,
         "volume": product.volume,
+        "carton_length": getattr(product, "carton_length", 0.0) or 0.0,
+        "carton_width": getattr(product, "carton_width", 0.0) or 0.0,
+        "carton_height": getattr(product, "carton_height", 0.0) or 0.0,
+        "carton_cbm": getattr(product, "carton_cbm", 0.0) or 0.0,
+        "loading_20gp": getattr(product, "loading_20gp", 0) or 0,
+        "loading_40gp": getattr(product, "loading_40gp", 0) or 0,
+        "loading_40hq": getattr(product, "loading_40hq", 0) or 0,
+        "nearest_port": getattr(product, "nearest_port", "") or "",
+        "lead_time": getattr(product, "lead_time", "") or "",
         "size": product.size,
         "price_500": apply_price_multiplier(product.price_500, multiplier),
         "price_1000": apply_price_multiplier(product.price_1000, multiplier),
@@ -2065,7 +2086,68 @@ def to_float(value, default=0.0):
         return default
 
 
+# Conservative usable-volume estimates for container loading. The Admin UI
+# labels these as estimates and the calculated CTN quantities remain editable.
+CONTAINER_USABLE_CBM = {
+    "20gp": 28.0,
+    "40gp": 58.0,
+    "40hq": 68.0,
+}
+
+
+def calculate_carton_cbm(length_cm, width_cm, height_cm):
+    if length_cm <= 0 or width_cm <= 0 or height_cm <= 0:
+        return 0.0
+
+    return round((length_cm * width_cm * height_cm) / 1_000_000, 6)
+
+
+def calculate_container_cartons(carton_cbm, usable_cbm):
+    if carton_cbm <= 0:
+        return 0
+
+    return max(0, int(float(usable_cbm) / float(carton_cbm)))
+
+
+def compact_number(value):
+    number = float(value or 0)
+    if number.is_integer():
+        return str(int(number))
+    return (f"{number:.3f}").rstrip("0").rstrip(".")
+
+
 def product_payload_to_values(data: dict):
+    carton_length = to_float(data.get("carton_length"), 0.0)
+    carton_width = to_float(data.get("carton_width"), 0.0)
+    carton_height = to_float(data.get("carton_height"), 0.0)
+
+    calculated_cbm = calculate_carton_cbm(
+        carton_length,
+        carton_width,
+        carton_height,
+    )
+
+    # L/W/H are the source of truth when all three are available. The incoming
+    # CBM is retained only for legacy / partially-filled records.
+    carton_cbm = calculated_cbm or to_float(data.get("carton_cbm"), 0.0)
+
+    def loading_value(key, container_key):
+        manual_value = to_int(data.get(key), 0)
+        if manual_value > 0:
+            return manual_value
+        return calculate_container_cartons(
+            carton_cbm,
+            CONTAINER_USABLE_CBM[container_key],
+        )
+
+    legacy_volume = str(data.get("volume", "") or "").strip()
+    if carton_length > 0 and carton_width > 0 and carton_height > 0:
+        legacy_volume = (
+            f"{compact_number(carton_length)} x "
+            f"{compact_number(carton_width)} x "
+            f"{compact_number(carton_height)} cm"
+        )
+
     return {
         "name": str(data.get("name", "") or "").strip(),
         "description": str(data.get("description", "") or "").strip(),
@@ -2079,7 +2161,16 @@ def product_payload_to_values(data: dict):
         "video": str(data.get("video", "") or "").strip(),
         "moq": to_int(data.get("moq"), 0),
         "material": str(data.get("material", "") or "").strip(),
-        "volume": str(data.get("volume", "") or "").strip(),
+        "volume": legacy_volume,
+        "carton_length": carton_length,
+        "carton_width": carton_width,
+        "carton_height": carton_height,
+        "carton_cbm": carton_cbm,
+        "loading_20gp": loading_value("loading_20gp", "20gp"),
+        "loading_40gp": loading_value("loading_40gp", "40gp"),
+        "loading_40hq": loading_value("loading_40hq", "40hq"),
+        "nearest_port": str(data.get("nearest_port", "") or "").strip(),
+        "lead_time": str(data.get("lead_time", "") or "").strip(),
         "size": str(data.get("size", "") or "").strip(),
         "packing": str(data.get("packing", "") or "").strip(),
         "category": str(data.get("category", "") or "").strip(),
