@@ -3224,6 +3224,77 @@ def toggle_admin_product(product_id: int, data: dict):
     }
 
 
+@app.post("/admin/products/bulk-delete")
+def bulk_delete_admin_products(data: dict):
+    raw_ids = data.get("product_ids", [])
+
+    if not isinstance(raw_ids, list):
+        return {
+            "success": False,
+            "message": "product_ids must be a list."
+        }
+
+    product_ids = []
+    seen_ids = set()
+
+    for raw_id in raw_ids:
+        try:
+            product_id = int(raw_id)
+        except (TypeError, ValueError):
+            continue
+
+        if product_id <= 0 or product_id in seen_ids:
+            continue
+
+        seen_ids.add(product_id)
+        product_ids.append(product_id)
+
+    if not product_ids:
+        return {
+            "success": False,
+            "message": "Please select at least one valid product."
+        }
+
+    if len(product_ids) > 2000:
+        return {
+            "success": False,
+            "message": "A maximum of 2,000 products can be deleted at one time."
+        }
+
+    db = SessionLocal()
+
+    try:
+        products = db.query(Product).filter(
+            Product.id.in_(product_ids)
+        ).all()
+
+        found_ids = {int(product.id) for product in products}
+        missing_ids = [product_id for product_id in product_ids if product_id not in found_ids]
+
+        for product in products:
+            db.delete(product)
+
+        db.commit()
+
+        deleted_count = len(products)
+
+        return {
+            "success": True,
+            "deleted_count": deleted_count,
+            "missing_ids": missing_ids,
+            "message": f"Deleted {deleted_count} product{'s' if deleted_count != 1 else ''}."
+        }
+    except Exception as exc:
+        db.rollback()
+        print("Bulk product delete failed:", exc)
+        return {
+            "success": False,
+            "message": "Bulk product delete failed."
+        }
+    finally:
+        db.close()
+
+
 @app.post("/admin/products/{product_id}/delete")
 def delete_admin_product(product_id: int):
     db = SessionLocal()

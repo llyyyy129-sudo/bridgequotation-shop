@@ -593,6 +593,57 @@
             margin-bottom: 16px;
         }
 
+        .product-bulk-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 12px 14px;
+            margin: 0 0 14px;
+            background: #f8fafc;
+            border: 1px solid #dbe3ef;
+            border-radius: 15px;
+        }
+
+        .product-bulk-selected {
+            display: inline-flex;
+            align-items: center;
+            min-height: 38px;
+            padding: 0 12px;
+            border-radius: 999px;
+            background: #eef4ff;
+            color: #1f3c88;
+            border: 1px solid #bfdbfe;
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .bulk-delete-btn {
+            background: #b91c1c;
+            color: #ffffff;
+            border: none;
+        }
+
+        .bulk-delete-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .product-select-wrap {
+            display: flex;
+            align-items: flex-start;
+            padding-top: 3px;
+            flex: 0 0 auto;
+        }
+
+        .product-select-checkbox {
+            width: 19px;
+            height: 19px;
+            margin: 0;
+            cursor: pointer;
+            accent-color: #2563eb;
+        }
+
         .product-create-panel {
             background: #f8fafc;
             border: 1px solid #e5e7eb;
@@ -1832,6 +1883,15 @@
             </div>
         </details>
 
+        <div class="product-bulk-toolbar">
+            <button class="soft-btn" type="button" onclick="selectCurrentProductPage()">Select Current Page</button>
+            <button class="soft-btn" type="button" onclick="clearProductSelection()">Clear Selection</button>
+            <span id="productBulkSelectedCount" class="product-bulk-selected">0 selected</span>
+            <button id="bulkDeleteProductsButton" class="dark-btn bulk-delete-btn" type="button" onclick="deleteSelectedProducts()" disabled>
+                Delete Selected
+            </button>
+        </div>
+
         <div class="product-toolbar-summary">
             <div id="productResultText" class="product-result-text">Showing all products.</div>
             <div class="page-size-box">
@@ -1954,6 +2014,7 @@ let allProductsCache = [];
 let filteredProductsCache = [];
 let productCurrentPage = 1;
 let productPageSize = 20;
+let selectedProductIds = new Set();
 let excelImportRows = [];
 let excelImportMeta = null;
 let adminSharedFilesCache = [];
@@ -2839,6 +2900,14 @@ async function loadAdminProducts() {
         const products = await response.json();
 
         allProductsCache = Array.isArray(products) ? products : [];
+
+        const availableProductIds = new Set(
+            allProductsCache.map(product => Number(product.id)).filter(Number.isFinite)
+        );
+        selectedProductIds = new Set(
+            Array.from(selectedProductIds).filter(id => availableProductIds.has(Number(id)))
+        );
+
         renderNewProductForm();
         applyProductFilters();
     } catch (error) {
@@ -2933,12 +3002,15 @@ function renderAdminProducts() {
 
     if (total === 0) {
         list.innerHTML = `<div class="empty-message">No matching products.</div>`;
+        updateBulkDeleteToolbar();
         return;
     }
 
     list.innerHTML = pageProducts
         .map(product => renderAdminProductCard(product))
         .join("");
+
+    updateBulkDeleteToolbar();
 }
 
 function renderProductPagination(total, totalPages, startIndex, endIndex) {
@@ -3021,6 +3093,18 @@ function renderAdminProductCard(product) {
         <details class="admin-product-card ${active ? "" : "inactive-product"}" id="product-card-${product.id}">
             <summary class="admin-product-header">
                 <div class="admin-product-left">
+                    <span class="product-select-wrap" onclick="event.stopPropagation();">
+                        <input
+                            class="product-select-checkbox"
+                            type="checkbox"
+                            value="${product.id}"
+                            aria-label="Select product #${product.id}"
+                            ${selectedProductIds.has(Number(product.id)) ? "checked" : ""}
+                            onclick="event.stopPropagation();"
+                            onchange="toggleProductSelection(${product.id}, this.checked)"
+                        >
+                    </span>
+
                     ${previewImage
                         ? `<img class="admin-product-image" src="${escapeAttr(previewImage)}" alt="Product image" onerror="this.onerror=null;this.src='/static/image/bg2.jpg';">`
                         : `<div class="admin-product-image"></div>`
@@ -3540,6 +3624,107 @@ async function toggleAdminProduct(productId, activeValue) {
     }
 }
 
+function toggleProductSelection(productId, checked) {
+    const id = Number(productId);
+    if (!Number.isFinite(id)) return;
+
+    if (checked) {
+        selectedProductIds.add(id);
+    } else {
+        selectedProductIds.delete(id);
+    }
+
+    updateBulkDeleteToolbar();
+}
+
+function selectCurrentProductPage() {
+    const checkboxes = Array.from(document.querySelectorAll(".product-select-checkbox"));
+
+    checkboxes.forEach(checkbox => {
+        const id = Number(checkbox.value);
+        if (!Number.isFinite(id)) return;
+        selectedProductIds.add(id);
+        checkbox.checked = true;
+    });
+
+    updateBulkDeleteToolbar();
+}
+
+function clearProductSelection() {
+    selectedProductIds.clear();
+
+    document.querySelectorAll(".product-select-checkbox").forEach(checkbox => {
+        checkbox.checked = false;
+    });
+
+    updateBulkDeleteToolbar();
+}
+
+function updateBulkDeleteToolbar() {
+    const count = selectedProductIds.size;
+    const label = document.getElementById("productBulkSelectedCount");
+    const button = document.getElementById("bulkDeleteProductsButton");
+
+    if (label) {
+        label.innerText = count === 1 ? "1 selected" : count + " selected";
+    }
+
+    if (button) {
+        button.disabled = count === 0;
+        button.innerText = count > 0 ? "Delete Selected (" + count + ")" : "Delete Selected";
+    }
+}
+
+async function deleteSelectedProducts() {
+    const ids = Array.from(selectedProductIds)
+        .map(value => Number(value))
+        .filter(value => Number.isInteger(value) && value > 0);
+
+    if (ids.length === 0) {
+        showCenterMessage("Please select at least one product first.");
+        return;
+    }
+
+    const ok = await showCenterConfirm(
+        "Delete " + ids.length + " selected product" + (ids.length === 1 ? "" : "s") + "?\n\n" +
+        "This permanently removes the selected products from the product database. This action cannot be undone."
+    );
+
+    if (!ok) return;
+
+    const button = document.getElementById("bulkDeleteProductsButton");
+    if (button) {
+        button.disabled = true;
+        button.innerText = "Deleting...";
+    }
+
+    try {
+        const response = await fetch("/admin/products/bulk-delete", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ product_ids: ids })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            showCenterMessage(data.message || data.detail || "Bulk delete failed.");
+            updateBulkDeleteToolbar();
+            return;
+        }
+
+        ids.forEach(id => selectedProductIds.delete(id));
+        await loadAdminProducts();
+        showToast(data.message || (ids.length + " products deleted."));
+    } catch (error) {
+        console.error("Bulk delete products error:", error);
+        showCenterMessage("Bulk delete failed. Please check server logs.");
+        updateBulkDeleteToolbar();
+    }
+}
+
 async function deleteAdminProduct(productId) {
     const ok = await showCenterConfirm(
         "Delete product #" + productId + "?\n\nThis removes it from the product database. Use Hide Product instead if you may need it again."
@@ -3559,6 +3744,7 @@ async function deleteAdminProduct(productId) {
             return;
         }
 
+        selectedProductIds.delete(Number(productId));
         await loadAdminProducts();
         showToast(data.message);
     } catch (error) {
