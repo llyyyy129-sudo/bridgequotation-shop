@@ -2484,6 +2484,7 @@ function renderCartonDimensionFields(prefix, product) {
     const width = displayInputNumber(product.carton_width);
     const height = displayInputNumber(product.carton_height);
     const cbm = displayInputNumber(product.carton_cbm);
+    const pcsPerCarton = Number(product.pcs_per_carton || 0) > 0 ? String(product.pcs_per_carton) : "";
     const load20 = Number(product.loading_20gp || 0) > 0 ? String(product.loading_20gp) : "";
     const load40 = Number(product.loading_40gp || 0) > 0 ? String(product.loading_40gp) : "";
     const load40hq = Number(product.loading_40hq || 0) > 0 ? String(product.loading_40hq) : "";
@@ -2532,6 +2533,12 @@ function renderCartonDimensionFields(prefix, product) {
                     <label for="${prefix}-loading_40hq">40HQ Loading Qty</label>
                     <input id="${prefix}-loading_40hq" class="product-input" type="number" step="1" min="0" value="${escapeAttr(load40hq)}" placeholder="Estimated CTNS">
                     <div class="field-help">Estimated using 68 CBM usable volume.</div>
+                </div>
+
+                <div class="field">
+                    <label for="${prefix}-pcs_per_carton">Qty / Carton</label>
+                    <input id="${prefix}-pcs_per_carton" class="product-input" type="number" step="1" min="0" value="${escapeAttr(pcsPerCarton)}" placeholder="Example: 72">
+                    <div class="field-help">Enter pieces packed in one export carton, e.g. 72 PCS/CTN.</div>
                 </div>
             </div>
         </div>
@@ -2754,6 +2761,7 @@ function getProductPayload(prefix) {
         "carton_width",
         "carton_height",
         "carton_cbm",
+        "pcs_per_carton",
         "loading_20gp",
         "loading_40gp",
         "loading_40hq"

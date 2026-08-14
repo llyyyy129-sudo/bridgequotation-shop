@@ -26,6 +26,7 @@ class Product(Base):
     carton_width = Column(Float, default=0.0)
     carton_height = Column(Float, default=0.0)
     carton_cbm = Column(Float, default=0.0)
+    pcs_per_carton = Column(Integer, default=0)
     loading_20gp = Column(Integer, default=0)
     loading_40gp = Column(Integer, default=0)
     loading_40hq = Column(Integer, default=0)

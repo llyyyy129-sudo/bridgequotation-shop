@@ -1072,6 +1072,12 @@ function displayLoadingQty(value) {
   return Math.floor(number).toLocaleString() + " CTNS";
 }
 
+function displayPcsPerCarton(value) {
+  const number = Number(value || 0);
+  if (!Number.isFinite(number) || number <= 0) return "-";
+  return Math.floor(number).toLocaleString() + " PCS/CTN";
+}
+
 function cartonDimensionHtml(product) {
   const length = displaySpecNumber(product.carton_length);
   const width = displaySpecNumber(product.carton_width);
@@ -1094,6 +1100,7 @@ function cartonDimensionHtml(product) {
       <div class="carton-detail-item"><span>W</span><strong>${escapeHtml(width)} cm</strong></div>
       <div class="carton-detail-item"><span>H</span><strong>${escapeHtml(height)} cm</strong></div>
       <div class="carton-detail-item"><span>CBM / Carton</span><strong>${escapeHtml(cbm)} m³</strong></div>
+      <div class="carton-detail-item"><span>Qty / Carton</span><strong>${displayPcsPerCarton(product.pcs_per_carton)}</strong></div>
     </div>
   `;
 }

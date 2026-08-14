@@ -155,6 +155,7 @@ def run_migrations():
     add_column_if_missing("products", "carton_width", "DOUBLE PRECISION DEFAULT 0")
     add_column_if_missing("products", "carton_height", "DOUBLE PRECISION DEFAULT 0")
     add_column_if_missing("products", "carton_cbm", "DOUBLE PRECISION DEFAULT 0")
+    add_column_if_missing("products", "pcs_per_carton", "INTEGER DEFAULT 0")
     add_column_if_missing("products", "loading_20gp", "INTEGER DEFAULT 0")
     add_column_if_missing("products", "loading_40gp", "INTEGER DEFAULT 0")
     add_column_if_missing("products", "loading_40hq", "INTEGER DEFAULT 0")
@@ -491,6 +492,7 @@ def serialize_product(product, multiplier=1.0):
         "carton_width": getattr(product, "carton_width", 0.0) or 0.0,
         "carton_height": getattr(product, "carton_height", 0.0) or 0.0,
         "carton_cbm": getattr(product, "carton_cbm", 0.0) or 0.0,
+        "pcs_per_carton": getattr(product, "pcs_per_carton", 0) or 0,
         "loading_20gp": getattr(product, "loading_20gp", 0) or 0,
         "loading_40gp": getattr(product, "loading_40gp", 0) or 0,
         "loading_40hq": getattr(product, "loading_40hq", 0) or 0,
@@ -2166,6 +2168,7 @@ def product_payload_to_values(data: dict):
         "carton_width": carton_width,
         "carton_height": carton_height,
         "carton_cbm": carton_cbm,
+        "pcs_per_carton": to_int(data.get("pcs_per_carton"), 0),
         "loading_20gp": loading_value("loading_20gp", "20gp"),
         "loading_40gp": loading_value("loading_40gp", "40gp"),
         "loading_40hq": loading_value("loading_40hq", "40hq"),
