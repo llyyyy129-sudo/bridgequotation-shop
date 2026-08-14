@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,6 +18,7 @@ import base64
 import re
 import uuid
 import shutil
+import tempfile
 from pathlib import Path
 
 
@@ -2088,12 +2089,12 @@ def to_float(value, default=0.0):
         return default
 
 
-# Conservative usable-volume estimates for container loading. The Admin UI
-# labels these as estimates and the calculated CTN quantities remain editable.
+# COPEC quotation sheets use these conservative usable-volume assumptions.
+# Container loading quantities are stored/displayed as PCS, not cartons.
 CONTAINER_USABLE_CBM = {
-    "20gp": 28.0,
-    "40gp": 58.0,
-    "40hq": 68.0,
+    "20gp": 26.0,
+    "40gp": 56.0,
+    "40hq": 66.0,
 }
 
 
@@ -2104,11 +2105,12 @@ def calculate_carton_cbm(length_cm, width_cm, height_cm):
     return round((length_cm * width_cm * height_cm) / 1_000_000, 6)
 
 
-def calculate_container_cartons(carton_cbm, usable_cbm):
-    if carton_cbm <= 0:
+def calculate_container_loading_pcs(carton_cbm, usable_cbm, pcs_per_carton):
+    if carton_cbm <= 0 or pcs_per_carton <= 0:
         return 0
 
-    return max(0, int(float(usable_cbm) / float(carton_cbm)))
+    carton_count = max(0, int(float(usable_cbm) / float(carton_cbm)))
+    return carton_count * int(pcs_per_carton)
 
 
 def compact_number(value):
@@ -2133,13 +2135,16 @@ def product_payload_to_values(data: dict):
     # CBM is retained only for legacy / partially-filled records.
     carton_cbm = calculated_cbm or to_float(data.get("carton_cbm"), 0.0)
 
+    pcs_per_carton = to_int(data.get("pcs_per_carton"), 0)
+
     def loading_value(key, container_key):
         manual_value = to_int(data.get(key), 0)
         if manual_value > 0:
             return manual_value
-        return calculate_container_cartons(
+        return calculate_container_loading_pcs(
             carton_cbm,
             CONTAINER_USABLE_CBM[container_key],
+            pcs_per_carton,
         )
 
     legacy_volume = str(data.get("volume", "") or "").strip()
@@ -2168,7 +2173,7 @@ def product_payload_to_values(data: dict):
         "carton_width": carton_width,
         "carton_height": carton_height,
         "carton_cbm": carton_cbm,
-        "pcs_per_carton": to_int(data.get("pcs_per_carton"), 0),
+        "pcs_per_carton": pcs_per_carton,
         "loading_20gp": loading_value("loading_20gp", "20gp"),
         "loading_40gp": loading_value("loading_40gp", "40gp"),
         "loading_40hq": loading_value("loading_40hq", "40hq"),
@@ -2190,33 +2195,18 @@ def product_payload_to_values(data: dict):
 # ADMIN EXCEL PRODUCT IMPORT
 # =========================
 
-EXCEL_IMPORT_MAX_BYTES = 15 * 1024 * 1024
+EXCEL_IMPORT_MAX_BYTES = 100 * 1024 * 1024
 EXCEL_IMPORT_MAX_ROWS = 2000
 
-# Canonical website field -> accepted Excel column headings.
-# Header matching ignores spaces, punctuation and capitalization.
+# Standard/simple template aliases remain supported as a fallback.
 EXCEL_PRODUCT_FIELD_ALIASES = {
-    "name": [
-        "Product Name", "Name", "Item Name", "Product",
-    ],
-    "category": [
-        "Category", "Product Category",
-    ],
-    "slogan": [
-        "Product Slogan / Badge", "Product Slogan", "Slogan", "Badge",
-    ],
-    "moq": [
-        "MOQ", "Minimum Order Quantity", "Min Order Qty",
-    ],
-    "material": [
-        "Material", "Materials",
-    ],
-    "size": [
-        "Product Dimension", "Product Dimensions", "Product Size", "Size",
-    ],
-    "packing": [
-        "Packing", "Packaging", "Packing Method",
-    ],
+    "name": ["Product Name", "Name", "Item Name", "Product"],
+    "category": ["Category", "Product Category"],
+    "slogan": ["Product Slogan / Badge", "Product Slogan", "Slogan", "Badge"],
+    "moq": ["MOQ", "Minimum Order Quantity", "Min Order Qty"],
+    "material": ["Material", "Materials"],
+    "size": ["Product Dimension", "Product Dimensions", "Product Size", "Size"],
+    "packing": ["Packing", "Packaging", "Packing Method"],
     "volume": [
         "Carton Dimension", "Carton Dimensions", "Carton Size", "CTN Size",
         "Carton Dimension (cm)", "Carton Size (cm)",
@@ -2233,76 +2223,42 @@ EXCEL_PRODUCT_FIELD_ALIASES = {
         "Carton H", "Carton H (cm)", "Carton Height", "Carton Height (cm)",
         "CTN H", "CTN Height",
     ],
-    "carton_cbm": [
-        "CBM", "CBM / Carton", "Carton CBM", "CBM/CTN", "CTN CBM",
-    ],
+    "carton_cbm": ["CBM", "CBM / Carton", "Carton CBM", "CBM/CTN", "CTN CBM"],
     "pcs_per_carton": [
         "PCS/CTN", "PCS / CTN", "Pcs/Ctn", "PCS per Carton",
         "Qty/Carton", "Qty / Carton", "Quantity per Carton", "Carton Qty",
     ],
     "loading_20gp": [
         "20GP", "20GP Loading Qty", "20GP Loading", "20FT", "20FT Qty",
+        "20FC Loading", "20FC",
     ],
     "loading_40gp": [
         "40GP", "40GP Loading Qty", "40GP Loading", "40FT", "40FT Qty",
+        "40FC Loading", "40FC",
     ],
     "loading_40hq": [
         "40HQ", "40HQ Loading Qty", "40HQ Loading", "40HC", "40HC Qty",
+        "40HC Loading",
     ],
-    "nearest_port": [
-        "Nearest Port", "Port", "Loading Port", "Port of Loading",
-    ],
-    "lead_time": [
-        "Lead Time", "Leadtime", "Production Lead Time", "Delivery Time",
-    ],
-    "price": [
-        "Base Price", "Price", "Unit Price", "FOB Price", "FOB",
-    ],
-    "price_500": [
-        "Price 500+", "Price 500", "500+ Price", "500 Price",
-    ],
-    "price_1000": [
-        "Price 1000+", "Price 1000", "1000+ Price", "1000 Price",
-    ],
-    "price_3000": [
-        "Price 3000+", "Price 3000", "3000+ Price", "3000 Price",
-    ],
-    "price_10000": [
-        "Price 10000+", "Price 10000", "10000+ Price", "10000 Price",
-    ],
-    "price_50000": [
-        "Price 50000+", "Price 50000", "50000+ Price", "50000 Price",
-    ],
-    "description": [
-        "Specification", "Specifications", "Spec", "Description", "Product Description",
-    ],
+    "nearest_port": ["Nearest Port", "Port", "Loading Port", "Port of Loading"],
+    "lead_time": ["Lead Time", "Leadtime", "Production Lead Time", "Delivery Time"],
+    "price": ["Base Price", "Price", "Unit Price", "FOB Price", "FOB"],
+    "price_500": ["Price 500+", "Price 500", "500+ Price", "500 Price"],
+    "price_1000": ["Price 1000+", "Price 1000", "1000+ Price", "1000 Price"],
+    "price_3000": ["Price 3000+", "Price 3000", "3000+ Price", "3000 Price"],
+    "price_10000": ["Price 10000+", "Price 10000", "10000+ Price", "10000 Price"],
+    "price_50000": ["Price 50000+", "Price 50000", "50000+ Price", "50000 Price"],
+    "description": ["Specification", "Specifications", "Spec", "Product Description"],
 }
 
 EXCEL_IMPORT_TEMPLATE_HEADERS = [
-    "Product Name",
-    "Category",
-    "Product Slogan / Badge",
-    "MOQ",
-    "Material",
-    "Product Dimension",
-    "Packing",
-    "Carton L (cm)",
-    "Carton W (cm)",
-    "Carton H (cm)",
-    "PCS/CTN",
-    "CBM / Carton",
-    "20GP Loading Qty",
-    "40GP Loading Qty",
-    "40HQ Loading Qty",
-    "Nearest Port",
-    "Lead Time",
-    "Base Price",
-    "Price 500+",
-    "Price 1000+",
-    "Price 3000+",
-    "Price 10000+",
-    "Price 50000+",
-    "Specification",
+    "ITEM NUMBER", "UPC CODE", "BRAND", "IMAGE", "PACKAGING DEMO",
+    "DESCRIPTION", "MATERIAL", "SPECIFICATION", "PACKAGING METHOD",
+    "PROMOTION QTY", "PRICE (USD)", "STANDARD QTY", "PRICE (USD)",
+    "INNER CARTON", "", "", "",
+    "OUTER CARTON", "", "", "",
+    "CBM", "20FC LOADING", "40FC LOADING", "40HC LOADING",
+    "PORT", "CONFIRMATION DDL", "LEADTIME", "REMARK", "REMARK",
 ]
 
 
@@ -2327,37 +2283,33 @@ EXCEL_HEADER_LOOKUP = build_excel_header_lookup()
 def excel_json_value(value):
     if value is None:
         return ""
-
     if isinstance(value, datetime):
         return value.strftime("%Y-%m-%d")
-
     if isinstance(value, bool):
         return value
-
     if isinstance(value, (int, float)):
         return value
-
     return str(value).strip()
 
 
 def normalize_excel_numeric_value(value):
     if value in (None, ""):
         return ""
-
     if isinstance(value, bool):
         return 1 if value else 0
-
     if isinstance(value, (int, float)):
         return value
 
     raw = str(value).strip().replace(",", "")
+    if raw.upper() in {"N/A", "NA", "TBD", "/", "-", "--"}:
+        return ""
+
     match = re.search(r"-?(?:\d+(?:\.\d+)?|\.\d+)", raw)
     if not match:
         return ""
 
-    number_text = match.group(0)
     try:
-        number = float(number_text)
+        number = float(match.group(0))
         return int(number) if number.is_integer() else number
     except Exception:
         return ""
@@ -2367,40 +2319,59 @@ def parse_carton_dimension_text(value):
     raw = str(value or "").strip()
     if not raw:
         return None
-
     numbers = re.findall(r"\d+(?:\.\d+)?", raw.replace(",", "."))
     if len(numbers) < 3:
         return None
-
     try:
         return tuple(float(number) for number in numbers[:3])
     except Exception:
         return None
 
 
-def decode_excel_upload(data_url):
-    raw = str(data_url or "").strip()
-    if not raw:
-        raise ValueError("Excel file data is empty.")
+def append_multiline(existing, addition):
+    existing_text = str(existing or "").strip()
+    addition_text = str(addition or "").strip()
+    if not addition_text:
+        return existing_text
+    if not existing_text:
+        return addition_text
+    return existing_text + "\n" + addition_text
 
-    if "," in raw:
-        raw = raw.split(",", 1)[1]
+
+async def save_excel_request_to_temp(request: Request):
+    temp_file = tempfile.NamedTemporaryFile(mode="wb", suffix=".xlsx", delete=False)
+    temp_path = Path(temp_file.name)
+    total_bytes = 0
 
     try:
-        file_bytes = base64.b64decode(raw, validate=True)
-    except Exception as exc:
-        raise ValueError("Excel file could not be decoded.") from exc
+        async for chunk in request.stream():
+            if not chunk:
+                continue
+            total_bytes += len(chunk)
+            if total_bytes > EXCEL_IMPORT_MAX_BYTES:
+                raise ValueError("Excel file is too large. Maximum size is 100MB.")
+            temp_file.write(chunk)
 
-    if not file_bytes:
-        raise ValueError("Excel file is empty.")
+        temp_file.flush()
+        temp_file.close()
 
-    if len(file_bytes) > EXCEL_IMPORT_MAX_BYTES:
-        raise ValueError("Excel file is too large. Maximum size is 15MB.")
+        if total_bytes <= 0:
+            raise ValueError("Excel file is empty.")
 
-    return file_bytes
+        return temp_path, total_bytes
+    except Exception:
+        try:
+            temp_file.close()
+        except Exception:
+            pass
+        try:
+            temp_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        raise
 
 
-def load_excel_workbook(file_bytes, data_only=True):
+def load_excel_workbook(file_path, data_only=True):
     try:
         from openpyxl import load_workbook
     except ImportError as exc:
@@ -2410,7 +2381,7 @@ def load_excel_workbook(file_bytes, data_only=True):
 
     try:
         return load_workbook(
-            filename=BytesIO(file_bytes),
+            filename=str(file_path),
             read_only=True,
             data_only=data_only,
         )
@@ -2418,7 +2389,7 @@ def load_excel_workbook(file_bytes, data_only=True):
         raise ValueError("The uploaded file is not a valid .xlsx workbook.") from exc
 
 
-def find_excel_header_row(worksheet):
+def find_standard_excel_header_row(worksheet):
     best = None
     max_scan_rows = min(int(worksheet.max_row or 0), 25)
 
@@ -2450,176 +2421,490 @@ def find_excel_header_row(worksheet):
             }
 
     if not best or not best["has_name"]:
-        raise ValueError(
-            "Could not find a Product Name column. Use the template or rename the product-name column."
-        )
-
+        raise ValueError("Could not find a Product Name column.")
     return best
 
 
-def parse_product_excel(file_bytes):
-    workbook = load_excel_workbook(file_bytes, data_only=True)
+def find_copec_header_row(worksheet):
+    max_scan_rows = min(int(worksheet.max_row or 0), 20)
 
-    try:
-        worksheet = None
-        header_info = None
+    for row_number, values in enumerate(
+        worksheet.iter_rows(min_row=1, max_row=max_scan_rows, values_only=True),
+        start=1,
+    ):
+        normalized_values = [normalize_excel_header(value) for value in values]
+        required = {
+            "itemnumber", "description", "material", "specification",
+            "packagingmethod", "outercarton", "cbm", "port", "leadtime",
+        }
 
-        for candidate_sheet in workbook.worksheets:
+        if not required.issubset(set(normalized_values)):
+            continue
+
+        positions = {}
+        for column_index, normalized in enumerate(normalized_values, start=1):
+            if normalized and normalized not in positions:
+                positions[normalized] = column_index
+
+        price_columns = [
+            index for index, normalized in enumerate(normalized_values, start=1)
+            if normalized in {"priceusd", "price"}
+        ]
+        if not price_columns:
+            continue
+
+        return {
+            "row_number": row_number,
+            "values": list(values),
+            "positions": positions,
+            "price_columns": price_columns[:2],
+        }
+
+    return None
+
+
+def excel_cell(values, column_index):
+    if not column_index or column_index <= 0:
+        return ""
+    index = column_index - 1
+    if index >= len(values):
+        return ""
+    return excel_json_value(values[index])
+
+
+def copec_price_values(values, header_info):
+    pairs = []
+
+    for price_column in header_info.get("price_columns", []):
+        quantity_column = price_column - 1
+        quantity = normalize_excel_numeric_value(excel_cell(values, quantity_column))
+        price = normalize_excel_numeric_value(excel_cell(values, price_column))
+        if price not in ("", None):
+            pairs.append({"qty": quantity, "price": price})
+
+    payload = {
+        "moq": "",
+        "price": "",
+        "price_500": "",
+        "price_1000": "",
+        "price_3000": "",
+        "price_10000": "",
+        "price_50000": "",
+    }
+
+    quantity_pairs = [
+        pair for pair in pairs
+        if normalize_excel_numeric_value(pair.get("qty")) not in ("", None)
+        and float(normalize_excel_numeric_value(pair.get("qty"))) > 0
+    ]
+
+    if quantity_pairs:
+        quantity_pairs.sort(
+            key=lambda pair: float(normalize_excel_numeric_value(pair.get("qty")))
+        )
+        base_pair = quantity_pairs[0]
+        payload["moq"] = normalize_excel_numeric_value(base_pair.get("qty"))
+        payload["price"] = normalize_excel_numeric_value(base_pair.get("price"))
+
+        tier_map = {
+            500: "price_500",
+            1000: "price_1000",
+            3000: "price_3000",
+            10000: "price_10000",
+            50000: "price_50000",
+        }
+
+        for pair in quantity_pairs:
+            qty_value = normalize_excel_numeric_value(pair.get("qty"))
+            price_value = normalize_excel_numeric_value(pair.get("price"))
             try:
-                candidate_header = find_excel_header_row(candidate_sheet)
+                qty_int = int(float(qty_value))
             except Exception:
                 continue
+            tier_key = tier_map.get(qty_int)
+            if tier_key and price_value not in ("", None):
+                payload[tier_key] = price_value
+    elif pairs:
+        payload["price"] = normalize_excel_numeric_value(pairs[0].get("price"))
 
-            if (
-                header_info is None or
-                candidate_header.get("recognized", 0) > header_info.get("recognized", 0)
-            ):
-                worksheet = candidate_sheet
-                header_info = candidate_header
+    return payload, pairs
 
-        if worksheet is None or header_info is None:
-            raise ValueError(
-                "Could not find a sheet with a Product Name column. Use the template or rename the product-name column."
-            )
 
-        header_row_number = header_info["row_number"]
-        column_mapping = header_info["mapping"]
-        header_values = header_info["values"]
+def copec_row_has_anchor(values, header_info):
+    positions = header_info["positions"]
+    item_number = str(excel_cell(values, positions.get("itemnumber"))).strip()
+
+    _, raw_pairs = copec_price_values(values, header_info)
+    has_price = any(
+        normalize_excel_numeric_value(pair.get("price")) not in ("", None)
+        for pair in raw_pairs
+    )
+
+    outer_start = positions.get("outercarton")
+    has_outer_carton = False
+    if outer_start:
+        for column_index in range(outer_start, outer_start + 4):
+            if normalize_excel_numeric_value(excel_cell(values, column_index)) not in ("", None):
+                has_outer_carton = True
+                break
+
+    return bool(item_number or has_price or has_outer_carton)
+
+
+def copec_row_to_payload(values, header_info, sheet_name):
+    positions = header_info["positions"]
+
+    description_text = excel_cell(values, positions.get("description"))
+    material_text = excel_cell(values, positions.get("material"))
+    specification_text = excel_cell(values, positions.get("specification"))
+    packing_text = excel_cell(values, positions.get("packagingmethod"))
+
+    outer_start = positions.get("outercarton")
+    outer_qty = normalize_excel_numeric_value(excel_cell(values, outer_start)) if outer_start else ""
+    carton_length = normalize_excel_numeric_value(excel_cell(values, outer_start + 1)) if outer_start else ""
+    carton_width = normalize_excel_numeric_value(excel_cell(values, outer_start + 2)) if outer_start else ""
+    carton_height = normalize_excel_numeric_value(excel_cell(values, outer_start + 3)) if outer_start else ""
+
+    price_payload, _ = copec_price_values(values, header_info)
+
+    payload = {
+        "name": str(description_text or "").strip(),
+        "category": str(sheet_name or "").strip(),
+        "slogan": "",
+        "material": str(material_text or "").strip(),
+        "size": "",
+        "packing": str(packing_text or "").strip(),
+        "volume": "",
+        "carton_length": carton_length,
+        "carton_width": carton_width,
+        "carton_height": carton_height,
+        "carton_cbm": normalize_excel_numeric_value(excel_cell(values, positions.get("cbm"))),
+        "pcs_per_carton": outer_qty,
+        "loading_20gp": normalize_excel_numeric_value(excel_cell(values, positions.get("20fcloading"))),
+        "loading_40gp": normalize_excel_numeric_value(excel_cell(values, positions.get("40fcloading"))),
+        "loading_40hq": normalize_excel_numeric_value(excel_cell(values, positions.get("40hcloading"))),
+        "nearest_port": str(excel_cell(values, positions.get("port")) or "").strip(),
+        "lead_time": str(excel_cell(values, positions.get("leadtime")) or "").strip(),
+        "description": str(specification_text or "").strip(),
+        **price_payload,
+    }
+
+    if all([
+        normalize_excel_numeric_value(carton_length) not in ("", None),
+        normalize_excel_numeric_value(carton_width) not in ("", None),
+        normalize_excel_numeric_value(carton_height) not in ("", None),
+    ]):
+        payload["volume"] = f"{carton_length} x {carton_width} x {carton_height} cm"
+
+    return payload
+
+
+def merge_copec_continuation(current_record, values, header_info, excel_row_number):
+    if current_record is None:
+        return None
+
+    positions = header_info["positions"]
+    payload = current_record["data"]
+
+    component_name = str(excel_cell(values, positions.get("description")) or "").strip()
+    component_material = str(excel_cell(values, positions.get("material")) or "").strip()
+    component_spec = str(excel_cell(values, positions.get("specification")) or "").strip()
+    component_packing = str(excel_cell(values, positions.get("packagingmethod")) or "").strip()
+
+    payload["name"] = append_multiline(payload.get("name"), component_name)
+    payload["material"] = append_multiline(payload.get("material"), component_material)
+
+    component_detail = f"{component_name}: {component_spec}" if component_name and component_spec else component_spec
+    payload["description"] = append_multiline(payload.get("description"), component_detail)
+
+    if not str(payload.get("packing", "") or "").strip() and component_packing:
+        payload["packing"] = component_packing
+
+    current_record["excel_row_end"] = excel_row_number
+    return current_record
+
+
+def parse_copec_sheet(worksheet, header_info, remaining_limit):
+    header_row_number = header_info["row_number"]
+    data_start_row = header_row_number + 2
+    records = []
+    current_record = None
+
+    inherited_keys = [
+        "name", "material", "description", "packing", "size", "volume",
+        "carton_length", "carton_width", "carton_height", "carton_cbm",
+        "pcs_per_carton", "loading_20gp", "loading_40gp", "loading_40hq",
+        "nearest_port", "lead_time",
+    ]
+
+    for excel_row_number, values in enumerate(
+        worksheet.iter_rows(min_row=data_start_row, values_only=True),
+        start=data_start_row,
+    ):
+        description_text = str(excel_cell(values, header_info["positions"].get("description")) or "").strip()
+        material_text = str(excel_cell(values, header_info["positions"].get("material")) or "").strip()
+        specification_text = str(excel_cell(values, header_info["positions"].get("specification")) or "").strip()
+
+        if not any([description_text, material_text, specification_text]) and not copec_row_has_anchor(values, header_info):
+            continue
+
+        anchored = copec_row_has_anchor(values, header_info)
+
+        if not anchored and current_record is not None:
+            merge_copec_continuation(current_record, values, header_info, excel_row_number)
+            continue
+
+        payload = copec_row_to_payload(values, header_info, worksheet.title)
+
+        # COPEC sheets frequently leave DESCRIPTION / SPECIFICATION / carton data
+        # blank on material or price variants because those cells visually belong
+        # to the product above. Inherit those shared values while keeping the
+        # variant's own material / MOQ / price.
+        if current_record is not None:
+            previous_payload = current_record.get("data", {})
+            for key in inherited_keys:
+                if payload.get(key) in ("", None, 0, 0.0):
+                    previous_value = previous_payload.get(key)
+                    if previous_value not in ("", None, 0, 0.0):
+                        payload[key] = previous_value
+
+        row_errors = []
+        if not str(payload.get("name", "") or "").strip():
+            row_errors.append("DESCRIPTION is required")
+
+        record = {
+            "sheet_name": worksheet.title,
+            "excel_row": excel_row_number,
+            "excel_row_end": excel_row_number,
+            "data": payload,
+            "errors": row_errors,
+            "valid": not row_errors,
+        }
+        records.append(record)
+        current_record = record
+
+        if len(records) >= remaining_limit:
+            break
+
+    return records
+
+
+def parse_standard_sheet(worksheet, header_info, remaining_limit):
+    header_row_number = header_info["row_number"]
+    column_mapping = header_info["mapping"]
+    records = []
+
+    for excel_row_number, values in enumerate(
+        worksheet.iter_rows(min_row=header_row_number + 1, values_only=True),
+        start=header_row_number + 1,
+    ):
+        payload = {}
+        any_value = False
+
+        for column_index, website_field in column_mapping.items():
+            raw_value = values[column_index - 1] if column_index - 1 < len(values) else None
+            value = excel_json_value(raw_value)
+            payload[website_field] = value
+            if value not in ("", None):
+                any_value = True
+
+        if not any_value:
+            continue
+
+        for numeric_key in [
+            "moq", "carton_length", "carton_width", "carton_height",
+            "carton_cbm", "pcs_per_carton", "loading_20gp",
+            "loading_40gp", "loading_40hq", "price", "price_500",
+            "price_1000", "price_3000", "price_10000", "price_50000",
+        ]:
+            if numeric_key in payload:
+                payload[numeric_key] = normalize_excel_numeric_value(payload.get(numeric_key))
+
+        if not all([
+            normalize_excel_numeric_value(payload.get("carton_length")),
+            normalize_excel_numeric_value(payload.get("carton_width")),
+            normalize_excel_numeric_value(payload.get("carton_height")),
+        ]):
+            combined_dimensions = parse_carton_dimension_text(payload.get("volume"))
+            if combined_dimensions:
+                payload["carton_length"], payload["carton_width"], payload["carton_height"] = combined_dimensions
+
+        row_errors = []
+        if not str(payload.get("name", "") or "").strip():
+            row_errors.append("Product Name is required")
+
+        records.append({
+            "sheet_name": worksheet.title,
+            "excel_row": excel_row_number,
+            "excel_row_end": excel_row_number,
+            "data": payload,
+            "errors": row_errors,
+            "valid": not row_errors,
+        })
+
+        if len(records) >= remaining_limit:
+            break
+
+    return records
+
+
+def copec_matched_columns():
+    return [
+        {"excel_column": "Sheet Name", "website_field": "Category"},
+        {"excel_column": "DESCRIPTION", "website_field": "Product Name"},
+        {"excel_column": "MATERIAL", "website_field": "Material"},
+        {"excel_column": "SPECIFICATION", "website_field": "Specification"},
+        {"excel_column": "PACKAGING METHOD", "website_field": "Packing"},
+        {"excel_column": "QTY + PRICE (USD)", "website_field": "MOQ / Base Price / Price Tiers"},
+        {"excel_column": "OUTER CARTON QTY", "website_field": "PCS/CTN"},
+        {"excel_column": "OUTER CARTON L/W/H", "website_field": "Carton L/W/H"},
+        {"excel_column": "CBM", "website_field": "CBM / Carton"},
+        {"excel_column": "20FC LOADING", "website_field": "20GP Loading Qty (PCS)"},
+        {"excel_column": "40FC LOADING", "website_field": "40GP Loading Qty (PCS)"},
+        {"excel_column": "40HC LOADING", "website_field": "40HQ Loading Qty (PCS)"},
+        {"excel_column": "PORT", "website_field": "Nearest Port"},
+        {"excel_column": "LEADTIME", "website_field": "Lead Time"},
+    ]
+
+
+def parse_product_excel(file_path):
+    workbook = load_excel_workbook(file_path, data_only=True)
+
+    try:
+        all_records = []
+        sheet_summaries = []
+        copec_detected = False
+
+        for worksheet in workbook.worksheets:
+            header_info = find_copec_header_row(worksheet)
+            if not header_info:
+                continue
+
+            copec_detected = True
+            remaining = EXCEL_IMPORT_MAX_ROWS - len(all_records)
+            if remaining <= 0:
+                break
+
+            records = parse_copec_sheet(worksheet, header_info, remaining)
+            if records:
+                all_records.extend(records)
+                sheet_summaries.append({
+                    "sheet_name": worksheet.title,
+                    "header_row": header_info["row_number"],
+                    "products": len(records),
+                    "category": worksheet.title,
+                })
 
         matched_columns = []
         unmatched_columns = []
+        import_format = "COPEC multi-sheet format"
 
-        for column_index, header in enumerate(header_values, start=1):
-            header_text = str(header or "").strip()
-            if not header_text:
-                continue
+        if not copec_detected:
+            import_format = "Standard product import format"
+            best_sheet = None
+            best_header = None
 
-            website_field = column_mapping.get(column_index)
-            if website_field:
-                matched_columns.append({
-                    "excel_column": header_text,
-                    "website_field": website_field,
-                })
-            else:
-                unmatched_columns.append(header_text)
+            for worksheet in workbook.worksheets:
+                try:
+                    header_info = find_standard_excel_header_row(worksheet)
+                except Exception:
+                    continue
 
-        rows = []
-        preview_rows = []
-        error_rows = []
+                if best_header is None or header_info.get("recognized", 0) > best_header.get("recognized", 0):
+                    best_sheet = worksheet
+                    best_header = header_info
 
-        for excel_row_number, values in enumerate(
-            worksheet.iter_rows(min_row=header_row_number + 1, values_only=True),
-            start=header_row_number + 1,
-        ):
-            payload = {}
-            any_value = False
-
-            for column_index, website_field in column_mapping.items():
-                raw_value = values[column_index - 1] if column_index - 1 < len(values) else None
-                value = excel_json_value(raw_value)
-                payload[website_field] = value
-                if value not in ("", None):
-                    any_value = True
-
-            if not any_value:
-                continue
-
-            # Normalize numeric Excel cells so common supplier formats such as
-            # "USD 1.25", "$1.25", "500 PCS" and "1,000" import cleanly.
-            for numeric_key in [
-                "moq", "carton_length", "carton_width", "carton_height",
-                "carton_cbm", "pcs_per_carton", "loading_20gp",
-                "loading_40gp", "loading_40hq", "price", "price_500",
-                "price_1000", "price_3000", "price_10000", "price_50000",
-            ]:
-                if numeric_key in payload:
-                    payload[numeric_key] = normalize_excel_numeric_value(
-                        payload.get(numeric_key)
-                    )
-
-            # If a supplier gives one combined Carton Dimension column such as
-            # "52 x 41 x 36 cm", split it into L/W/H automatically.
-            if not all([
-                normalize_excel_numeric_value(payload.get("carton_length")),
-                normalize_excel_numeric_value(payload.get("carton_width")),
-                normalize_excel_numeric_value(payload.get("carton_height")),
-            ]):
-                combined_dimensions = parse_carton_dimension_text(
-                    payload.get("volume")
+            if best_sheet is None or best_header is None:
+                raise ValueError(
+                    "Could not recognize the workbook format. Use the COPEC quotation layout with "
+                    "DESCRIPTION / MATERIAL / SPECIFICATION / OUTER CARTON / CBM / PORT / LEADTIME columns."
                 )
-                if combined_dimensions:
-                    payload["carton_length"], payload["carton_width"], payload["carton_height"] = combined_dimensions
 
-            row_errors = []
-            if not str(payload.get("name", "") or "").strip():
-                row_errors.append("Product Name is required")
+            all_records = parse_standard_sheet(best_sheet, best_header, EXCEL_IMPORT_MAX_ROWS)
+            sheet_summaries = [{
+                "sheet_name": best_sheet.title,
+                "header_row": best_header["row_number"],
+                "products": len(all_records),
+                "category": "",
+            }]
 
-            record = {
-                "excel_row": excel_row_number,
-                "data": payload,
-                "errors": row_errors,
-                "valid": not row_errors,
-            }
+            for column_index, header in enumerate(best_header["values"], start=1):
+                header_text = str(header or "").strip()
+                if not header_text:
+                    continue
+                website_field = best_header["mapping"].get(column_index)
+                if website_field:
+                    matched_columns.append({
+                        "excel_column": header_text,
+                        "website_field": website_field,
+                    })
+                else:
+                    unmatched_columns.append(header_text)
+        else:
+            matched_columns = copec_matched_columns()
+            unmatched_columns = [
+                "ITEM NUMBER", "UPC CODE", "BRAND", "IMAGE",
+                "PACKAGING DEMO", "INNER CARTON", "CONFIRMATION DDL", "REMARK",
+            ]
 
-            if row_errors:
-                error_rows.append(record)
-            else:
-                rows.append(payload)
+        if not all_records:
+            raise ValueError("No product rows were found in the workbook.")
 
-            if len(preview_rows) < 30:
-                preview_rows.append(record)
-
-            if len(rows) + len(error_rows) >= EXCEL_IMPORT_MAX_ROWS:
-                break
-
-        if not rows and not error_rows:
-            raise ValueError("No product rows were found below the Excel header row.")
+        valid_rows = [record["data"] for record in all_records if record.get("valid")]
+        error_records = [record for record in all_records if not record.get("valid")]
 
         return {
-            "sheet_name": worksheet.title,
-            "header_row": header_row_number,
+            "import_format": import_format,
+            "sheet_name": ", ".join(summary["sheet_name"] for summary in sheet_summaries),
+            "sheet_names": [summary["sheet_name"] for summary in sheet_summaries],
+            "sheet_summaries": sheet_summaries,
+            "header_row": sheet_summaries[0]["header_row"] if sheet_summaries else 1,
             "matched_columns": matched_columns,
             "unmatched_columns": unmatched_columns,
-            "rows": rows,
-            "preview_rows": preview_rows,
-            "valid_rows": len(rows),
-            "error_rows": len(error_rows),
-            "total_rows": len(rows) + len(error_rows),
-            "truncated": (len(rows) + len(error_rows)) >= EXCEL_IMPORT_MAX_ROWS,
+            "rows": valid_rows,
+            "preview_rows": all_records[:30],
+            "valid_rows": len(valid_rows),
+            "error_rows": len(error_records),
+            "total_rows": len(all_records),
+            "truncated": len(all_records) >= EXCEL_IMPORT_MAX_ROWS,
         }
-
     finally:
         workbook.close()
 
 
 @app.post("/admin/products/import-excel/preview")
-def preview_product_excel(data: dict):
+async def preview_product_excel(
+    request: Request,
+    requester_username: str = "",
+    filename: str = "",
+):
     db = SessionLocal()
+    temp_path = None
 
     try:
-        requester_username = str(data.get("requester_username", "") or "").strip()
+        requester_username = str(requester_username or "").strip()
         if not can_approved_admin(db, requester_username):
             return {
                 "success": False,
                 "message": "Only an approved admin can import products from Excel."
             }
 
-        filename = str(data.get("filename", "") or "").strip()
+        filename = str(filename or "").strip()
         if not filename.lower().endswith(".xlsx"):
             return {
                 "success": False,
                 "message": "Please upload an .xlsx Excel file."
             }
 
-        file_bytes = decode_excel_upload(data.get("file_data"))
-        parsed = parse_product_excel(file_bytes)
+        temp_path, file_size = await save_excel_request_to_temp(request)
+        parsed = parse_product_excel(temp_path)
 
         return {
             "success": True,
             "filename": filename,
+            "file_size": file_size,
             **parsed,
         }
-
     except Exception as exc:
         return {
             "success": False,
@@ -2627,6 +2912,11 @@ def preview_product_excel(data: dict):
         }
     finally:
         db.close()
+        if temp_path:
+            try:
+                Path(temp_path).unlink(missing_ok=True)
+            except Exception:
+                pass
 
 
 @app.post("/admin/products/import-excel/confirm")
@@ -2720,56 +3010,74 @@ def download_product_excel_template():
 
     workbook = Workbook()
     worksheet = workbook.active
-    worksheet.title = "Products"
+    worksheet.title = "CATEGORY NAME"
 
-    worksheet.append(EXCEL_IMPORT_TEMPLATE_HEADERS)
-    worksheet.append([
-        "Microfiber Cleaning Cloth",
-        "Cleaning",
-        "High Absorbency",
-        500,
-        "PP\nPS\nPVC",
-        "33 x 13 cm",
-        "72 pcs / carton",
-        52,
-        41,
-        36,
-        72,
-        "",
-        "",
-        "",
-        "",
-        "Ningbo",
-        "30-35 days after deposit and artwork confirmation",
-        1.25,
-        1.20,
-        1.15,
-        1.10,
-        1.05,
-        1.00,
-        "Example specification. Replace this row with your own product data.",
-    ])
+    worksheet["F1"] = "BILL C.TONG"
+    worksheet["H1"] = "BILL.TONG@LINK-INT.COM"
+    worksheet["N1"] = "DATE OF QUOTATION"
+    worksheet["N2"] = "DATE OF EXPIRATION"
+    worksheet["N3"] = "INCOTERM OF TRADE"
+    worksheet["V3"] = "FOB"
+
+    for column_index, value in enumerate(EXCEL_IMPORT_TEMPLATE_HEADERS, start=1):
+        worksheet.cell(row=4, column=column_index, value=value)
+
+    worksheet.merge_cells("N4:Q4")
+    worksheet["N4"] = "INNER CARTON"
+    worksheet.merge_cells("R4:U4")
+    worksheet["R4"] = "OUTER CARTON"
+
+    for column_index, value in enumerate(["QTY", "L", "W", "H"], start=14):
+        worksheet.cell(row=5, column=column_index, value=value)
+    for column_index, value in enumerate(["QTY", "L", "W", "H"], start=18):
+        worksheet.cell(row=5, column=column_index, value=value)
+
+    sample_values = [
+        "FU026-001", "TBD", "TBD", "", "",
+        "MICROFIBER CLEANING CLOTH",
+        "80% POLYESTER\n20% POLYAMIDE",
+        "PRODUCT SIZE: 30*30CM",
+        "COLOUR SLEEVE",
+        50000, 0.55, 3000, 0.62,
+        "/", "/", "/", "/",
+        72, 52, 41, 36,
+        0.076752,
+        26208, 56448, 66528,
+        "NINGBO", "N/A", "30-35 DAYS", "", "",
+    ]
+
+    for column_index, value in enumerate(sample_values, start=1):
+        worksheet.cell(row=6, column=column_index, value=value)
 
     header_fill = PatternFill("solid", fgColor="1F3C88")
     header_font = Font(color="FFFFFF", bold=True)
 
-    for cell in worksheet[1]:
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    for row_number in [4, 5]:
+        for cell in worksheet[row_number]:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(
+                horizontal="center",
+                vertical="center",
+                wrap_text=True,
+            )
 
-    for cell in worksheet[2]:
+    for cell in worksheet[6]:
         cell.alignment = Alignment(vertical="top", wrap_text=True)
 
-    worksheet.freeze_panes = "A2"
-    worksheet.row_dimensions[1].height = 34
-    worksheet.row_dimensions[2].height = 58
+    worksheet.freeze_panes = "A6"
+    worksheet.row_dimensions[4].height = 42
+    worksheet.row_dimensions[5].height = 24
+    worksheet.row_dimensions[6].height = 70
 
     widths = {
-        "A": 28, "B": 18, "C": 24, "D": 12, "E": 22, "F": 22,
-        "G": 22, "H": 15, "I": 15, "J": 15, "K": 14, "L": 16,
-        "M": 18, "N": 18, "O": 18, "P": 18, "Q": 38, "R": 14,
-        "S": 14, "T": 14, "U": 14, "V": 14, "W": 14, "X": 44,
+        "A": 18, "B": 14, "C": 14, "D": 16, "E": 18,
+        "F": 32, "G": 28, "H": 34, "I": 24,
+        "J": 15, "K": 14, "L": 15, "M": 14,
+        "N": 10, "O": 10, "P": 10, "Q": 10,
+        "R": 10, "S": 10, "T": 10, "U": 10,
+        "V": 12, "W": 16, "X": 16, "Y": 16,
+        "Z": 16, "AA": 18, "AB": 18, "AC": 24, "AD": 24,
     }
     for column, width in widths.items():
         worksheet.column_dimensions[column].width = width
@@ -2783,7 +3091,7 @@ def download_product_excel_template():
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
-            "Content-Disposition": "attachment; filename=Bridge_Product_Import_Template.xlsx"
+            "Content-Disposition": "attachment; filename=COPEC_Product_Import_Template.xlsx"
         },
     )
 

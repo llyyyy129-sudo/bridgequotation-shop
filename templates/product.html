@@ -1069,7 +1069,7 @@ function displaySpecNumber(value, decimals = 3) {
 function displayLoadingQty(value) {
   const number = Number(value || 0);
   if (!Number.isFinite(number) || number <= 0) return "-";
-  return Math.floor(number).toLocaleString() + " CTNS";
+  return Math.floor(number).toLocaleString() + " PCS";
 }
 
 function displayPcsPerCarton(value) {
@@ -1193,7 +1193,7 @@ function renderProductDetail(product) {
               <div class="loading-detail-item"><span>40GP</span><strong>${displayLoadingQty(product.loading_40gp)}</strong></div>
               <div class="loading-detail-item"><span>40HQ</span><strong>${displayLoadingQty(product.loading_40hq)}</strong></div>
             </div>
-            <div class="spec-note">Loading quantities are estimates in cartons (CTNS) and may vary by actual loading method.</div>
+            <div class="spec-note">Loading quantities are estimated in pieces (PCS) and may vary by actual loading method.</div>
           </div>
 
           <div class="quick-spec full-spec">

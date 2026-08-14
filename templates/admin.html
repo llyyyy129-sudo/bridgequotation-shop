@@ -1704,8 +1704,8 @@
             </summary>
 
             <div class="excel-import-copy">
-                Upload an .xlsx workbook. The system reads the header row, matches Excel columns to website product fields,
-                previews the data, and imports only after an Admin confirms. One Excel row becomes one product.
+                Upload an .xlsx workbook in the COPEC quotation format. The system reads every matching sheet,
+                uses the sheet name as Category, groups continuation rows, previews the data, and imports only after an Admin confirms.
                 Images are not imported in this version.
             </div>
 
@@ -1713,7 +1713,7 @@
                 <div class="excel-import-file-box">
                     <input id="productExcelImportFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
                     <div class="excel-import-note">
-                        Maximum file size: 15MB · Maximum 2,000 product rows per import · Material and Lead Time line breaks are preserved.
+                        Maximum file size: 100MB · Maximum 2,000 products per import · COPEC multi-sheet format supported · Images are ignored for now.
                     </div>
                 </div>
 
@@ -2412,13 +2412,14 @@ function renderExcelImportPreview(data) {
                 <div class="excel-stat-value">${Number(data.error_rows || 0)}</div>
             </div>
             <div class="excel-stat-card">
-                <div class="excel-stat-label">Header Row</div>
-                <div class="excel-stat-value">${Number(data.header_row || 1)}</div>
+                <div class="excel-stat-label">Sheets</div>
+                <div class="excel-stat-value">${Array.isArray(data.sheet_names) ? data.sheet_names.length : 1}</div>
             </div>
         </div>
 
         <div class="excel-mapping-box">
-            <b>Detected sheet:</b> ${escapeHtml(data.sheet_name || "Products")}<br>
+            <b>Format:</b> ${escapeHtml(data.import_format || "Excel")}<br>
+            <b>Detected sheets / categories:</b> ${escapeHtml((Array.isArray(data.sheet_names) && data.sheet_names.length ? data.sheet_names.join(", ") : (data.sheet_name || "Products")))}<br>
             <b>Matched columns:</b><br>
             ${matched.length
                 ? matched.map(item => `<span class="excel-mapping-chip">${escapeHtml(item.excel_column)} → ${escapeHtml(item.website_field)}</span>`).join("")
@@ -2429,7 +2430,7 @@ function renderExcelImportPreview(data) {
                 : ""
             }
             ${data.truncated
-                ? `<br><span class="excel-row-error">Only the first 2,000 rows were read. Split larger files into multiple imports.</span>`
+                ? `<br><span class="excel-row-error">Only the first 2,000 products were read. Split larger workbooks into multiple imports.</span>`
                 : ""
             }
         </div>
@@ -2454,6 +2455,9 @@ function renderExcelImportPreview(data) {
         ["carton_width", "Carton W"],
         ["carton_height", "Carton H"],
         ["pcs_per_carton", "PCS/CTN"],
+        ["loading_20gp", "20GP PCS"],
+        ["loading_40gp", "40GP PCS"],
+        ["loading_40hq", "40HQ PCS"],
         ["nearest_port", "Nearest Port"],
         ["lead_time", "Lead Time"],
         ["price", "Base Price"],
@@ -2471,7 +2475,10 @@ function renderExcelImportPreview(data) {
 
         return `
             <tr>
-                <td>${Number(record.excel_row || 0)}</td>
+                <td>${escapeHtml(record.sheet_name || "-")}</td>
+                <td>${record.excel_row_end && Number(record.excel_row_end) !== Number(record.excel_row)
+                    ? `${Number(record.excel_row || 0)}-${Number(record.excel_row_end || 0)}`
+                    : Number(record.excel_row || 0)}</td>
                 <td>${statusHtml}</td>
                 ${columns.map(([key]) => `<td>${escapeHtml(excelPreviewText(row[key]))}</td>`).join("")}
             </tr>
@@ -2483,6 +2490,7 @@ function renderExcelImportPreview(data) {
             <table class="excel-import-preview-table">
                 <thead>
                     <tr>
+                        <th>Sheet / Category</th>
                         <th>Excel Row</th>
                         <th>Status</th>
                         ${headerHtml}
@@ -2491,7 +2499,7 @@ function renderExcelImportPreview(data) {
                 <tbody>${bodyHtml}</tbody>
             </table>
         </div>
-        <div class="excel-import-note">Preview shows up to the first 30 product rows. The final import uses all valid rows returned by the preview.</div>
+        <div class="excel-import-note">Preview shows up to the first 30 products. COPEC continuation rows are grouped into the previous priced product. Images are ignored.</div>
     `;
 
     confirmButton.disabled = !excelImportRows.length;
@@ -2521,8 +2529,8 @@ async function previewProductExcelImport() {
         return;
     }
 
-    if (file.size > 15 * 1024 * 1024) {
-        showCenterMessage("Excel file is too large. Maximum size is 15MB.");
+    if (file.size > 100 * 1024 * 1024) {
+        showCenterMessage("Excel file is too large. Maximum size is 100MB.");
         return;
     }
 
@@ -2536,15 +2544,17 @@ async function previewProductExcelImport() {
     excelImportMeta = null;
 
     try {
-        const fileData = await readFileAsDataURL(file);
-        const response = await fetch("/admin/products/import-excel/preview", {
+        const query = new URLSearchParams({
+            requester_username: currentUser,
+            filename: file.name
+        });
+
+        const response = await fetch(`/admin/products/import-excel/preview?${query.toString()}`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                requester_username: currentUser,
-                filename: file.name,
-                file_data: fileData
-            })
+            headers: {
+                "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            },
+            body: file
         });
 
         const data = await response.json();
@@ -2946,7 +2956,7 @@ function renderCartonDimensionFields(prefix, product) {
         <div class="carton-dimension-box">
             <div class="carton-dimension-title">Carton Dimension</div>
             <div class="carton-dimension-subtitle">
-                Enter L × W × H in centimeters. CBM is calculated automatically. Container loading quantities are estimated in cartons (CTNS) and may be edited manually.
+                Enter L × W × H in centimeters. CBM is calculated automatically. Container loading quantities are estimated in pieces (PCS) from CBM × Qty/Carton and may be edited manually.
             </div>
 
             <div class="carton-dimension-grid">
@@ -2972,25 +2982,25 @@ function renderCartonDimensionFields(prefix, product) {
 
                 <div class="field">
                     <label for="${prefix}-loading_20gp">20GP Loading Qty</label>
-                    <input id="${prefix}-loading_20gp" class="product-input" type="number" step="1" min="0" value="${escapeAttr(load20)}" placeholder="Estimated CTNS">
-                    <div class="field-help">Estimated using 28 CBM usable volume.</div>
+                    <input id="${prefix}-loading_20gp" class="product-input" type="number" step="1" min="0" value="${escapeAttr(load20)}" placeholder="Estimated PCS">
+                    <div class="field-help">Estimated using 26 CBM usable volume × PCS/CTN.</div>
                 </div>
 
                 <div class="field">
                     <label for="${prefix}-loading_40gp">40GP Loading Qty</label>
-                    <input id="${prefix}-loading_40gp" class="product-input" type="number" step="1" min="0" value="${escapeAttr(load40)}" placeholder="Estimated CTNS">
-                    <div class="field-help">Estimated using 58 CBM usable volume.</div>
+                    <input id="${prefix}-loading_40gp" class="product-input" type="number" step="1" min="0" value="${escapeAttr(load40)}" placeholder="Estimated PCS">
+                    <div class="field-help">Estimated using 56 CBM usable volume × PCS/CTN.</div>
                 </div>
 
                 <div class="field">
                     <label for="${prefix}-loading_40hq">40HQ Loading Qty</label>
-                    <input id="${prefix}-loading_40hq" class="product-input" type="number" step="1" min="0" value="${escapeAttr(load40hq)}" placeholder="Estimated CTNS">
-                    <div class="field-help">Estimated using 68 CBM usable volume.</div>
+                    <input id="${prefix}-loading_40hq" class="product-input" type="number" step="1" min="0" value="${escapeAttr(load40hq)}" placeholder="Estimated PCS">
+                    <div class="field-help">Estimated using 66 CBM usable volume × PCS/CTN.</div>
                 </div>
 
                 <div class="field">
                     <label for="${prefix}-pcs_per_carton">Qty / Carton</label>
-                    <input id="${prefix}-pcs_per_carton" class="product-input" type="number" step="1" min="0" value="${escapeAttr(pcsPerCarton)}" placeholder="Example: 72">
+                    <input id="${prefix}-pcs_per_carton" class="product-input" type="number" step="1" min="0" value="${escapeAttr(pcsPerCarton)}" placeholder="Example: 72" oninput="recalculateCarton('${escapeForJs(prefix)}')">
                     <div class="field-help">Enter pieces packed in one export carton, e.g. 72 PCS/CTN.</div>
                 </div>
             </div>
@@ -3024,16 +3034,23 @@ function recalculateCarton(prefix) {
         volumeInput.value = `${length} x ${width} x ${height} cm`;
     }
 
+    const pcsPerCarton = readNumber("pcs_per_carton");
     const estimates = {
-        loading_20gp: 28,
-        loading_40gp: 58,
-        loading_40hq: 68
+        loading_20gp: 26,
+        loading_40gp: 56,
+        loading_40hq: 66
     };
 
     Object.entries(estimates).forEach(([key, usableCbm]) => {
         const input = document.getElementById(prefix + "-" + key);
         if (!input) return;
-        input.value = cbm > 0 ? String(Math.floor(usableCbm / cbm)) : "";
+
+        const cartonCount = cbm > 0 ? Math.floor(usableCbm / cbm) : 0;
+        const loadingPcs = cartonCount > 0 && pcsPerCarton > 0
+            ? cartonCount * Math.floor(pcsPerCarton)
+            : 0;
+
+        input.value = loadingPcs > 0 ? String(loadingPcs) : "";
     });
 }
 
