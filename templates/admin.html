@@ -615,6 +615,157 @@
             display: none;
         }
 
+        .excel-import-panel {
+            background: linear-gradient(180deg, #f7faff 0%, #ffffff 100%);
+            border-color: #cfe0ff;
+        }
+
+        .excel-import-copy {
+            margin: 14px 0 16px;
+            color: #667085;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.6;
+        }
+
+        .excel-import-grid {
+            display: grid;
+            grid-template-columns: minmax(280px, 1fr) auto auto;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .excel-import-file-box {
+            border: 1.5px dashed #b9cdf5;
+            border-radius: 15px;
+            padding: 14px;
+            background: #ffffff;
+        }
+
+        .excel-import-file-box input[type="file"] {
+            width: 100%;
+        }
+
+        .excel-import-note {
+            margin-top: 8px;
+            color: #7b8494;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.45;
+        }
+
+        .excel-import-status-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .excel-stat-card {
+            background: #ffffff;
+            border: 1px solid #dbe3ef;
+            border-radius: 14px;
+            padding: 12px 14px;
+        }
+
+        .excel-stat-label {
+            color: #7b8494;
+            font-size: 11px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .excel-stat-value {
+            color: #1f3c88;
+            font-size: 20px;
+            font-weight: 900;
+        }
+
+        .excel-mapping-box {
+            margin-top: 14px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: #ffffff;
+            border: 1px solid #dbe3ef;
+            color: #4b5563;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.7;
+        }
+
+        .excel-mapping-chip {
+            display: inline-flex;
+            align-items: center;
+            margin: 4px 6px 4px 0;
+            padding: 5px 9px;
+            border-radius: 999px;
+            background: #eef4ff;
+            border: 1px solid #cfe0ff;
+            color: #1f3c88;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .excel-import-preview-wrap {
+            margin-top: 14px;
+            border: 1px solid #dbe3ef;
+            border-radius: 14px;
+            background: #ffffff;
+            overflow: auto;
+            max-height: 460px;
+        }
+
+        .excel-import-preview-table {
+            width: max-content;
+            min-width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .excel-import-preview-table th,
+        .excel-import-preview-table td {
+            padding: 9px 10px;
+            border-bottom: 1px solid #edf0f5;
+            border-right: 1px solid #edf0f5;
+            text-align: left;
+            vertical-align: top;
+            white-space: pre-line;
+            max-width: 260px;
+        }
+
+        .excel-import-preview-table th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #f3f7ff;
+            color: #1f3c88;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .excel-row-ok {
+            color: #0f9d58;
+            font-weight: 900;
+        }
+
+        .excel-row-error {
+            color: #dc2626;
+            font-weight: 900;
+        }
+
+        .excel-import-actions {
+            margin-top: 14px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .excel-import-actions button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .product-form-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(180px, 1fr));
@@ -1191,6 +1342,8 @@
             .admin-create-grid,
             .user-meta-grid,
             .product-panel-tools,
+            .excel-import-grid { grid-template-columns: 1fr; }
+            .excel-import-status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .product-form-grid { grid-template-columns: 1fr; }
             .product-toolbar-summary,
             .pagination-row { align-items: stretch; flex-direction: column; }
@@ -1544,6 +1697,46 @@
             </div>
         </div>
 
+        <details class="product-create-panel excel-import-panel">
+            <summary>
+                <span>Import Products from Excel</span>
+                <span class="section-arrow">▶</span>
+            </summary>
+
+            <div class="excel-import-copy">
+                Upload an .xlsx workbook. The system reads the header row, matches Excel columns to website product fields,
+                previews the data, and imports only after an Admin confirms. One Excel row becomes one product.
+                Images are not imported in this version.
+            </div>
+
+            <div class="excel-import-grid">
+                <div class="excel-import-file-box">
+                    <input id="productExcelImportFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                    <div class="excel-import-note">
+                        Maximum file size: 15MB · Maximum 2,000 product rows per import · Material and Lead Time line breaks are preserved.
+                    </div>
+                </div>
+
+                <button id="previewExcelImportButton" class="primary-btn" type="button" onclick="previewProductExcelImport()">
+                    Preview Excel
+                </button>
+
+                <button class="soft-btn" type="button" onclick="downloadProductExcelTemplate()">
+                    Download Template
+                </button>
+            </div>
+
+            <div id="excelImportStatusArea"></div>
+            <div id="excelImportPreviewArea"></div>
+
+            <div class="excel-import-actions">
+                <button id="confirmExcelImportButton" class="primary-btn" type="button" onclick="confirmProductExcelImport()" disabled>
+                    Import Products
+                </button>
+                <button class="soft-btn" type="button" onclick="clearProductExcelImport()">Clear Excel</button>
+            </div>
+        </details>
+
         <details class="product-create-panel">
             <summary>
                 <span>Add New Product</span>
@@ -1680,6 +1873,8 @@ let allProductsCache = [];
 let filteredProductsCache = [];
 let productCurrentPage = 1;
 let productPageSize = 20;
+let excelImportRows = [];
+let excelImportMeta = null;
 let adminSharedFilesCache = [];
 let adminSharedFoldersCache = [];
 let activeAdminSharedFolderId = null;
@@ -2166,6 +2361,264 @@ const PRODUCT_FIELDS = [
     { key: "video", label: "Video", type: "file", media: "video", accept: "video/*", className: "wide-field" },
     { key: "description", label: "Description", type: "textarea", className: "full-field" }
 ];
+
+
+function downloadProductExcelTemplate() {
+    window.location.href = "/admin/products/import-excel/template";
+}
+
+function clearProductExcelImport() {
+    const input = document.getElementById("productExcelImportFile");
+    const status = document.getElementById("excelImportStatusArea");
+    const preview = document.getElementById("excelImportPreviewArea");
+    const confirmButton = document.getElementById("confirmExcelImportButton");
+
+    if (input) input.value = "";
+    if (status) status.innerHTML = "";
+    if (preview) preview.innerHTML = "";
+    if (confirmButton) confirmButton.disabled = true;
+
+    excelImportRows = [];
+    excelImportMeta = null;
+}
+
+function excelPreviewText(value) {
+    if (value === null || value === undefined || value === "") return "-";
+    return String(value);
+}
+
+function renderExcelImportPreview(data) {
+    const status = document.getElementById("excelImportStatusArea");
+    const preview = document.getElementById("excelImportPreviewArea");
+    const confirmButton = document.getElementById("confirmExcelImportButton");
+
+    if (!status || !preview || !confirmButton) return;
+
+    const matched = Array.isArray(data.matched_columns) ? data.matched_columns : [];
+    const unmatched = Array.isArray(data.unmatched_columns) ? data.unmatched_columns : [];
+
+    status.innerHTML = `
+        <div class="excel-import-status-grid">
+            <div class="excel-stat-card">
+                <div class="excel-stat-label">Rows Found</div>
+                <div class="excel-stat-value">${Number(data.total_rows || 0)}</div>
+            </div>
+            <div class="excel-stat-card">
+                <div class="excel-stat-label">Valid Products</div>
+                <div class="excel-stat-value">${Number(data.valid_rows || 0)}</div>
+            </div>
+            <div class="excel-stat-card">
+                <div class="excel-stat-label">Rows With Errors</div>
+                <div class="excel-stat-value">${Number(data.error_rows || 0)}</div>
+            </div>
+            <div class="excel-stat-card">
+                <div class="excel-stat-label">Header Row</div>
+                <div class="excel-stat-value">${Number(data.header_row || 1)}</div>
+            </div>
+        </div>
+
+        <div class="excel-mapping-box">
+            <b>Detected sheet:</b> ${escapeHtml(data.sheet_name || "Products")}<br>
+            <b>Matched columns:</b><br>
+            ${matched.length
+                ? matched.map(item => `<span class="excel-mapping-chip">${escapeHtml(item.excel_column)} → ${escapeHtml(item.website_field)}</span>`).join("")
+                : "None"
+            }
+            ${unmatched.length
+                ? `<br><b>Ignored / unmatched columns:</b> ${unmatched.map(item => escapeHtml(item)).join(", ")}`
+                : ""
+            }
+            ${data.truncated
+                ? `<br><span class="excel-row-error">Only the first 2,000 rows were read. Split larger files into multiple imports.</span>`
+                : ""
+            }
+        </div>
+    `;
+
+    const previewRows = Array.isArray(data.preview_rows) ? data.preview_rows : [];
+
+    if (!previewRows.length) {
+        preview.innerHTML = `<div class="empty-message">No preview rows found.</div>`;
+        confirmButton.disabled = true;
+        return;
+    }
+
+    const columns = [
+        ["name", "Product Name"],
+        ["category", "Category"],
+        ["moq", "MOQ"],
+        ["material", "Material"],
+        ["size", "Product Dimension"],
+        ["packing", "Packing"],
+        ["carton_length", "Carton L"],
+        ["carton_width", "Carton W"],
+        ["carton_height", "Carton H"],
+        ["pcs_per_carton", "PCS/CTN"],
+        ["nearest_port", "Nearest Port"],
+        ["lead_time", "Lead Time"],
+        ["price", "Base Price"],
+        ["description", "Specification"]
+    ];
+
+    const headerHtml = columns.map(([, label]) => `<th>${escapeHtml(label)}</th>`).join("");
+
+    const bodyHtml = previewRows.map(record => {
+        const row = record && record.data ? record.data : {};
+        const errors = Array.isArray(record.errors) ? record.errors : [];
+        const statusHtml = record.valid
+            ? `<span class="excel-row-ok">Ready</span>`
+            : `<span class="excel-row-error">${escapeHtml(errors.join("; ") || "Error")}</span>`;
+
+        return `
+            <tr>
+                <td>${Number(record.excel_row || 0)}</td>
+                <td>${statusHtml}</td>
+                ${columns.map(([key]) => `<td>${escapeHtml(excelPreviewText(row[key]))}</td>`).join("")}
+            </tr>
+        `;
+    }).join("");
+
+    preview.innerHTML = `
+        <div class="excel-import-preview-wrap">
+            <table class="excel-import-preview-table">
+                <thead>
+                    <tr>
+                        <th>Excel Row</th>
+                        <th>Status</th>
+                        ${headerHtml}
+                    </tr>
+                </thead>
+                <tbody>${bodyHtml}</tbody>
+            </table>
+        </div>
+        <div class="excel-import-note">Preview shows up to the first 30 product rows. The final import uses all valid rows returned by the preview.</div>
+    `;
+
+    confirmButton.disabled = !excelImportRows.length;
+    confirmButton.innerText = excelImportRows.length
+        ? `Import ${excelImportRows.length} Product${excelImportRows.length === 1 ? "" : "s"}`
+        : "Import Products";
+}
+
+async function previewProductExcelImport() {
+    if (!isCurrentUserAdmin) {
+        showCenterMessage("Only an approved admin can import products from Excel.");
+        return;
+    }
+
+    const input = document.getElementById("productExcelImportFile");
+    const button = document.getElementById("previewExcelImportButton");
+    const confirmButton = document.getElementById("confirmExcelImportButton");
+
+    if (!input || !input.files || !input.files[0]) {
+        showCenterMessage("Please choose an .xlsx file first.");
+        return;
+    }
+
+    const file = input.files[0];
+    if (!String(file.name || "").toLowerCase().endsWith(".xlsx")) {
+        showCenterMessage("Please upload an .xlsx Excel file.");
+        return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+        showCenterMessage("Excel file is too large. Maximum size is 15MB.");
+        return;
+    }
+
+    if (button) {
+        button.disabled = true;
+        button.innerText = "Reading Excel...";
+    }
+    if (confirmButton) confirmButton.disabled = true;
+
+    excelImportRows = [];
+    excelImportMeta = null;
+
+    try {
+        const fileData = await readFileAsDataURL(file);
+        const response = await fetch("/admin/products/import-excel/preview", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                requester_username: currentUser,
+                filename: file.name,
+                file_data: fileData
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || data.detail || "Excel preview failed.");
+        }
+
+        excelImportRows = Array.isArray(data.rows) ? data.rows : [];
+        excelImportMeta = data;
+        renderExcelImportPreview(data);
+        showToast(`Excel preview ready: ${excelImportRows.length} valid product(s).`);
+
+    } catch (error) {
+        console.error("Excel preview error:", error);
+        clearProductExcelImport();
+        showCenterMessage(error.message || "Excel preview failed. Please check server logs.");
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.innerText = "Preview Excel";
+        }
+    }
+}
+
+async function confirmProductExcelImport() {
+    if (!isCurrentUserAdmin) {
+        showCenterMessage("Only an approved admin can import products from Excel.");
+        return;
+    }
+
+    if (!excelImportRows.length) {
+        showCenterMessage("Preview a valid Excel file before importing.");
+        return;
+    }
+
+    const ok = await showCenterConfirm(
+        `Import ${excelImportRows.length} product${excelImportRows.length === 1 ? "" : "s"} into the website?\n\nThis version creates new products and does not import images.`
+    );
+    if (!ok) return;
+
+    const button = document.getElementById("confirmExcelImportButton");
+    if (button) {
+        button.disabled = true;
+        button.innerText = "Importing...";
+    }
+
+    try {
+        const response = await fetch("/admin/products/import-excel/confirm", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                requester_username: currentUser,
+                rows: excelImportRows
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || data.detail || "Excel import failed.");
+        }
+
+        clearProductExcelImport();
+        await loadAdminProducts();
+        showToast(data.message || "Products imported successfully.");
+
+    } catch (error) {
+        console.error("Excel import error:", error);
+        showCenterMessage(error.message || "Excel import failed. Please check server logs.");
+        if (button) {
+            button.disabled = false;
+            button.innerText = `Import ${excelImportRows.length} Product${excelImportRows.length === 1 ? "" : "s"}`;
+        }
+    }
+}
 
 function renderNewProductForm() {
     const box = document.getElementById("newProductForm");

@@ -2186,6 +2186,608 @@ def product_payload_to_values(data: dict):
     }
 
 
+# =========================
+# ADMIN EXCEL PRODUCT IMPORT
+# =========================
+
+EXCEL_IMPORT_MAX_BYTES = 15 * 1024 * 1024
+EXCEL_IMPORT_MAX_ROWS = 2000
+
+# Canonical website field -> accepted Excel column headings.
+# Header matching ignores spaces, punctuation and capitalization.
+EXCEL_PRODUCT_FIELD_ALIASES = {
+    "name": [
+        "Product Name", "Name", "Item Name", "Product",
+    ],
+    "category": [
+        "Category", "Product Category",
+    ],
+    "slogan": [
+        "Product Slogan / Badge", "Product Slogan", "Slogan", "Badge",
+    ],
+    "moq": [
+        "MOQ", "Minimum Order Quantity", "Min Order Qty",
+    ],
+    "material": [
+        "Material", "Materials",
+    ],
+    "size": [
+        "Product Dimension", "Product Dimensions", "Product Size", "Size",
+    ],
+    "packing": [
+        "Packing", "Packaging", "Packing Method",
+    ],
+    "volume": [
+        "Carton Dimension", "Carton Dimensions", "Carton Size", "CTN Size",
+        "Carton Dimension (cm)", "Carton Size (cm)",
+    ],
+    "carton_length": [
+        "Carton L", "Carton L (cm)", "Carton Length", "Carton Length (cm)",
+        "CTN L", "CTN Length",
+    ],
+    "carton_width": [
+        "Carton W", "Carton W (cm)", "Carton Width", "Carton Width (cm)",
+        "CTN W", "CTN Width",
+    ],
+    "carton_height": [
+        "Carton H", "Carton H (cm)", "Carton Height", "Carton Height (cm)",
+        "CTN H", "CTN Height",
+    ],
+    "carton_cbm": [
+        "CBM", "CBM / Carton", "Carton CBM", "CBM/CTN", "CTN CBM",
+    ],
+    "pcs_per_carton": [
+        "PCS/CTN", "PCS / CTN", "Pcs/Ctn", "PCS per Carton",
+        "Qty/Carton", "Qty / Carton", "Quantity per Carton", "Carton Qty",
+    ],
+    "loading_20gp": [
+        "20GP", "20GP Loading Qty", "20GP Loading", "20FT", "20FT Qty",
+    ],
+    "loading_40gp": [
+        "40GP", "40GP Loading Qty", "40GP Loading", "40FT", "40FT Qty",
+    ],
+    "loading_40hq": [
+        "40HQ", "40HQ Loading Qty", "40HQ Loading", "40HC", "40HC Qty",
+    ],
+    "nearest_port": [
+        "Nearest Port", "Port", "Loading Port", "Port of Loading",
+    ],
+    "lead_time": [
+        "Lead Time", "Leadtime", "Production Lead Time", "Delivery Time",
+    ],
+    "price": [
+        "Base Price", "Price", "Unit Price", "FOB Price", "FOB",
+    ],
+    "price_500": [
+        "Price 500+", "Price 500", "500+ Price", "500 Price",
+    ],
+    "price_1000": [
+        "Price 1000+", "Price 1000", "1000+ Price", "1000 Price",
+    ],
+    "price_3000": [
+        "Price 3000+", "Price 3000", "3000+ Price", "3000 Price",
+    ],
+    "price_10000": [
+        "Price 10000+", "Price 10000", "10000+ Price", "10000 Price",
+    ],
+    "price_50000": [
+        "Price 50000+", "Price 50000", "50000+ Price", "50000 Price",
+    ],
+    "description": [
+        "Specification", "Specifications", "Spec", "Description", "Product Description",
+    ],
+}
+
+EXCEL_IMPORT_TEMPLATE_HEADERS = [
+    "Product Name",
+    "Category",
+    "Product Slogan / Badge",
+    "MOQ",
+    "Material",
+    "Product Dimension",
+    "Packing",
+    "Carton L (cm)",
+    "Carton W (cm)",
+    "Carton H (cm)",
+    "PCS/CTN",
+    "CBM / Carton",
+    "20GP Loading Qty",
+    "40GP Loading Qty",
+    "40HQ Loading Qty",
+    "Nearest Port",
+    "Lead Time",
+    "Base Price",
+    "Price 500+",
+    "Price 1000+",
+    "Price 3000+",
+    "Price 10000+",
+    "Price 50000+",
+    "Specification",
+]
+
+
+def normalize_excel_header(value):
+    text_value = str(value or "").strip().lower()
+    return re.sub(r"[^a-z0-9]+", "", text_value)
+
+
+def build_excel_header_lookup():
+    lookup = {}
+    for website_field, aliases in EXCEL_PRODUCT_FIELD_ALIASES.items():
+        for alias in aliases:
+            normalized = normalize_excel_header(alias)
+            if normalized:
+                lookup[normalized] = website_field
+    return lookup
+
+
+EXCEL_HEADER_LOOKUP = build_excel_header_lookup()
+
+
+def excel_json_value(value):
+    if value is None:
+        return ""
+
+    if isinstance(value, datetime):
+        return value.strftime("%Y-%m-%d")
+
+    if isinstance(value, bool):
+        return value
+
+    if isinstance(value, (int, float)):
+        return value
+
+    return str(value).strip()
+
+
+def normalize_excel_numeric_value(value):
+    if value in (None, ""):
+        return ""
+
+    if isinstance(value, bool):
+        return 1 if value else 0
+
+    if isinstance(value, (int, float)):
+        return value
+
+    raw = str(value).strip().replace(",", "")
+    match = re.search(r"-?(?:\d+(?:\.\d+)?|\.\d+)", raw)
+    if not match:
+        return ""
+
+    number_text = match.group(0)
+    try:
+        number = float(number_text)
+        return int(number) if number.is_integer() else number
+    except Exception:
+        return ""
+
+
+def parse_carton_dimension_text(value):
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+
+    numbers = re.findall(r"\d+(?:\.\d+)?", raw.replace(",", "."))
+    if len(numbers) < 3:
+        return None
+
+    try:
+        return tuple(float(number) for number in numbers[:3])
+    except Exception:
+        return None
+
+
+def decode_excel_upload(data_url):
+    raw = str(data_url or "").strip()
+    if not raw:
+        raise ValueError("Excel file data is empty.")
+
+    if "," in raw:
+        raw = raw.split(",", 1)[1]
+
+    try:
+        file_bytes = base64.b64decode(raw, validate=True)
+    except Exception as exc:
+        raise ValueError("Excel file could not be decoded.") from exc
+
+    if not file_bytes:
+        raise ValueError("Excel file is empty.")
+
+    if len(file_bytes) > EXCEL_IMPORT_MAX_BYTES:
+        raise ValueError("Excel file is too large. Maximum size is 15MB.")
+
+    return file_bytes
+
+
+def load_excel_workbook(file_bytes, data_only=True):
+    try:
+        from openpyxl import load_workbook
+    except ImportError as exc:
+        raise RuntimeError(
+            "Excel import requires openpyxl. Add openpyxl==3.1.5 to requirements.txt and redeploy."
+        ) from exc
+
+    try:
+        return load_workbook(
+            filename=BytesIO(file_bytes),
+            read_only=True,
+            data_only=data_only,
+        )
+    except Exception as exc:
+        raise ValueError("The uploaded file is not a valid .xlsx workbook.") from exc
+
+
+def find_excel_header_row(worksheet):
+    best = None
+    max_scan_rows = min(int(worksheet.max_row or 0), 25)
+
+    for row_number, values in enumerate(
+        worksheet.iter_rows(min_row=1, max_row=max_scan_rows, values_only=True),
+        start=1,
+    ):
+        mapping = {}
+        recognized = 0
+
+        for column_index, value in enumerate(values, start=1):
+            normalized = normalize_excel_header(value)
+            website_field = EXCEL_HEADER_LOOKUP.get(normalized)
+            if website_field and website_field not in mapping.values():
+                mapping[column_index] = website_field
+                recognized += 1
+
+        has_name = "name" in mapping.values()
+        score = recognized + (100 if has_name else 0)
+
+        if best is None or score > best["score"]:
+            best = {
+                "row_number": row_number,
+                "mapping": mapping,
+                "values": list(values),
+                "recognized": recognized,
+                "has_name": has_name,
+                "score": score,
+            }
+
+    if not best or not best["has_name"]:
+        raise ValueError(
+            "Could not find a Product Name column. Use the template or rename the product-name column."
+        )
+
+    return best
+
+
+def parse_product_excel(file_bytes):
+    workbook = load_excel_workbook(file_bytes, data_only=True)
+
+    try:
+        worksheet = None
+        header_info = None
+
+        for candidate_sheet in workbook.worksheets:
+            try:
+                candidate_header = find_excel_header_row(candidate_sheet)
+            except Exception:
+                continue
+
+            if (
+                header_info is None or
+                candidate_header.get("recognized", 0) > header_info.get("recognized", 0)
+            ):
+                worksheet = candidate_sheet
+                header_info = candidate_header
+
+        if worksheet is None or header_info is None:
+            raise ValueError(
+                "Could not find a sheet with a Product Name column. Use the template or rename the product-name column."
+            )
+
+        header_row_number = header_info["row_number"]
+        column_mapping = header_info["mapping"]
+        header_values = header_info["values"]
+
+        matched_columns = []
+        unmatched_columns = []
+
+        for column_index, header in enumerate(header_values, start=1):
+            header_text = str(header or "").strip()
+            if not header_text:
+                continue
+
+            website_field = column_mapping.get(column_index)
+            if website_field:
+                matched_columns.append({
+                    "excel_column": header_text,
+                    "website_field": website_field,
+                })
+            else:
+                unmatched_columns.append(header_text)
+
+        rows = []
+        preview_rows = []
+        error_rows = []
+
+        for excel_row_number, values in enumerate(
+            worksheet.iter_rows(min_row=header_row_number + 1, values_only=True),
+            start=header_row_number + 1,
+        ):
+            payload = {}
+            any_value = False
+
+            for column_index, website_field in column_mapping.items():
+                raw_value = values[column_index - 1] if column_index - 1 < len(values) else None
+                value = excel_json_value(raw_value)
+                payload[website_field] = value
+                if value not in ("", None):
+                    any_value = True
+
+            if not any_value:
+                continue
+
+            # Normalize numeric Excel cells so common supplier formats such as
+            # "USD 1.25", "$1.25", "500 PCS" and "1,000" import cleanly.
+            for numeric_key in [
+                "moq", "carton_length", "carton_width", "carton_height",
+                "carton_cbm", "pcs_per_carton", "loading_20gp",
+                "loading_40gp", "loading_40hq", "price", "price_500",
+                "price_1000", "price_3000", "price_10000", "price_50000",
+            ]:
+                if numeric_key in payload:
+                    payload[numeric_key] = normalize_excel_numeric_value(
+                        payload.get(numeric_key)
+                    )
+
+            # If a supplier gives one combined Carton Dimension column such as
+            # "52 x 41 x 36 cm", split it into L/W/H automatically.
+            if not all([
+                normalize_excel_numeric_value(payload.get("carton_length")),
+                normalize_excel_numeric_value(payload.get("carton_width")),
+                normalize_excel_numeric_value(payload.get("carton_height")),
+            ]):
+                combined_dimensions = parse_carton_dimension_text(
+                    payload.get("volume")
+                )
+                if combined_dimensions:
+                    payload["carton_length"], payload["carton_width"], payload["carton_height"] = combined_dimensions
+
+            row_errors = []
+            if not str(payload.get("name", "") or "").strip():
+                row_errors.append("Product Name is required")
+
+            record = {
+                "excel_row": excel_row_number,
+                "data": payload,
+                "errors": row_errors,
+                "valid": not row_errors,
+            }
+
+            if row_errors:
+                error_rows.append(record)
+            else:
+                rows.append(payload)
+
+            if len(preview_rows) < 30:
+                preview_rows.append(record)
+
+            if len(rows) + len(error_rows) >= EXCEL_IMPORT_MAX_ROWS:
+                break
+
+        if not rows and not error_rows:
+            raise ValueError("No product rows were found below the Excel header row.")
+
+        return {
+            "sheet_name": worksheet.title,
+            "header_row": header_row_number,
+            "matched_columns": matched_columns,
+            "unmatched_columns": unmatched_columns,
+            "rows": rows,
+            "preview_rows": preview_rows,
+            "valid_rows": len(rows),
+            "error_rows": len(error_rows),
+            "total_rows": len(rows) + len(error_rows),
+            "truncated": (len(rows) + len(error_rows)) >= EXCEL_IMPORT_MAX_ROWS,
+        }
+
+    finally:
+        workbook.close()
+
+
+@app.post("/admin/products/import-excel/preview")
+def preview_product_excel(data: dict):
+    db = SessionLocal()
+
+    try:
+        requester_username = str(data.get("requester_username", "") or "").strip()
+        if not can_approved_admin(db, requester_username):
+            return {
+                "success": False,
+                "message": "Only an approved admin can import products from Excel."
+            }
+
+        filename = str(data.get("filename", "") or "").strip()
+        if not filename.lower().endswith(".xlsx"):
+            return {
+                "success": False,
+                "message": "Please upload an .xlsx Excel file."
+            }
+
+        file_bytes = decode_excel_upload(data.get("file_data"))
+        parsed = parse_product_excel(file_bytes)
+
+        return {
+            "success": True,
+            "filename": filename,
+            **parsed,
+        }
+
+    except Exception as exc:
+        return {
+            "success": False,
+            "message": str(exc),
+        }
+    finally:
+        db.close()
+
+
+@app.post("/admin/products/import-excel/confirm")
+def confirm_product_excel_import(data: dict):
+    db = SessionLocal()
+
+    try:
+        requester_username = str(data.get("requester_username", "") or "").strip()
+        if not can_approved_admin(db, requester_username):
+            return {
+                "success": False,
+                "message": "Only an approved admin can import products from Excel."
+            }
+
+        rows = data.get("rows", [])
+        if not isinstance(rows, list) or not rows:
+            return {
+                "success": False,
+                "message": "There are no valid Excel rows to import."
+            }
+
+        if len(rows) > EXCEL_IMPORT_MAX_ROWS:
+            return {
+                "success": False,
+                "message": f"A maximum of {EXCEL_IMPORT_MAX_ROWS} products can be imported at one time."
+            }
+
+        next_id = db.execute(
+            text("SELECT COALESCE(MAX(id), 0) + 1 FROM products")
+        ).scalar()
+        next_id = int(next_id or 1)
+
+        created = []
+        skipped = []
+
+        for index, raw_row in enumerate(rows, start=1):
+            if not isinstance(raw_row, dict):
+                skipped.append({"row": index, "reason": "Invalid row format"})
+                continue
+
+            values = product_payload_to_values(raw_row)
+            if not values["name"]:
+                skipped.append({"row": index, "reason": "Product Name is required"})
+                continue
+
+            product = Product(id=next_id, **values)
+            product.is_active = 1
+            db.add(product)
+            created.append({"id": next_id, "name": values["name"]})
+            next_id += 1
+
+        if not created:
+            db.rollback()
+            return {
+                "success": False,
+                "message": "No valid products were imported.",
+                "skipped": skipped,
+            }
+
+        db.commit()
+
+        return {
+            "success": True,
+            "message": f"Imported {len(created)} product(s) from Excel.",
+            "created_count": len(created),
+            "skipped_count": len(skipped),
+            "created": created[:50],
+            "skipped": skipped[:50],
+        }
+
+    except Exception as exc:
+        db.rollback()
+        return {
+            "success": False,
+            "message": "Excel import failed: " + str(exc),
+        }
+    finally:
+        db.close()
+
+
+@app.get("/admin/products/import-excel/template")
+def download_product_excel_template():
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Alignment, Font, PatternFill
+    except ImportError:
+        return {
+            "success": False,
+            "message": "Excel template requires openpyxl. Add openpyxl==3.1.5 to requirements.txt and redeploy."
+        }
+
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Products"
+
+    worksheet.append(EXCEL_IMPORT_TEMPLATE_HEADERS)
+    worksheet.append([
+        "Microfiber Cleaning Cloth",
+        "Cleaning",
+        "High Absorbency",
+        500,
+        "PP\nPS\nPVC",
+        "33 x 13 cm",
+        "72 pcs / carton",
+        52,
+        41,
+        36,
+        72,
+        "",
+        "",
+        "",
+        "",
+        "Ningbo",
+        "30-35 days after deposit and artwork confirmation",
+        1.25,
+        1.20,
+        1.15,
+        1.10,
+        1.05,
+        1.00,
+        "Example specification. Replace this row with your own product data.",
+    ])
+
+    header_fill = PatternFill("solid", fgColor="1F3C88")
+    header_font = Font(color="FFFFFF", bold=True)
+
+    for cell in worksheet[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    for cell in worksheet[2]:
+        cell.alignment = Alignment(vertical="top", wrap_text=True)
+
+    worksheet.freeze_panes = "A2"
+    worksheet.row_dimensions[1].height = 34
+    worksheet.row_dimensions[2].height = 58
+
+    widths = {
+        "A": 28, "B": 18, "C": 24, "D": 12, "E": 22, "F": 22,
+        "G": 22, "H": 15, "I": 15, "J": 15, "K": 14, "L": 16,
+        "M": 18, "N": 18, "O": 18, "P": 18, "Q": 38, "R": 14,
+        "S": 14, "T": 14, "U": 14, "V": 14, "W": 14, "X": 44,
+    }
+    for column, width in widths.items():
+        worksheet.column_dimensions[column].width = width
+
+    output = BytesIO()
+    workbook.save(output)
+    workbook.close()
+    output.seek(0)
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": "attachment; filename=Bridge_Product_Import_Template.xlsx"
+        },
+    )
+
+
 @app.get("/admin/products")
 def get_admin_products():
     db = SessionLocal()

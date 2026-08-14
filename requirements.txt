@@ -5,3 +5,4 @@ reportlab
 pandas
 openpyxl
 psycopg2-binary
+openpyxl==3.1.5
