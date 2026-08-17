@@ -707,7 +707,7 @@
 
         .excel-import-status-grid {
             display: grid;
-            grid-template-columns: repeat(4, minmax(120px, 1fr));
+            grid-template-columns: repeat(5, minmax(110px, 1fr));
             gap: 10px;
             margin-top: 16px;
         }
@@ -874,6 +874,61 @@
             height: 18px;
             cursor: pointer;
             accent-color: #2563eb;
+        }
+
+        .excel-image-preview-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            min-width: 116px;
+            max-width: 250px;
+        }
+
+        .excel-image-preview-item {
+            width: 92px;
+            padding: 6px;
+            border: 1px solid #dbe3ef;
+            border-radius: 10px;
+            background: #ffffff;
+        }
+
+        .excel-image-preview-item.disabled {
+            opacity: 0.42;
+            background: #f8fafc;
+        }
+
+        .excel-image-preview-item img {
+            display: block;
+            width: 78px;
+            height: 78px;
+            object-fit: contain;
+            border-radius: 7px;
+            background: #f3f4f6;
+            border: 1px solid #edf0f5;
+        }
+
+        .excel-image-preview-toggle {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 5px;
+            color: #4b5563;
+            font-size: 10px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .excel-image-preview-toggle input {
+            width: 15px;
+            height: 15px;
+            accent-color: #2563eb;
+        }
+
+        .excel-image-empty {
+            min-width: 90px;
+            color: #9ca3af;
+            font-size: 11px;
+            font-weight: 800;
         }
 
         .excel-row-excluded {
@@ -1129,271 +1184,6 @@
             border: 1px solid #e5e7eb;
             background: #f8fafc;
             display: block;
-        }
-
-
-        .product-file-tools {
-            margin-top: 10px;
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .product-ai-btn {
-            min-height: 34px;
-            padding: 7px 11px;
-            border-radius: 10px;
-            font-size: 11px;
-        }
-
-        .product-file-preview-wrap {
-            margin-top: 10px;
-            min-height: 0;
-        }
-
-        .ai-image-studio-overlay {
-            position: fixed;
-            inset: 0;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 22px;
-            background: rgba(15, 23, 42, 0.62);
-            z-index: 120000;
-        }
-
-        .ai-image-studio {
-            width: min(1180px, 96vw);
-            max-height: 94vh;
-            overflow: auto;
-            background: #ffffff;
-            border-radius: 24px;
-            border: 1px solid #dbeafe;
-            box-shadow: 0 30px 90px rgba(15, 23, 42, 0.30);
-            padding: 22px;
-            text-align: left;
-        }
-
-        .ai-studio-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 16px;
-            margin-bottom: 16px;
-        }
-
-        .ai-studio-title {
-            color: #1f3c88;
-            font-size: 23px;
-            font-weight: 900;
-            margin: 0;
-        }
-
-        .ai-studio-subtitle {
-            color: #667085;
-            font-size: 12px;
-            font-weight: 700;
-            line-height: 1.6;
-            margin-top: 6px;
-            max-width: 780px;
-        }
-
-        .ai-studio-status-row {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin: 10px 0 16px;
-        }
-
-        .ai-status-pill {
-            display: inline-flex;
-            align-items: center;
-            padding: 6px 10px;
-            border-radius: 999px;
-            border: 1px solid #dbe3ef;
-            background: #f8fafc;
-            color: #475467;
-            font-size: 11px;
-            font-weight: 900;
-        }
-
-        .ai-status-pill.good {
-            background: #ecfdf5;
-            border-color: #bbf7d0;
-            color: #15803d;
-        }
-
-        .ai-status-pill.warn {
-            background: #fff7ed;
-            border-color: #fed7aa;
-            color: #c2410c;
-        }
-
-        .ai-studio-controls {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(170px, 1fr));
-            gap: 12px;
-            margin-bottom: 14px;
-            padding: 14px;
-            border-radius: 16px;
-            background: #f8fbff;
-            border: 1px solid #dbeafe;
-        }
-
-        .ai-studio-controls .full-row {
-            grid-column: 1 / -1;
-        }
-
-        .ai-studio-controls textarea {
-            width: 100%;
-            min-height: 88px;
-            resize: vertical;
-            border: 1.5px solid #d7dce7;
-            border-radius: 13px;
-            padding: 10px 12px;
-            font-family: inherit;
-            font-size: 13px;
-            font-weight: 700;
-            color: #111827;
-            outline: none;
-        }
-
-        .ai-studio-controls textarea:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.10);
-        }
-
-        .ai-mode-buttons {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin: 0 0 14px;
-        }
-
-        .ai-mode-button.active {
-            background: #1f3c88;
-            color: #ffffff;
-            border-color: #1f3c88;
-        }
-
-        .ai-preview-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 16px;
-        }
-
-        .ai-preview-card {
-            border: 1px solid #dbe3ef;
-            border-radius: 18px;
-            background: #f8fafc;
-            padding: 12px;
-            min-width: 0;
-        }
-
-        .ai-preview-card-title {
-            color: #475467;
-            font-size: 12px;
-            font-weight: 900;
-            margin-bottom: 9px;
-        }
-
-        .ai-preview-frame {
-            min-height: 360px;
-            border-radius: 14px;
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .ai-preview-frame img {
-            width: 100%;
-            height: 100%;
-            max-height: 520px;
-            object-fit: contain;
-            display: block;
-        }
-
-        .ai-preview-placeholder {
-            color: #98a2b3;
-            font-size: 13px;
-            font-weight: 800;
-            text-align: center;
-            padding: 24px;
-        }
-
-        .ai-processing-overlay {
-            position: absolute;
-            inset: 0;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            gap: 12px;
-            background: rgba(255, 255, 255, 0.88);
-            color: #1f3c88;
-            font-weight: 900;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .ai-processing-overlay.show {
-            display: flex;
-        }
-
-        .ai-spinner {
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            border: 4px solid #dbeafe;
-            border-top-color: #2563eb;
-            animation: ai-spin 0.9s linear infinite;
-        }
-
-        @keyframes ai-spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .ai-result-actions,
-        .ai-studio-footer {
-            display: flex;
-            gap: 9px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .ai-result-actions {
-            margin-top: 12px;
-        }
-
-        .ai-studio-footer {
-            justify-content: space-between;
-            margin-top: 16px;
-            padding-top: 14px;
-            border-top: 1px solid #e5e7eb;
-        }
-
-        .ai-save-select {
-            min-width: 180px;
-            height: 40px;
-            border: 1.5px solid #d7dce7;
-            border-radius: 12px;
-            padding: 0 10px;
-            font-family: inherit;
-            font-weight: 800;
-            color: #111827;
-            background: #ffffff;
-        }
-
-        .ai-unsaved-note {
-            color: #667085;
-            font-size: 11px;
-            font-weight: 700;
-            line-height: 1.5;
         }
 
         .product-file-status {
@@ -1854,9 +1644,6 @@
             .product-panel-tools,
             .excel-import-grid { grid-template-columns: 1fr; }
             .excel-import-status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .ai-studio-controls { grid-template-columns: 1fr; }
-            .ai-preview-grid { grid-template-columns: 1fr; }
-            .ai-studio-controls .full-row { grid-column: 1; }
             .product-form-grid { grid-template-columns: 1fr; }
             .product-toolbar-summary,
             .pagination-row { align-items: stretch; flex-direction: column; }
@@ -2218,15 +2005,15 @@
 
             <div class="excel-import-copy">
                 Upload an .xlsx workbook in the COPEC quotation format. The system reads every matching sheet,
-                uses the sheet name as Category, groups continuation rows, previews the data, and imports only after an Admin confirms.
-                Images are not imported in this version.
+                uses the sheet name as Category, groups continuation rows, previews the data and embedded product images,
+                and imports only after an Admin confirms. Images from the COPEC IMAGE column are matched to the corresponding product rows.
             </div>
 
             <div class="excel-import-grid">
                 <div class="excel-import-file-box">
                     <input id="productExcelImportFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
                     <div class="excel-import-note">
-                        Maximum file size: 100MB · Maximum 2,000 products per import · COPEC multi-sheet format supported · Images are ignored for now.
+                        Maximum file size: 100MB · Maximum 2,000 products per import · COPEC multi-sheet format supported · Embedded IMAGE-column pictures are imported automatically.
                     </div>
                 </div>
 
@@ -2346,108 +2133,6 @@
 
 </div>
 
-
-<div id="aiImageStudioOverlay" class="ai-image-studio-overlay">
-    <div class="ai-image-studio" role="dialog" aria-modal="true" aria-labelledby="aiImageStudioTitle">
-        <div class="ai-studio-header">
-            <div>
-                <h2 id="aiImageStudioTitle" class="ai-studio-title">Product Image AI Studio</h2>
-                <div class="ai-studio-subtitle">
-                    Improve supplier images before customers see them. The AI result is only a draft until you choose an Image slot and then save the product.
-                    Product fidelity is prioritized, but always review the generated result carefully before publishing.
-                </div>
-            </div>
-            <button class="soft-btn" type="button" onclick="closeProductAIStudio()">Close</button>
-        </div>
-
-        <div class="ai-studio-status-row">
-            <span id="aiStudioApiStatus" class="ai-status-pill">OpenAI API: checking...</span>
-            <span id="aiStudioStorageStatus" class="ai-status-pill">Storage: checking...</span>
-            <span id="aiStudioModelStatus" class="ai-status-pill">Model: checking...</span>
-        </div>
-
-        <div class="ai-mode-buttons">
-            <button id="aiModeClean" class="soft-btn ai-mode-button active" type="button" onclick="setAIImageMode('clean')">Clean Product Image</button>
-            <button id="aiModeCatalog" class="soft-btn ai-mode-button" type="button" onclick="setAIImageMode('catalog')">Catalog Image</button>
-            <button id="aiModeLifestyle" class="soft-btn ai-mode-button" type="button" onclick="setAIImageMode('lifestyle')">Lifestyle Image</button>
-        </div>
-
-        <div class="ai-studio-controls">
-            <div class="field">
-                <label for="aiImageQuality">AI Quality</label>
-                <select id="aiImageQuality" class="product-input">
-                    <option value="medium" selected>Standard / Medium</option>
-                    <option value="high">High</option>
-                    <option value="low">Low / Faster</option>
-                </select>
-            </div>
-            <div class="field">
-                <label for="aiImageSize">Output Shape</label>
-                <select id="aiImageSize" class="product-input">
-                    <option value="auto" selected>Auto</option>
-                    <option value="1024x1024">Square 1024×1024</option>
-                    <option value="1536x1024">Landscape 1536×1024</option>
-                    <option value="1024x1536">Portrait 1024×1536</option>
-                </select>
-            </div>
-            <div class="field">
-                <label for="aiImageSaveSlot">Use Result As</label>
-                <select id="aiImageSaveSlot" class="ai-save-select">
-                    <option value="image">Image 1 (Main Image)</option>
-                    <option value="image_2">Image 2</option>
-                    <option value="image_3">Image 3</option>
-                    <option value="image_4">Image 4</option>
-                    <option value="image_5">Image 5</option>
-                    <option value="image_6">Image 6</option>
-                </select>
-            </div>
-            <div class="field full-row">
-                <label for="aiImageCustomPrompt">Scene / Adjustment Request (optional)</label>
-                <textarea id="aiImageCustomPrompt" placeholder="Examples: modern European kitchen, bright natural daylight, light wood countertop; or remove all Chinese overlay annotations while keeping the product unchanged."></textarea>
-                <div class="field-help">This text changes the image only. It does not fill or modify any quotation product fields.</div>
-            </div>
-        </div>
-
-        <div class="ai-preview-grid">
-            <div class="ai-preview-card">
-                <div class="ai-preview-card-title">Original / Source Image</div>
-                <div class="ai-preview-frame">
-                    <img id="aiStudioSourceImage" alt="Source product image" style="display:none;">
-                    <div id="aiStudioSourcePlaceholder" class="ai-preview-placeholder">Choose an uploaded product image to start.</div>
-                </div>
-            </div>
-
-            <div class="ai-preview-card">
-                <div class="ai-preview-card-title">AI Result — Not Published Yet</div>
-                <div class="ai-preview-frame">
-                    <img id="aiStudioResultImage" alt="AI generated product image" style="display:none;">
-                    <div id="aiStudioResultPlaceholder" class="ai-preview-placeholder">Click Generate AI Image to create a draft.</div>
-                    <div id="aiStudioProcessing" class="ai-processing-overlay">
-                        <div class="ai-spinner"></div>
-                        <div id="aiStudioProcessingText">Generating image...</div>
-                        <div style="font-size:11px;color:#667085;font-weight:700;">This can take a little while. Keep this window open.</div>
-                    </div>
-                </div>
-                <div class="ai-result-actions">
-                    <button id="aiGenerateButton" class="primary-btn" type="button" onclick="generateProductAIImage()">Generate AI Image</button>
-                    <button id="aiRegenerateButton" class="soft-btn" type="button" onclick="generateProductAIImage(true)" disabled>Regenerate</button>
-                    <button id="aiDeleteDraftButton" class="danger-btn" type="button" onclick="deleteCurrentAIImageDraft()" disabled>Delete Draft</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="ai-studio-footer">
-            <div class="ai-unsaved-note">
-                AI images use your OpenAI API credits. Selecting “Use Result” only updates this Admin form; customers will not see the change until you click <b>Save Product</b> (or Create Product for a new item).
-            </div>
-            <div class="ai-result-actions" style="margin-top:0;">
-                <button id="aiUseResultButton" class="success-btn" type="button" onclick="useAIImageResultInProduct()" disabled>Use Result</button>
-                <button class="soft-btn" type="button" onclick="closeProductAIStudio()">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
 function showCenterMessage(message) {
     const toast = document.getElementById("centerToast");
@@ -2512,18 +2197,6 @@ let filteredProductsCache = [];
 let productCurrentPage = 1;
 let productPageSize = 20;
 let selectedProductIds = new Set();
-let aiImageStudioState = {
-    prefix: "",
-    sourceKey: "",
-    sourceUrl: "",
-    resultUrl: "",
-    mode: "clean",
-    productName: "",
-    category: "",
-    lastPrompt: "",
-    generating: false
-};
-let aiImageSystemStatus = null;
 let excelImportRows = [];
 let excelImportMeta = null;
 let excelImportEditorRows = [];
@@ -3122,6 +2795,18 @@ function uploadExcelPreviewWithProgress(file, url) {
 }
 
 function clearProductExcelImport() {
+    const previousSessionId = String(excelImportMeta && excelImportMeta.image_session_id || "").trim();
+    if (previousSessionId && isCurrentUserAdmin) {
+        fetch("/admin/products/import-excel/cleanup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                requester_username: currentUser,
+                image_session_id: previousSessionId
+            })
+        }).catch(() => {});
+    }
+
     const input = document.getElementById("productExcelImportFile");
     const status = document.getElementById("excelImportStatusArea");
     const preview = document.getElementById("excelImportPreviewArea");
@@ -3193,6 +2878,9 @@ function normalizeExcelEditorRows(data) {
         source_errors: Array.isArray(record && record.errors) ? [...record.errors] : [],
         enabled: true,
         edited: false,
+        excel_images: Array.isArray(record && record.excel_images)
+            ? record.excel_images.map(image => ({ ...image, enabled: true }))
+            : [],
         data: { ...(record && record.data ? record.data : {}) }
     }));
 }
@@ -3288,22 +2976,74 @@ function renderExcelEditorField(recordIndex, column) {
     return `<input class="excel-edit-input${wideClass}" type="text" value="${safeValue}" oninput="updateExcelEditorCell(${recordIndex}, '${column.key}', this.value)">`;
 }
 
+function getExcelEditorImageStats() {
+    let detected = 0;
+    let included = 0;
+    excelImportEditorRows.forEach(record => {
+        const images = Array.isArray(record.excel_images) ? record.excel_images : [];
+        detected += images.length;
+        if (record.enabled) {
+            included += images.filter(image => image.enabled !== false).length;
+        }
+    });
+    return { detected, included };
+}
+
+function toggleExcelEditorImage(recordIndex, imageIndex, enabled) {
+    const record = excelImportEditorRows[recordIndex];
+    if (!record || !Array.isArray(record.excel_images) || !record.excel_images[imageIndex]) return;
+    record.excel_images[imageIndex].enabled = !!enabled;
+    record.edited = true;
+    renderExcelEditorTable();
+}
+
+function renderExcelEditorImages(recordIndex) {
+    const record = excelImportEditorRows[recordIndex];
+    const images = record && Array.isArray(record.excel_images) ? record.excel_images : [];
+    if (!images.length) {
+        return `<span class="excel-image-empty">No image</span>`;
+    }
+
+    return `<div class="excel-image-preview-list">${images.map((image, imageIndex) => {
+        const enabled = image.enabled !== false;
+        const url = String(image.preview_url || "");
+        return `
+            <div class="excel-image-preview-item ${enabled ? "" : "disabled"}">
+                <img src="${escapeAttr(url)}" alt="Excel product image" onerror="this.style.display='none'">
+                <label class="excel-image-preview-toggle">
+                    <input type="checkbox" ${enabled ? "checked" : ""}
+                        onchange="toggleExcelEditorImage(${recordIndex}, ${imageIndex}, this.checked)">
+                    Import
+                </label>
+            </div>
+        `;
+    }).join("")}</div>`;
+}
+
 function refreshExcelEditorSummary() {
     const stats = getExcelEditorStats();
     const includedEl = document.getElementById("excelEditorIncludedCount");
     const readyEl = document.getElementById("excelEditorReadyCount");
     const errorsEl = document.getElementById("excelEditorErrorCount");
     const excludedEl = document.getElementById("excelEditorExcludedCount");
+    const imagesEl = document.getElementById("excelEditorImageCount");
     const confirmButton = document.getElementById("confirmExcelImportButton");
+    const imageStats = getExcelEditorImageStats();
 
     if (includedEl) includedEl.innerText = stats.included;
     if (readyEl) readyEl.innerText = stats.ready;
     if (errorsEl) errorsEl.innerText = stats.needsFix;
     if (excludedEl) excludedEl.innerText = stats.excluded;
+    if (imagesEl) imagesEl.innerText = imageStats.included;
 
     excelImportRows = excelImportEditorRows
         .filter(record => record.enabled && validateExcelEditorRow(record).length === 0)
-        .map(record => ({ ...record.data }));
+        .map(record => ({
+            ...record.data,
+            _excel_images: (Array.isArray(record.excel_images) ? record.excel_images : [])
+                .filter(image => image.enabled !== false)
+                .map(image => ({ token: image.token }))
+        }));
 
     if (confirmButton) {
         confirmButton.disabled = stats.ready === 0 || stats.needsFix > 0;
@@ -3412,6 +3152,7 @@ function renderExcelEditorTable() {
                 <td>${escapeHtml(record.sheet_name || "-")}</td>
                 <td>${excelRowLabel}</td>
                 <td id="excelEditorStatus-${recordIndex}">${excelEditorStatusHtml(record)}</td>
+                <td>${renderExcelEditorImages(recordIndex)}</td>
                 ${EXCEL_EDITOR_COLUMNS.map(column => {
                     const fieldHtml = renderExcelEditorField(recordIndex, column);
                     if (column.key === "carton_cbm") {
@@ -3444,6 +3185,7 @@ function renderExcelEditorTable() {
                         <th>Sheet / Category</th>
                         <th>Excel Row</th>
                         <th>Status</th>
+                        <th>Image</th>
                         ${headerHtml}
                     </tr>
                 </thead>
@@ -3460,7 +3202,7 @@ function renderExcelEditorTable() {
         </div>
 
         <div class="excel-import-note">
-            This editor contains all parsed products, not only the first 30. Correct any field here before importing. Rows with errors cannot be imported until fixed or excluded.
+            This editor contains all parsed products. Correct any field before importing. Product images detected from the Excel IMAGE column are shown here; uncheck any wrong image so it will not be uploaded.
         </div>
     `;
 
@@ -3495,13 +3237,18 @@ function renderExcelImportPreview(data) {
                 <div class="excel-stat-label">Sheets</div>
                 <div class="excel-stat-value">${Array.isArray(data.sheet_names) ? data.sheet_names.length : 1}</div>
             </div>
+            <div class="excel-stat-card">
+                <div class="excel-stat-label">Images to Import</div>
+                <div id="excelEditorImageCount" class="excel-stat-value">0</div>
+            </div>
         </div>
 
         <div class="excel-mapping-box">
             <b>Format:</b> ${escapeHtml(data.import_format || "Excel")}<br>
             <b>Detected sheets / categories:</b> ${escapeHtml((Array.isArray(data.sheet_names) && data.sheet_names.length ? data.sheet_names.join(", ") : (data.sheet_name || "Products")))}<br>
             <b>Included:</b> <span id="excelEditorIncludedCount">0</span> ·
-            <b>Excluded:</b> <span id="excelEditorExcludedCount">0</span><br>
+            <b>Excluded:</b> <span id="excelEditorExcludedCount">0</span> ·
+            <b>Excel images detected:</b> ${Number(data.attached_product_images || 0)}<br>
             <b>Matched columns:</b><br>
             ${matched.length
                 ? matched.map(item => `<span class="excel-mapping-chip">${escapeHtml(item.excel_column)} → ${escapeHtml(item.website_field)}</span>`).join("")
@@ -3590,17 +3337,19 @@ async function previewProductExcelImport() {
         excelEditorPage = 1;
         excelImportRows = [];
         renderExcelImportPreview(data);
+        const previewStats = getExcelEditorStats();
+        const previewImageStats = getExcelEditorImageStats();
         setExcelUploadProgress({
             percent: 100,
             loaded: file.size,
             total: file.size,
-            label: `Excel ready · ${excelImportRows.length} valid product${excelImportRows.length === 1 ? "" : "s"} found`,
+            label: `Excel ready · ${previewStats.ready} product${previewStats.ready === 1 ? "" : "s"} · ${previewImageStats.included} image${previewImageStats.included === 1 ? "" : "s"}`,
             processing: false,
             visible: true
         });
         const phaseEl = document.getElementById("excelUploadProgressPhase");
         if (phaseEl) phaseEl.innerText = " · Preview complete";
-        showToast(`Excel preview ready: ${excelImportRows.length} valid product(s).`);
+        showToast(`Excel preview ready: ${previewStats.ready} product(s), ${previewImageStats.included} image(s).`);
 
     } catch (error) {
         console.error("Excel preview error:", error);
@@ -3633,7 +3382,12 @@ async function confirmProductExcelImport() {
 
     excelImportRows = excelImportEditorRows
         .filter(record => record.enabled && validateExcelEditorRow(record).length === 0)
-        .map(record => ({ ...record.data }));
+        .map(record => ({
+            ...record.data,
+            _excel_images: (Array.isArray(record.excel_images) ? record.excel_images : [])
+                .filter(image => image.enabled !== false)
+                .map(image => ({ token: image.token }))
+        }));
 
     if (!excelImportRows.length) {
         showCenterMessage("There are no valid products ready to import.");
@@ -3641,11 +3395,12 @@ async function confirmProductExcelImport() {
     }
 
     const editedCount = excelImportEditorRows.filter(record => record.enabled && record.edited).length;
+    const imageCount = excelImportRows.reduce((total, row) => total + (Array.isArray(row._excel_images) ? row._excel_images.length : 0), 0);
     const ok = await showCenterConfirm(
         `Import ${excelImportRows.length} product${excelImportRows.length === 1 ? "" : "s"} into the website?\n\n` +
         `${editedCount} included row${editedCount === 1 ? " was" : "s were"} edited in the preview. ` +
         `The website will use the values currently shown in the editable table, not the original Excel values.\n\n` +
-        `Images are not imported.`
+        `${imageCount} checked Excel image${imageCount === 1 ? "" : "s"} will be uploaded to the corresponding product Image 1-6 fields.`
     );
     if (!ok) return;
 
@@ -3661,6 +3416,7 @@ async function confirmProductExcelImport() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 requester_username: currentUser,
+                image_session_id: String(excelImportMeta && excelImportMeta.image_session_id || ""),
                 rows: excelImportRows
             })
         });
@@ -3970,18 +3726,13 @@ function renderProductFields(prefix, product) {
         if (field.type === "file") {
             const fileInputId = id + "-file";
             const statusId = id + "-status";
-            const currentId = id + "-current";
-            const previewWrapId = id + "-preview-wrap";
-            const previewId = id + "-preview";
-            const aiButtonId = id + "-ai-button";
-            const isImage = field.media === "image";
-            const preview = value && isImage
-                ? `<img id="${previewId}" class="product-file-preview" src="${escapeAttr(value)}" alt="Current image" onerror="this.onerror=null;this.style.display='none';">`
+            const preview = value && field.media === "image"
+                ? `<img class="product-file-preview" src="${escapeAttr(value)}" alt="Current image" onerror="this.onerror=null;this.style.display='none';">`
                 : "";
 
             return `
                 <div class="field ${fieldClass}">
-                    <label for="${fileInputId}">${field.label}${field.key === "image" ? " (Main / Cover)" : ""}</label>
+                    <label for="${fileInputId}">${field.label}</label>
                     <div class="product-file-box">
                         <input
                             id="${fileInputId}"
@@ -3993,21 +3744,10 @@ function renderProductFields(prefix, product) {
                         <div id="${statusId}" class="product-file-status">
                             ${value ? "Current file saved" : "No file selected"}
                         </div>
-                        <div id="${currentId}" class="product-file-current">
+                        <div class="product-file-current">
                             ${value ? escapeHtml(value) : "Upload a file instead of typing a path."}
                         </div>
-                        ${isImage ? `
-                            <div class="product-file-tools">
-                                <button
-                                    id="${aiButtonId}"
-                                    class="soft-btn product-ai-btn"
-                                    type="button"
-                                    ${value ? "" : "disabled"}
-                                    onclick="openProductAIStudio('${escapeForJs(prefix)}', '${escapeForJs(field.key)}')"
-                                >AI Studio</button>
-                            </div>
-                            <div id="${previewWrapId}" class="product-file-preview-wrap">${preview}</div>
-                        ` : preview}
+                        ${preview}
                     </div>
                 </div>
             `;
@@ -4144,78 +3884,6 @@ function recalculateCarton(prefix) {
     });
 }
 
-
-function loadImageForOptimization(file) {
-    return new Promise((resolve, reject) => {
-        const url = URL.createObjectURL(file);
-        const img = new Image();
-        img.onload = () => {
-            URL.revokeObjectURL(url);
-            resolve(img);
-        };
-        img.onerror = error => {
-            URL.revokeObjectURL(url);
-            reject(error || new Error("Image could not be opened."));
-        };
-        img.src = url;
-    });
-}
-
-async function optimizeProductImageForWeb(file) {
-    if (!file || !String(file.type || "").startsWith("image/")) return file;
-
-    try {
-        const img = await loadImageForOptimization(file);
-        const maxDimension = 2000;
-        const naturalWidth = Number(img.naturalWidth || img.width || 0);
-        const naturalHeight = Number(img.naturalHeight || img.height || 0);
-        if (!naturalWidth || !naturalHeight) return file;
-
-        const scale = Math.min(1, maxDimension / Math.max(naturalWidth, naturalHeight));
-        const width = Math.max(1, Math.round(naturalWidth * scale));
-        const height = Math.max(1, Math.round(naturalHeight * scale));
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext("2d", { alpha: true });
-        if (!context) return file;
-        context.imageSmoothingEnabled = true;
-        context.imageSmoothingQuality = "high";
-        context.drawImage(img, 0, 0, width, height);
-
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/webp", 0.86));
-        if (!blob || !blob.size) return file;
-
-        const originalStem = String(file.name || "product-image").replace(/\.[^.]+$/, "");
-        return new File([blob], originalStem + ".webp", {
-            type: "image/webp",
-            lastModified: Date.now()
-        });
-    } catch (error) {
-        console.warn("Image WebP optimization skipped:", error);
-        return file;
-    }
-}
-
-function refreshProductImageField(prefix, key, url, statusText = "Uploaded") {
-    const hiddenInput = document.getElementById(prefix + "-" + key);
-    const statusBox = document.getElementById(prefix + "-" + key + "-status");
-    const currentBox = document.getElementById(prefix + "-" + key + "-current");
-    const previewWrap = document.getElementById(prefix + "-" + key + "-preview-wrap");
-    const aiButton = document.getElementById(prefix + "-" + key + "-ai-button");
-
-    if (hiddenInput) hiddenInput.value = url || "";
-    if (statusBox) statusBox.innerText = statusText;
-    if (currentBox) currentBox.innerText = url || "Upload a file instead of typing a path.";
-
-    if (previewWrap) {
-        previewWrap.innerHTML = url
-            ? `<img id="${escapeAttr(prefix + "-" + key + "-preview")}" class="product-file-preview" src="${escapeAttr(url)}" alt="Current image" onerror="this.onerror=null;this.style.display='none';">`
-            : "";
-    }
-    if (aiButton) aiButton.disabled = !url;
-}
-
 async function uploadProductMedia(prefix, key, input, mediaType) {
     const file = input && input.files ? input.files[0] : null;
     const hiddenInput = document.getElementById(prefix + "-" + key);
@@ -4258,8 +3926,8 @@ async function uploadProductMedia(prefix, key, input, mediaType) {
             return;
         }
 
-        if (file.size > 25 * 1024 * 1024) {
-            showCenterMessage("Image is too large. Please keep the original image under 25MB.");
+        if (file.size > 12 * 1024 * 1024) {
+            showCenterMessage("Image is too large. Please keep it under 12MB.");
             input.value = "";
             if (statusBox) statusBox.innerText = "File too large";
             return;
@@ -4275,14 +3943,8 @@ async function uploadProductMedia(prefix, key, input, mediaType) {
     }
 
     try {
-        let uploadFile = file;
-        if ((mediaType || "image") === "image") {
-            if (statusBox) statusBox.innerText = "Optimizing for web...";
-            uploadFile = await optimizeProductImageForWeb(file);
-        }
-
         const uploadResult = await uploadFileInChunks(
-            uploadFile,
+            file,
             mediaType || "image",
             percent => {
                 if (statusBox) {
@@ -4295,18 +3957,15 @@ async function uploadProductMedia(prefix, key, input, mediaType) {
             throw new Error("Upload finished but no file URL was returned.");
         }
 
-        if ((mediaType || "image") === "image") {
-            refreshProductImageField(prefix, key, uploadResult.url, "Uploaded");
-        } else {
-            if (hiddenInput) hiddenInput.value = uploadResult.url;
-            if (statusBox) statusBox.innerText = "Uploaded";
+        if (hiddenInput) {
+            hiddenInput.value = uploadResult.url;
         }
 
-        showCenterMessage(
-            (mediaType || "image") === "image"
-                ? "Image uploaded and optimized for the quotation website."
-                : "File uploaded successfully."
-        );
+        if (statusBox) {
+            statusBox.innerText = "Uploaded";
+        }
+
+        showCenterMessage("File uploaded successfully.");
 
     } catch (error) {
         console.error("Upload product media error:", error);
@@ -4340,7 +3999,6 @@ async function uploadFileInChunks(file, mediaType, onProgress) {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                requester_username: currentUser,
                 upload_id: uploadId,
                 filename: file.name,
                 media_type: mediaType || "image",
@@ -4389,319 +4047,6 @@ function readFileAsDataURL(file) {
     });
 }
 
-
-async function loadAIImageSystemStatus(force = false) {
-    if (aiImageSystemStatus && !force) return aiImageSystemStatus;
-
-    try {
-        const query = new URLSearchParams({ requester_username: currentUser || "" });
-        const response = await fetch(`/admin/ai-image/status?${query.toString()}`);
-        const data = await response.json();
-        if (!response.ok || !data?.success) {
-            throw new Error(data?.message || "Could not check AI image status.");
-        }
-        aiImageSystemStatus = data;
-    } catch (error) {
-        aiImageSystemStatus = {
-            success: false,
-            ai_configured: false,
-            bucket_configured: false,
-            storage_mode: "Status unavailable",
-            model: "Not configured",
-            message: error.message || "Status unavailable"
-        };
-    }
-
-    refreshAIImageSystemStatusUI();
-    return aiImageSystemStatus;
-}
-
-function refreshAIImageSystemStatusUI() {
-    const status = aiImageSystemStatus || {};
-    const apiPill = document.getElementById("aiStudioApiStatus");
-    const storagePill = document.getElementById("aiStudioStorageStatus");
-    const modelPill = document.getElementById("aiStudioModelStatus");
-    const generateButton = document.getElementById("aiGenerateButton");
-
-    if (apiPill) {
-        apiPill.innerText = status.ai_configured ? "OpenAI API: Ready" : "OpenAI API: OPENAI_API_KEY required";
-        apiPill.className = "ai-status-pill " + (status.ai_configured ? "good" : "warn");
-    }
-    if (storagePill) {
-        storagePill.innerText = "Storage: " + (status.storage_mode || "Local / Volume fallback");
-        storagePill.className = "ai-status-pill " + (status.bucket_configured ? "good" : "warn");
-    }
-    if (modelPill) {
-        modelPill.innerText = "Model: " + (status.model || "gpt-image-2");
-        modelPill.className = "ai-status-pill";
-    }
-    if (generateButton && !aiImageStudioState.generating) {
-        generateButton.disabled = !status.ai_configured || !aiImageStudioState.sourceUrl;
-    }
-}
-
-function getAIStudioProductContext(prefix) {
-    const nameInput = document.getElementById(prefix + "-name");
-    const categoryInput = document.getElementById(prefix + "-category");
-    return {
-        productName: String(nameInput?.value || "").trim(),
-        category: String(categoryInput?.value || "").trim()
-    };
-}
-
-async function openProductAIStudio(prefix, sourceKey) {
-    if (!isCurrentUserAdmin) {
-        showCenterMessage("Only an approved admin can use Product Image AI Studio.");
-        return;
-    }
-
-    const sourceInput = document.getElementById(prefix + "-" + sourceKey);
-    const sourceUrl = String(sourceInput?.value || "").trim();
-    if (!sourceUrl) {
-        showCenterMessage("Upload the product image first, then open AI Studio.");
-        return;
-    }
-
-    const context = getAIStudioProductContext(prefix);
-    aiImageStudioState = {
-        prefix,
-        sourceKey,
-        sourceUrl,
-        resultUrl: "",
-        mode: "clean",
-        productName: context.productName,
-        category: context.category,
-        lastPrompt: "",
-        generating: false
-    };
-
-    const overlay = document.getElementById("aiImageStudioOverlay");
-    const sourceImage = document.getElementById("aiStudioSourceImage");
-    const sourcePlaceholder = document.getElementById("aiStudioSourcePlaceholder");
-    const resultImage = document.getElementById("aiStudioResultImage");
-    const resultPlaceholder = document.getElementById("aiStudioResultPlaceholder");
-    const customPrompt = document.getElementById("aiImageCustomPrompt");
-    const saveSlot = document.getElementById("aiImageSaveSlot");
-
-    if (sourceImage) {
-        sourceImage.src = sourceUrl;
-        sourceImage.style.display = "block";
-    }
-    if (sourcePlaceholder) sourcePlaceholder.style.display = "none";
-    if (resultImage) {
-        resultImage.src = "";
-        resultImage.style.display = "none";
-    }
-    if (resultPlaceholder) {
-        resultPlaceholder.innerText = "Click Generate AI Image to create a draft.";
-        resultPlaceholder.style.display = "block";
-    }
-    if (customPrompt) customPrompt.value = "";
-    if (saveSlot) saveSlot.value = sourceKey || "image";
-
-    setAIImageMode("clean");
-    updateAIStudioResultButtons();
-    if (overlay) overlay.style.display = "flex";
-    await loadAIImageSystemStatus(true);
-}
-
-function closeProductAIStudio() {
-    const overlay = document.getElementById("aiImageStudioOverlay");
-    if (overlay) overlay.style.display = "none";
-}
-
-function setAIImageMode(mode) {
-    const normalized = ["clean", "catalog", "lifestyle"].includes(mode) ? mode : "clean";
-    aiImageStudioState.mode = normalized;
-    ["clean", "catalog", "lifestyle"].forEach(name => {
-        const button = document.getElementById("aiMode" + name.charAt(0).toUpperCase() + name.slice(1));
-        if (button) button.classList.toggle("active", name === normalized);
-    });
-
-    const prompt = document.getElementById("aiImageCustomPrompt");
-    if (prompt && !prompt.value.trim()) {
-        if (normalized === "clean") {
-            prompt.placeholder = "Optional: remove Chinese overlay annotations, make the background clean and neutral, preserve the exact product.";
-        } else if (normalized === "catalog") {
-            prompt.placeholder = "Optional: warm white studio background, European retail catalog style, soft natural shadow.";
-        } else {
-            prompt.placeholder = "Describe the scene, e.g. modern European kitchen, camping site, bathroom, car interior, supermarket display...";
-        }
-    }
-}
-
-function setAIStudioGenerating(generating) {
-    aiImageStudioState.generating = Boolean(generating);
-    const processing = document.getElementById("aiStudioProcessing");
-    const generateButton = document.getElementById("aiGenerateButton");
-    const regenerateButton = document.getElementById("aiRegenerateButton");
-    const deleteButton = document.getElementById("aiDeleteDraftButton");
-    const useButton = document.getElementById("aiUseResultButton");
-
-    if (processing) processing.classList.toggle("show", Boolean(generating));
-    if (generateButton) generateButton.disabled = generating || !aiImageStudioState.sourceUrl || !aiImageSystemStatus?.ai_configured;
-    if (regenerateButton) regenerateButton.disabled = generating || !aiImageStudioState.resultUrl;
-    if (deleteButton) deleteButton.disabled = generating || !aiImageStudioState.resultUrl;
-    if (useButton) useButton.disabled = generating || !aiImageStudioState.resultUrl;
-}
-
-function updateAIStudioResultButtons() {
-    setAIStudioGenerating(aiImageStudioState.generating);
-}
-
-function aiResultIsAssignedToForm(url) {
-    if (!url) return false;
-    return ["image", "image_2", "image_3", "image_4", "image_5", "image_6"].some(key => {
-        const input = document.getElementById(aiImageStudioState.prefix + "-" + key);
-        return String(input?.value || "").trim() === url;
-    });
-}
-
-async function deleteAIImageDraftUrl(url, silent = false) {
-    if (!url) return false;
-    if (aiResultIsAssignedToForm(url)) {
-        if (!silent) showCenterMessage("This draft is already assigned to an image slot. Remove or replace that slot before deleting it.");
-        return false;
-    }
-
-    try {
-        const response = await fetch("/admin/ai-image/delete", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ requester_username: currentUser, url })
-        });
-        const data = await response.json();
-        if (!response.ok || !data?.success) {
-            if (!silent) showCenterMessage(data?.message || "AI draft could not be deleted.");
-            return false;
-        }
-        return true;
-    } catch (error) {
-        console.warn("Delete AI draft error:", error);
-        if (!silent) showCenterMessage("AI draft could not be deleted.");
-        return false;
-    }
-}
-
-async function generateProductAIImage(isRegenerate = false) {
-    if (!isCurrentUserAdmin) {
-        showCenterMessage("Only an approved admin can generate images.");
-        return;
-    }
-    if (!aiImageStudioState.sourceUrl || aiImageStudioState.generating) return;
-
-    await loadAIImageSystemStatus();
-    if (!aiImageSystemStatus?.ai_configured) {
-        showCenterMessage("Add OPENAI_API_KEY in Railway Variables first, then redeploy/restart the service.");
-        return;
-    }
-
-    const customPrompt = String(document.getElementById("aiImageCustomPrompt")?.value || "").trim();
-    const quality = String(document.getElementById("aiImageQuality")?.value || "medium");
-    const size = String(document.getElementById("aiImageSize")?.value || "auto");
-    const oldResultUrl = aiImageStudioState.resultUrl;
-
-    const processingText = document.getElementById("aiStudioProcessingText");
-    if (processingText) {
-        processingText.innerText = aiImageStudioState.mode === "lifestyle"
-            ? "Creating lifestyle image..."
-            : aiImageStudioState.mode === "catalog"
-                ? "Creating catalog image..."
-                : "Cleaning product image...";
-    }
-    setAIStudioGenerating(true);
-
-    try {
-        const response = await fetch("/admin/ai-image/generate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                requester_username: currentUser,
-                source_url: aiImageStudioState.sourceUrl,
-                mode: aiImageStudioState.mode,
-                custom_prompt: customPrompt,
-                product_name: aiImageStudioState.productName,
-                category: aiImageStudioState.category,
-                quality,
-                size
-            })
-        });
-        const data = await response.json();
-        if (!response.ok || !data?.success || !data?.url) {
-            throw new Error(data?.message || data?.detail || "AI image generation failed.");
-        }
-
-        aiImageStudioState.resultUrl = data.url;
-        aiImageStudioState.lastPrompt = customPrompt;
-
-        const resultImage = document.getElementById("aiStudioResultImage");
-        const placeholder = document.getElementById("aiStudioResultPlaceholder");
-        if (resultImage) {
-            resultImage.src = data.url + (data.url.includes("?") ? "&" : "?") + "v=" + Date.now();
-            resultImage.style.display = "block";
-        }
-        if (placeholder) placeholder.style.display = "none";
-
-        // Clean up a previous unsaved draft after a successful regeneration.
-        if (isRegenerate && oldResultUrl && oldResultUrl !== data.url && !aiResultIsAssignedToForm(oldResultUrl)) {
-            deleteAIImageDraftUrl(oldResultUrl, true);
-        }
-        showToast("AI image ready. Review it carefully before using it.");
-    } catch (error) {
-        console.error("AI image generation error:", error);
-        showCenterMessage(error.message || "AI image generation failed. Please check Railway logs.");
-    } finally {
-        setAIStudioGenerating(false);
-    }
-}
-
-async function deleteCurrentAIImageDraft() {
-    const url = aiImageStudioState.resultUrl;
-    if (!url) return;
-    const ok = await showCenterConfirm("Delete this AI draft image? This does not change the original product image.");
-    if (!ok) return;
-
-    const deleted = await deleteAIImageDraftUrl(url, false);
-    if (!deleted) return;
-
-    aiImageStudioState.resultUrl = "";
-    const resultImage = document.getElementById("aiStudioResultImage");
-    const placeholder = document.getElementById("aiStudioResultPlaceholder");
-    if (resultImage) {
-        resultImage.src = "";
-        resultImage.style.display = "none";
-    }
-    if (placeholder) {
-        placeholder.innerText = "Draft deleted. Generate a new image when ready.";
-        placeholder.style.display = "block";
-    }
-    updateAIStudioResultButtons();
-    showToast("AI draft deleted.");
-}
-
-function useAIImageResultInProduct() {
-    const url = String(aiImageStudioState.resultUrl || "").trim();
-    if (!url) {
-        showCenterMessage("Generate an AI image first.");
-        return;
-    }
-
-    const slot = String(document.getElementById("aiImageSaveSlot")?.value || "image");
-    const allowedSlots = ["image", "image_2", "image_3", "image_4", "image_5", "image_6"];
-    if (!allowedSlots.includes(slot)) {
-        showCenterMessage("Please choose a valid image slot.");
-        return;
-    }
-
-    refreshProductImageField(aiImageStudioState.prefix, slot, url, "AI result selected · Save Product to publish");
-    showCenterMessage(
-        (slot === "image" ? "Main Image" : slot.replace("image_", "Image ")) +
-        " updated in this Admin form. Click Save Product to publish it to customers."
-    );
-    closeProductAIStudio();
-}
-
-
 function getProductPayload(prefix) {
     const payload = {};
 
@@ -4737,9 +4082,6 @@ function clearNewProductForm() {
         if (input) input.value = "";
         if (fileInput) fileInput.value = "";
         if (statusBox && field.type === "file") statusBox.innerText = "No file selected";
-        if (field.type === "file" && field.media === "image") {
-            refreshProductImageField("new-product", field.key, "", "No file selected");
-        }
     });
 }
 
@@ -6076,15 +5418,6 @@ function logout() {
     localStorage.removeItem("sales_mode_customer");
     localStorage.removeItem("sales_mode_sales");
     window.location.href = "login.html";
-}
-
-const aiStudioOverlay = document.getElementById("aiImageStudioOverlay");
-if (aiStudioOverlay) {
-    aiStudioOverlay.addEventListener("click", event => {
-        if (event.target === aiStudioOverlay && !aiImageStudioState.generating) {
-            closeProductAIStudio();
-        }
-    });
 }
 
 applyAdminSharedFilesPermissionView();
