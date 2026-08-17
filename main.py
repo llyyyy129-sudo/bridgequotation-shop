@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine, SessionLocal
@@ -19,6 +19,13 @@ import re
 import uuid
 import shutil
 import tempfile
+import os
+import hashlib
+import hmac
+import mimetypes
+import urllib.parse
+import urllib.request
+import urllib.error
 from pathlib import Path
 
 
@@ -712,18 +719,9 @@ def generate_pi_pdf_file(order, customer, sales_user, pi_no, version):
         if not image_url:
             return p("No Image", small_center_style)
 
-        image_path = str(image_url)
-
-        if image_path.startswith("/"):
-            image_path = "." + image_path
-
-        local_path = LocalPath(image_path)
-
-        if not local_path.exists():
-            return p("No Image", small_center_style)
-
         try:
-            reader = ImageReader(str(local_path))
+            image_bytes, _, _ = read_product_asset_bytes(str(image_url), max_bytes=25 * 1024 * 1024)
+            reader = ImageReader(BytesIO(image_bytes))
             img_width, img_height = reader.getSize()
 
             max_width = 52
@@ -731,7 +729,7 @@ def generate_pi_pdf_file(order, customer, sales_user, pi_no, version):
             scale = min(max_width / img_width, max_height / img_height)
 
             product_image = Image(
-                str(local_path),
+                BytesIO(image_bytes),
                 width=img_width * scale,
                 height=img_height * scale
             )
@@ -3321,6 +3319,714 @@ def delete_admin_product(product_id: int):
     }
 
 
+
+# =========================
+# PRODUCT ASSET STORAGE + AI IMAGE STUDIO
+# =========================
+# Railway Storage Buckets are private S3-compatible buckets. When bucket
+# credentials are available we store product images there and keep a stable
+# /product-assets/... URL in PostgreSQL. That stable URL redirects to a short-
+# lived presigned bucket URL, so the image is delivered by the bucket instead
+# of the FastAPI service. If a bucket has not been configured yet (or a bucket
+# upload fails), the existing local/Volume upload behavior remains available.
+
+PRODUCT_MEDIA_LOCAL_ROOT = Path(
+    os.getenv("PRODUCT_MEDIA_LOCAL_ROOT", "static/uploads/products")
+)
+OPENAI_IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-2").strip() or "gpt-image-2"
+OPENAI_IMAGE_API_BASE = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+MAX_AI_SOURCE_BYTES = 25 * 1024 * 1024
+
+
+def get_product_bucket_config():
+    endpoint = (
+        os.getenv("PRODUCT_BUCKET_ENDPOINT") or
+        os.getenv("AWS_ENDPOINT_URL") or
+        os.getenv("ENDPOINT") or
+        ""
+    ).strip()
+    bucket = (
+        os.getenv("PRODUCT_BUCKET_NAME") or
+        os.getenv("AWS_S3_BUCKET_NAME") or
+        os.getenv("BUCKET") or
+        ""
+    ).strip()
+    access_key = (
+        os.getenv("PRODUCT_BUCKET_ACCESS_KEY_ID") or
+        os.getenv("AWS_ACCESS_KEY_ID") or
+        os.getenv("ACCESS_KEY_ID") or
+        ""
+    ).strip()
+    secret_key = (
+        os.getenv("PRODUCT_BUCKET_SECRET_ACCESS_KEY") or
+        os.getenv("AWS_SECRET_ACCESS_KEY") or
+        os.getenv("SECRET_ACCESS_KEY") or
+        ""
+    ).strip()
+    region = (
+        os.getenv("PRODUCT_BUCKET_REGION") or
+        os.getenv("AWS_DEFAULT_REGION") or
+        os.getenv("REGION") or
+        "auto"
+    ).strip() or "auto"
+    url_style = (
+        os.getenv("PRODUCT_BUCKET_URL_STYLE") or
+        os.getenv("AWS_S3_URL_STYLE") or
+        "virtual"
+    ).strip().lower()
+
+    if not endpoint or not bucket or not access_key or not secret_key:
+        return None
+
+    if not endpoint.startswith(("http://", "https://")):
+        endpoint = "https://" + endpoint
+
+    if url_style not in {"virtual", "path"}:
+        url_style = "virtual"
+
+    return {
+        "endpoint": endpoint.rstrip("/"),
+        "bucket": bucket,
+        "access_key": access_key,
+        "secret_key": secret_key,
+        "region": region,
+        "url_style": url_style,
+    }
+
+
+def product_bucket_is_configured():
+    return get_product_bucket_config() is not None
+
+
+def _aws_signing_key(secret_key, date_stamp, region, service="s3"):
+    k_date = hmac.new(
+        ("AWS4" + secret_key).encode("utf-8"),
+        date_stamp.encode("utf-8"),
+        hashlib.sha256,
+    ).digest()
+    k_region = hmac.new(k_date, region.encode("utf-8"), hashlib.sha256).digest()
+    k_service = hmac.new(k_region, service.encode("utf-8"), hashlib.sha256).digest()
+    return hmac.new(k_service, b"aws4_request", hashlib.sha256).digest()
+
+
+def _quote_s3_key(key):
+    cleaned = str(key or "").replace("\\", "/").lstrip("/")
+    if not cleaned or ".." in Path(cleaned).parts:
+        raise ValueError("Invalid object key.")
+    return "/".join(
+        urllib.parse.quote(part, safe="-_.~")
+        for part in cleaned.split("/")
+    )
+
+
+def _bucket_url_parts(config, key):
+    parsed = urllib.parse.urlparse(config["endpoint"])
+    encoded_key = _quote_s3_key(key)
+    endpoint_prefix = parsed.path.rstrip("/")
+
+    if config["url_style"] == "path":
+        host = parsed.netloc
+        bucket_part = urllib.parse.quote(config["bucket"], safe="-_.~")
+        canonical_uri = f"{endpoint_prefix}/{bucket_part}/{encoded_key}"
+    else:
+        host = f'{config["bucket"]}.{parsed.netloc}'
+        canonical_uri = f"{endpoint_prefix}/{encoded_key}"
+
+    canonical_uri = canonical_uri or "/"
+    url = f"{parsed.scheme}://{host}{canonical_uri}"
+    return host, canonical_uri, url
+
+
+def _bucket_authorized_request(method, key, data=b"", content_type="application/octet-stream", timeout=90):
+    config = get_product_bucket_config()
+    if not config:
+        raise RuntimeError("Railway product bucket is not configured.")
+
+    payload = data if isinstance(data, (bytes, bytearray)) else bytes(data or b"")
+    host, canonical_uri, url = _bucket_url_parts(config, key)
+    now = datetime.utcnow()
+    amz_date = now.strftime("%Y%m%dT%H%M%SZ")
+    date_stamp = now.strftime("%Y%m%d")
+    payload_hash = hashlib.sha256(payload).hexdigest()
+
+    canonical_headers = (
+        f"content-type:{content_type}\n"
+        f"host:{host}\n"
+        f"x-amz-content-sha256:{payload_hash}\n"
+        f"x-amz-date:{amz_date}\n"
+    )
+    signed_headers = "content-type;host;x-amz-content-sha256;x-amz-date"
+    canonical_request = "\n".join([
+        method.upper(),
+        canonical_uri,
+        "",
+        canonical_headers,
+        signed_headers,
+        payload_hash,
+    ])
+
+    credential_scope = f'{date_stamp}/{config["region"]}/s3/aws4_request'
+    string_to_sign = "\n".join([
+        "AWS4-HMAC-SHA256",
+        amz_date,
+        credential_scope,
+        hashlib.sha256(canonical_request.encode("utf-8")).hexdigest(),
+    ])
+    signing_key = _aws_signing_key(
+        config["secret_key"], date_stamp, config["region"], "s3"
+    )
+    signature = hmac.new(
+        signing_key,
+        string_to_sign.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    authorization = (
+        "AWS4-HMAC-SHA256 "
+        f'Credential={config["access_key"]}/{credential_scope}, '
+        f"SignedHeaders={signed_headers}, Signature={signature}"
+    )
+
+    headers = {
+        "Content-Type": content_type,
+        "Host": host,
+        "X-Amz-Content-Sha256": payload_hash,
+        "X-Amz-Date": amz_date,
+        "Authorization": authorization,
+    }
+
+    request_data = payload if method.upper() in {"PUT", "POST"} else None
+    request = urllib.request.Request(
+        url,
+        data=request_data,
+        headers=headers,
+        method=method.upper(),
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return response.read(), response.headers
+
+
+def bucket_put_object(key, data, content_type):
+    _bucket_authorized_request(
+        "PUT", key, data=data, content_type=content_type, timeout=120
+    )
+
+
+def bucket_delete_object(key):
+    _bucket_authorized_request(
+        "DELETE", key, data=b"", content_type="application/octet-stream", timeout=60
+    )
+
+
+def build_bucket_presigned_get_url(key, expires_seconds=21600):
+    config = get_product_bucket_config()
+    if not config:
+        raise RuntimeError("Railway product bucket is not configured.")
+
+    expires_seconds = max(60, min(int(expires_seconds or 21600), 604800))
+    host, canonical_uri, base_url = _bucket_url_parts(config, key)
+    now = datetime.utcnow()
+    amz_date = now.strftime("%Y%m%dT%H%M%SZ")
+    date_stamp = now.strftime("%Y%m%d")
+    credential_scope = f'{date_stamp}/{config["region"]}/s3/aws4_request'
+
+    query_items = {
+        "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
+        "X-Amz-Credential": f'{config["access_key"]}/{credential_scope}',
+        "X-Amz-Date": amz_date,
+        "X-Amz-Expires": str(expires_seconds),
+        "X-Amz-SignedHeaders": "host",
+    }
+    canonical_query = "&".join(
+        f"{urllib.parse.quote(str(key_name), safe='-_.~')}="
+        f"{urllib.parse.quote(str(value), safe='-_.~')}"
+        for key_name, value in sorted(query_items.items())
+    )
+    canonical_headers = f"host:{host}\n"
+    canonical_request = "\n".join([
+        "GET",
+        canonical_uri,
+        canonical_query,
+        canonical_headers,
+        "host",
+        "UNSIGNED-PAYLOAD",
+    ])
+    string_to_sign = "\n".join([
+        "AWS4-HMAC-SHA256",
+        amz_date,
+        credential_scope,
+        hashlib.sha256(canonical_request.encode("utf-8")).hexdigest(),
+    ])
+    signing_key = _aws_signing_key(
+        config["secret_key"], date_stamp, config["region"], "s3"
+    )
+    signature = hmac.new(
+        signing_key,
+        string_to_sign.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return f"{base_url}?{canonical_query}&X-Amz-Signature={signature}"
+
+
+def bucket_get_object_bytes(key, max_bytes=MAX_AI_SOURCE_BYTES):
+    presigned_url = build_bucket_presigned_get_url(key, expires_seconds=900)
+    request = urllib.request.Request(
+        presigned_url,
+        headers={"User-Agent": "BridgeQuotation/1.0"},
+        method="GET",
+    )
+    with urllib.request.urlopen(request, timeout=90) as response:
+        data = response.read(max_bytes + 1)
+        if len(data) > max_bytes:
+            raise ValueError("Image is too large to process.")
+        return data, response.headers.get("Content-Type", "application/octet-stream")
+
+
+def make_product_asset_url(asset_key):
+    return "/product-assets/" + str(asset_key or "").lstrip("/")
+
+
+def persist_uploaded_product_file(final_path, media_type):
+    final_path = Path(final_path)
+    if not final_path.exists():
+        raise FileNotFoundError(str(final_path))
+
+    if not product_bucket_is_configured():
+        return {
+            "url": "/" + str(final_path).replace("\\", "/"),
+            "storage": "local",
+            "asset_key": "",
+        }
+
+    extension = final_path.suffix.lower() or ".bin"
+    folder = "product-videos" if media_type == "video" else "product-images"
+    asset_key = (
+        f"{folder}/uploads/{datetime.now().strftime('%Y-%m')}/"
+        f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:12]}{extension}"
+    )
+    content_type = mimetypes.guess_type(final_path.name)[0] or "application/octet-stream"
+
+    try:
+        bucket_put_object(asset_key, final_path.read_bytes(), content_type)
+        final_path.unlink(missing_ok=True)
+        return {
+            "url": make_product_asset_url(asset_key),
+            "storage": "bucket",
+            "asset_key": asset_key,
+        }
+    except Exception as exc:
+        print("Railway bucket upload failed; using local/Volume fallback:", exc)
+        return {
+            "url": "/" + str(final_path).replace("\\", "/"),
+            "storage": "local",
+            "asset_key": "",
+        }
+
+
+def persist_ai_image_bytes(image_bytes):
+    image_bytes = bytes(image_bytes or b"")
+    if not image_bytes:
+        raise ValueError("Generated image is empty.")
+
+    file_name = (
+        datetime.now().strftime("%Y%m%d%H%M%S") +
+        "_" + uuid.uuid4().hex[:12] + ".webp"
+    )
+
+    if product_bucket_is_configured():
+        asset_key = (
+            f"product-images/ai-drafts/{datetime.now().strftime('%Y-%m')}/{file_name}"
+        )
+        try:
+            bucket_put_object(asset_key, image_bytes, "image/webp")
+            return {
+                "url": make_product_asset_url(asset_key),
+                "storage": "bucket",
+                "asset_key": asset_key,
+            }
+        except Exception as exc:
+            print("AI image bucket upload failed; using local/Volume fallback:", exc)
+
+    local_dir = PRODUCT_MEDIA_LOCAL_ROOT / "ai-drafts" / datetime.now().strftime("%Y-%m")
+    local_dir.mkdir(parents=True, exist_ok=True)
+    local_path = local_dir / file_name
+    local_path.write_bytes(image_bytes)
+    return {
+        "url": "/" + str(local_path).replace("\\", "/"),
+        "storage": "local",
+        "asset_key": "",
+    }
+
+
+def _safe_local_product_asset_path(url_path):
+    raw_path = urllib.parse.unquote(str(url_path or "").split("?", 1)[0])
+    # Existing catalog products may use legacy files under /static/image/... while
+    # newly uploaded product media lives under /static/uploads/products/....
+    # AI editing and PDF rendering should support both, but never allow traversal
+    # outside the application's static directory.
+    if not raw_path.startswith("/static/"):
+        raise ValueError("Unsupported local product image path.")
+    relative = raw_path.lstrip("/")
+    parts = Path(relative).parts
+    if ".." in parts or not parts or parts[0] != "static":
+        raise ValueError("Invalid local image path.")
+    local_path = Path(relative)
+    try:
+        static_root = Path("static").resolve()
+        resolved = local_path.resolve()
+        resolved.relative_to(static_root)
+    except Exception:
+        raise ValueError("Invalid local image path.")
+    return local_path
+
+
+def read_product_asset_bytes(source_url, max_bytes=MAX_AI_SOURCE_BYTES):
+    source_url = str(source_url or "").strip()
+    if not source_url:
+        raise ValueError("Please upload or select a source image first.")
+
+    if source_url.startswith("/product-assets/"):
+        asset_key = urllib.parse.unquote(source_url[len("/product-assets/"):].split("?", 1)[0])
+        data, content_type = bucket_get_object_bytes(asset_key, max_bytes=max_bytes)
+        extension = mimetypes.guess_extension(content_type.split(";", 1)[0]) or ".webp"
+        return data, "source" + extension, content_type.split(";", 1)[0]
+
+    if source_url.startswith("/static/"):
+        local_path = _safe_local_product_asset_path(source_url)
+        if not local_path.exists():
+            raise FileNotFoundError("Source image file no longer exists on the server.")
+        data = local_path.read_bytes()
+        if len(data) > max_bytes:
+            raise ValueError("Image is too large to process.")
+        content_type = mimetypes.guess_type(local_path.name)[0] or "image/webp"
+        return data, local_path.name, content_type
+
+    if source_url.startswith(("https://", "http://")):
+        request = urllib.request.Request(
+            source_url,
+            headers={"User-Agent": "BridgeQuotation/1.0"},
+        )
+        with urllib.request.urlopen(request, timeout=60) as response:
+            data = response.read(max_bytes + 1)
+            if len(data) > max_bytes:
+                raise ValueError("Image is too large to process.")
+            content_type = response.headers.get("Content-Type", "image/webp").split(";", 1)[0]
+            extension = mimetypes.guess_extension(content_type) or ".webp"
+            return data, "source" + extension, content_type
+
+    raise ValueError("Unsupported source image URL.")
+
+
+def _multipart_form_bytes(fields, file_field, file_name, file_bytes, file_content_type):
+    boundary = "----BridgeQuotation" + uuid.uuid4().hex
+    body = bytearray()
+
+    def add_line(value=b""):
+        if isinstance(value, str):
+            value = value.encode("utf-8")
+        body.extend(value)
+        body.extend(b"\r\n")
+
+    for name, value in fields.items():
+        if value is None:
+            continue
+        add_line(f"--{boundary}")
+        add_line(f'Content-Disposition: form-data; name="{name}"')
+        add_line()
+        add_line(str(value))
+
+    add_line(f"--{boundary}")
+    safe_name = re.sub(r'[^A-Za-z0-9_.-]+', '_', str(file_name or "source.webp"))
+    add_line(
+        f'Content-Disposition: form-data; name="{file_field}"; filename="{safe_name}"'
+    )
+    add_line(f"Content-Type: {file_content_type or 'application/octet-stream'}")
+    add_line()
+    body.extend(file_bytes)
+    body.extend(b"\r\n")
+    add_line(f"--{boundary}--")
+    return bytes(body), f"multipart/form-data; boundary={boundary}"
+
+
+def build_ai_product_image_prompt(mode, custom_prompt="", product_name="", category=""):
+    product_context = ""
+    if product_name:
+        product_context += f" Product reference name: {product_name}."
+    if category:
+        product_context += f" Product category: {category}."
+
+    fidelity_rules = (
+        "Preserve the exact product identity from the input image: shape, proportions, "
+        "construction, color, material appearance, quantity, included accessories, brand marks, "
+        "packaging structure and distinctive details. Do not redesign the product, invent extra "
+        "parts, change the number of items, or substitute a different model. Keep logos and genuine "
+        "product markings unless they are clearly unrelated overlay/watermark text outside the product. "
+        "The result must look like a realistic commercial product photograph, with no generated captions, "
+        "price tags, labels or floating text."
+    )
+
+    if mode == "clean":
+        task = (
+            "Clean this supplier product image for an international B2B quotation catalog. "
+            "Remove distracting background clutter, unrelated Chinese annotations, marketing overlays, "
+            "watermarks and callout text around the product. Improve lighting, white balance, sharpness "
+            "and composition. Use a clean light neutral background with a soft natural contact shadow. "
+            "Do not remove or rewrite legitimate logos or packaging graphics that are physically part of the product."
+        )
+    elif mode == "catalog":
+        task = (
+            "Create a polished European retail supplier-catalog hero image from this exact product. "
+            "Use a premium minimal studio setting with a clean warm-white or very light neutral background, "
+            "balanced commercial lighting, soft realistic shadow, centered composition and ample breathing room. "
+            "Keep the product as the clear focus and do not add decorative text."
+        )
+    else:
+        task = (
+            "Create a realistic lifestyle merchandising photograph using this exact product in an appropriate "
+            "real-world usage environment. The environment should look natural, premium and suitable for a "
+            "European retailer or importer catalog. Keep the product prominent and fully recognizable; do not "
+            "change the product itself."
+        )
+
+    custom = str(custom_prompt or "").strip()
+    if custom:
+        task += " Additional scene/art-direction request from the admin: " + custom
+
+    return fidelity_rules + product_context + " " + task
+
+
+def call_openai_image_edit(source_bytes, source_name, source_content_type, prompt, quality="medium", size="auto"):
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY is not configured in Railway Variables.")
+
+    allowed_quality = {"low", "medium", "high", "auto"}
+    allowed_size = {"1024x1024", "1024x1536", "1536x1024", "auto"}
+    quality = quality if quality in allowed_quality else "medium"
+    size = size if size in allowed_size else "auto"
+
+    fields = {
+        "model": OPENAI_IMAGE_MODEL,
+        "prompt": prompt,
+        "n": "1",
+        "output_format": "webp",
+        "output_compression": "82",
+        "quality": quality,
+        "size": size,
+    }
+    # gpt-image-2 processes image inputs at high fidelity automatically and
+    # does not accept an input_fidelity override. Older GPT Image models do.
+    if OPENAI_IMAGE_MODEL != "gpt-image-2":
+        fields["input_fidelity"] = "high"
+    body, content_type = _multipart_form_bytes(
+        fields,
+        "image[]",
+        source_name,
+        source_bytes,
+        source_content_type,
+    )
+    headers = {
+        "Authorization": "Bearer " + api_key,
+        "Content-Type": content_type,
+        "Accept": "application/json",
+        "User-Agent": "BridgeQuotation/1.0",
+    }
+    organization = os.getenv("OPENAI_ORG_ID", "").strip()
+    project = (os.getenv("OPENAI_PROJECT_ID") or os.getenv("OPENAI_PROJECT") or "").strip()
+    if organization:
+        headers["OpenAI-Organization"] = organization
+    if project:
+        headers["OpenAI-Project"] = project
+
+    request = urllib.request.Request(
+        OPENAI_IMAGE_API_BASE + "/images/edits",
+        data=body,
+        headers=headers,
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=240) as response:
+            response_data = response.read()
+    except urllib.error.HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
+        try:
+            parsed = json.loads(error_body)
+            api_message = (
+                parsed.get("error", {}).get("message") or
+                parsed.get("message") or
+                error_body
+            )
+        except Exception:
+            api_message = error_body
+        raise RuntimeError(f"OpenAI image request failed ({exc.code}): {api_message[:500]}")
+    except urllib.error.URLError as exc:
+        raise RuntimeError("Could not reach the OpenAI image API: " + str(exc.reason))
+
+    parsed = json.loads(response_data.decode("utf-8"))
+    data_items = parsed.get("data") or []
+    if not data_items:
+        raise RuntimeError("OpenAI returned no image data.")
+
+    first = data_items[0] or {}
+    if first.get("b64_json"):
+        return base64.b64decode(first["b64_json"])
+
+    if first.get("url"):
+        with urllib.request.urlopen(first["url"], timeout=90) as image_response:
+            return image_response.read()
+
+    raise RuntimeError("OpenAI returned an unsupported image response.")
+
+
+def delete_ai_draft_url(result_url):
+    result_url = str(result_url or "").strip()
+    if not result_url:
+        return False
+
+    if result_url.startswith("/product-assets/product-images/ai-drafts/"):
+        key = urllib.parse.unquote(
+            result_url[len("/product-assets/"):].split("?", 1)[0]
+        )
+        bucket_delete_object(key)
+        return True
+
+    if result_url.startswith("/static/uploads/products/ai-drafts/"):
+        local_path = _safe_local_product_asset_path(result_url)
+        # Extra guard: this endpoint is only allowed to delete AI draft files.
+        if "ai-drafts" not in local_path.parts:
+            return False
+        local_path.unlink(missing_ok=True)
+        return True
+
+    return False
+
+
+@app.get("/product-assets/{asset_key:path}")
+def serve_product_bucket_asset(asset_key: str):
+    if not product_bucket_is_configured():
+        return Response(status_code=404, content="Product bucket is not configured.")
+
+    try:
+        presigned_url = build_bucket_presigned_get_url(asset_key, expires_seconds=21600)
+        response = RedirectResponse(url=presigned_url, status_code=307)
+        response.headers["Cache-Control"] = "private, max-age=300"
+        return response
+    except Exception as exc:
+        print("Product bucket redirect failed:", exc)
+        return Response(status_code=404, content="Product image is unavailable.")
+
+
+@app.get("/admin/ai-image/status")
+def get_admin_ai_image_status(requester_username: str = ""):
+    db = SessionLocal()
+    try:
+        if not can_approved_admin(db, requester_username):
+            return {
+                "success": False,
+                "message": "Only an approved admin can use AI image tools."
+            }
+
+        return {
+            "success": True,
+            "ai_configured": bool(os.getenv("OPENAI_API_KEY", "").strip()),
+            "bucket_configured": product_bucket_is_configured(),
+            "storage_mode": "Railway Bucket" if product_bucket_is_configured() else "Local / Railway Volume fallback",
+            "model": OPENAI_IMAGE_MODEL,
+            "output_format": "WebP",
+        }
+    finally:
+        db.close()
+
+
+@app.post("/admin/ai-image/generate")
+def generate_admin_ai_product_image(data: dict):
+    db = SessionLocal()
+    try:
+        requester_username = str(data.get("requester_username", "") or "").strip()
+        if not can_approved_admin(db, requester_username):
+            return {
+                "success": False,
+                "message": "Only an approved admin can generate product images."
+            }
+
+        source_url = str(data.get("source_url", "") or "").strip()
+        mode = str(data.get("mode", "clean") or "clean").strip().lower()
+        if mode not in {"clean", "catalog", "lifestyle"}:
+            mode = "clean"
+
+        custom_prompt = str(data.get("custom_prompt", "") or "").strip()
+        product_name = str(data.get("product_name", "") or "").strip()
+        category = str(data.get("category", "") or "").strip()
+        quality = str(data.get("quality", "medium") or "medium").strip().lower()
+        size = str(data.get("size", "auto") or "auto").strip().lower()
+
+        source_bytes, source_name, source_content_type = read_product_asset_bytes(source_url)
+        if not source_content_type.startswith("image/"):
+            return {
+                "success": False,
+                "message": "The selected source file is not an image."
+            }
+
+        prompt = build_ai_product_image_prompt(
+            mode,
+            custom_prompt=custom_prompt,
+            product_name=product_name,
+            category=category,
+        )
+        generated_bytes = call_openai_image_edit(
+            source_bytes,
+            source_name,
+            source_content_type,
+            prompt,
+            quality=quality,
+            size=size,
+        )
+        stored = persist_ai_image_bytes(generated_bytes)
+        return {
+            "success": True,
+            "message": "AI image generated. Review it before using it on the quotation website.",
+            "url": stored["url"],
+            "storage": stored["storage"],
+            "asset_key": stored.get("asset_key", ""),
+            "mode": mode,
+            "model": OPENAI_IMAGE_MODEL,
+        }
+    except Exception as exc:
+        print("AI product image generation failed:", exc)
+        return {
+            "success": False,
+            "message": str(exc)[:700] or "AI image generation failed."
+        }
+    finally:
+        db.close()
+
+
+@app.post("/admin/ai-image/delete")
+def delete_admin_ai_product_image(data: dict):
+    db = SessionLocal()
+    try:
+        requester_username = str(data.get("requester_username", "") or "").strip()
+        if not can_approved_admin(db, requester_username):
+            return {
+                "success": False,
+                "message": "Only an approved admin can delete AI image drafts."
+            }
+
+        result_url = str(data.get("url", "") or "").strip()
+        deleted = delete_ai_draft_url(result_url)
+        return {
+            "success": bool(deleted),
+            "message": "AI draft deleted." if deleted else "This image is not an AI draft or is already unavailable."
+        }
+    except Exception as exc:
+        print("Delete AI draft failed:", exc)
+        return {
+            "success": False,
+            "message": "Could not delete AI draft: " + str(exc)[:400]
+        }
+    finally:
+        db.close()
+
 def safe_upload_extension(filename, media_type):
     suffix = Path(str(filename or "")).suffix.lower()
 
@@ -3459,6 +4165,17 @@ def get_shared_sales_folders(db):
 
 @app.post("/admin/product-media-upload-chunk")
 def upload_product_media_chunk(data: dict):
+    requester_username = str(data.get("requester_username", "") or "").strip()
+    db = SessionLocal()
+    try:
+        if not can_approved_admin(db, requester_username):
+            return {
+                "success": False,
+                "message": "Only an approved admin can upload product media."
+            }
+    finally:
+        db.close()
+
     upload_id = str(data.get("upload_id", "") or "").strip()
     filename = str(data.get("filename", "") or "").strip()
     media_type = str(data.get("media_type", "image") or "image").strip().lower()
@@ -3573,13 +4290,16 @@ def upload_product_media_chunk(data: dict):
 
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
-        public_url = "/" + str(final_path).replace("\\", "/")
+        stored_file = persist_uploaded_product_file(final_path, media_type)
+        public_url = stored_file["url"]
 
         return {
             "success": True,
             "message": "File uploaded successfully.",
             "complete": True,
-            "url": public_url
+            "url": public_url,
+            "storage": stored_file.get("storage", "local"),
+            "asset_key": stored_file.get("asset_key", "")
         }
 
     except Exception as e:
@@ -4899,33 +5619,22 @@ async def generate_cart_pdf(data: dict):
         if not image_url:
             return make_text("No Image", center=True)
 
-        image_path = str(image_url)
-
-        if image_path.startswith("/"):
-            image_path = "." + image_path
-
-        local_path = LocalPath(image_path)
-
-        if not local_path.exists():
-            return make_text("No Image", center=True)
-
         try:
-            reader = ImageReader(str(local_path))
+            image_bytes, _, _ = read_product_asset_bytes(str(image_url), max_bytes=25 * 1024 * 1024)
+            reader = ImageReader(BytesIO(image_bytes))
             img_width, img_height = reader.getSize()
 
             max_width = 44
             max_height = 44
-
             scale = min(max_width / img_width, max_height / img_height)
 
             product_image = Image(
-                str(local_path),
+                BytesIO(image_bytes),
                 width=img_width * scale,
                 height=img_height * scale
             )
 
             product_image.hAlign = "CENTER"
-
             return product_image
 
         except Exception:
