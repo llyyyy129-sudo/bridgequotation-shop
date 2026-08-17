@@ -296,6 +296,48 @@
             grid-template-columns: minmax(180px, 240px) auto 1fr;
         }
 
+        .pricing-level-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(120px, 1fr));
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        .pricing-level-card {
+            background: #f8fafc;
+            border: 1px solid #dbe3ef;
+            border-radius: 16px;
+            padding: 13px;
+        }
+
+        .pricing-level-card .pricing-level-name {
+            color: #1f3c88;
+            font-size: 14px;
+            font-weight: 900;
+            margin-bottom: 8px;
+        }
+
+        .pricing-level-card .pricing-level-hint {
+            color: #7b8494;
+            font-size: 10px;
+            font-weight: 700;
+            margin-top: 6px;
+        }
+
+        .pricing-level-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .pricing-level-note {
+            color: #667085;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
         .filter-grid {
             grid-template-columns: minmax(260px, 1.5fr) minmax(180px, 0.7fr) minmax(180px, 0.7fr) auto;
         }
@@ -1636,6 +1678,7 @@
             .admin-nav { align-items: flex-start; flex-direction: column; }
             .hero-card { grid-template-columns: 1fr; }
             .summary-grid { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
+            .pricing-level-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
             .filter-grid,
             .pricing-row,
             .profile-grid,
@@ -1764,7 +1807,7 @@
             <div class="hero-kicker">Bridge Admin Control Center</div>
             <h1 class="hero-title">Manage users, sales contacts and pricing from one place.</h1>
             <p class="hero-text">
-                Approve new accounts, assign customers to the correct sales contact, control A/B customer pricing,
+                Approve new accounts, assign customers to the correct sales contact, control A–G customer pricing,
                 and keep company and email information accurate for quotations and sales follow-up.
             </p>
         </div>
@@ -1780,7 +1823,7 @@
             </div>
             <div class="hero-feature">
                 <b>Price Level Management</b>
-                <span>Control B Class customer pricing without changing the Excel source price.</span>
+                <span>Set A–G price percentages and assign each customer to the correct price level without changing the Excel source price.</span>
             </div>
         </div>
     </div>
@@ -1857,24 +1900,54 @@
     <div class="panel">
         <div class="panel-header">
             <div>
-                <h2 class="panel-title">Pricing Settings</h2>
+                <h2 class="panel-title">Customer Price Levels</h2>
                 <div class="panel-desc">
-                    A Class customers see the original Excel price. B Class customers see the Excel price multiplied by this percentage.
+                    Set the visible price percentage for A–G customer levels. 100% means the original Excel price. Each approved customer can then be assigned to one level.
                 </div>
             </div>
         </div>
 
-        <div class="pricing-row">
-            <div class="field">
-                <label for="bClassPercent">B Class Price Percentage</label>
-                <input id="bClassPercent" class="pricing-input" type="number" min="100" max="300" step="1" value="120">
+        <div class="pricing-level-grid">
+            <div class="pricing-level-card">
+                <div class="pricing-level-name">A Class</div>
+                <input id="priceLevelA" class="pricing-input" type="number" min="1" max="300" step="0.01" value="100">
+                <div class="pricing-level-hint">% of Excel price</div>
             </div>
-
-            <div style="font-weight:900;color:#1f3c88;padding-bottom:11px;">%</div>
-
-            <div>
-                <button class="primary-btn" onclick="savePricingSetting()">Save Pricing</button>
+            <div class="pricing-level-card">
+                <div class="pricing-level-name">B Class</div>
+                <input id="priceLevelB" class="pricing-input" type="number" min="1" max="300" step="0.01" value="105">
+                <div class="pricing-level-hint">% of Excel price</div>
             </div>
+            <div class="pricing-level-card">
+                <div class="pricing-level-name">C Class</div>
+                <input id="priceLevelC" class="pricing-input" type="number" min="1" max="300" step="0.01" value="100">
+                <div class="pricing-level-hint">% of Excel price</div>
+            </div>
+            <div class="pricing-level-card">
+                <div class="pricing-level-name">D Class</div>
+                <input id="priceLevelD" class="pricing-input" type="number" min="1" max="300" step="0.01" value="100">
+                <div class="pricing-level-hint">% of Excel price</div>
+            </div>
+            <div class="pricing-level-card">
+                <div class="pricing-level-name">E Class</div>
+                <input id="priceLevelE" class="pricing-input" type="number" min="1" max="300" step="0.01" value="100">
+                <div class="pricing-level-hint">% of Excel price</div>
+            </div>
+            <div class="pricing-level-card">
+                <div class="pricing-level-name">F Class</div>
+                <input id="priceLevelF" class="pricing-input" type="number" min="1" max="300" step="0.01" value="100">
+                <div class="pricing-level-hint">% of Excel price</div>
+            </div>
+            <div class="pricing-level-card">
+                <div class="pricing-level-name">G Class</div>
+                <input id="priceLevelG" class="pricing-input" type="number" min="1" max="300" step="0.01" value="100">
+                <div class="pricing-level-hint">% of Excel price</div>
+            </div>
+        </div>
+
+        <div class="pricing-level-actions">
+            <button class="primary-btn" onclick="savePricingSetting()">Save A–G Pricing</button>
+            <span class="pricing-level-note">Example: 105% means the customer sees Excel price × 1.05.</span>
         </div>
     </div>
 
@@ -2207,6 +2280,8 @@ let adminSharedFoldersCache = [];
 let activeAdminSharedFolderId = null;
 let managedPasswordUserId = null;
 let managedPasswordUsername = "";
+const CUSTOMER_PRICE_LEVELS = ["A", "B", "C", "D", "E", "F", "G"];
+let pricingPercentagesCache = { A: 100, B: 105, C: 100, D: 100, E: 100, F: 100, G: 100 };
 
 document.getElementById("adminName").innerText = currentUser || "Unknown";
 
@@ -4310,46 +4385,63 @@ function viewAdminProduct(productId) {
 
 async function loadPricingSettings() {
     try {
-        const response = await fetch("/admin/pricing");
+        const query = new URLSearchParams({ requester_username: currentUser || "" });
+        const response = await fetch(`/admin/pricing?${query.toString()}`);
         const data = await response.json();
 
-        if (data.success) {
-            document.getElementById("bClassPercent").value =
-                Number(data.b_percentage || 120);
+        if (!response.ok || !data.success) {
+            console.error("Load pricing settings failed:", data.message || data.detail);
+            return;
         }
+
+        const percentages = data.percentages || {};
+        CUSTOMER_PRICE_LEVELS.forEach(level => {
+            const value = Number(percentages[level] ?? pricingPercentagesCache[level] ?? 100);
+            pricingPercentagesCache[level] = Number.isFinite(value) ? value : 100;
+            const input = document.getElementById(`priceLevel${level}`);
+            if (input) input.value = pricingPercentagesCache[level];
+        });
     } catch (error) {
         console.error("Load pricing settings error:", error);
     }
 }
 
 async function savePricingSetting() {
-    const percentage = Number(document.getElementById("bClassPercent").value);
+    const percentages = {};
 
-    if (!percentage || percentage < 100) {
-        showCenterMessage("B Class percentage must be 100 or above.");
-        return;
-    }
+    for (const level of CUSTOMER_PRICE_LEVELS) {
+        const input = document.getElementById(`priceLevel${level}`);
+        const percentage = Number(input?.value);
 
-    if (percentage > 300) {
-        showCenterMessage("B Class percentage cannot be higher than 300%.");
-        return;
+        if (!Number.isFinite(percentage) || percentage < 1 || percentage > 300) {
+            showCenterMessage(`${level} Class percentage must be between 1% and 300%.`);
+            input?.focus();
+            return;
+        }
+
+        percentages[level] = percentage;
     }
 
     try {
         const response = await fetch("/admin/pricing", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ b_percentage: percentage })
+            body: JSON.stringify({
+                requester_username: currentUser,
+                percentages: percentages
+            })
         });
 
         const data = await response.json();
 
-        if (!data.success) {
-            showCenterMessage(data.message || "Failed to update pricing.");
+        if (!response.ok || !data.success) {
+            showCenterMessage(data.message || data.detail || "Failed to update pricing.");
             return;
         }
 
-        showToast(data.message);
+        pricingPercentagesCache = { ...pricingPercentagesCache, ...(data.percentages || percentages) };
+        await loadUserGroups();
+        showToast(data.message || "Customer price levels updated.");
     } catch (error) {
         console.error("Save pricing setting error:", error);
         showCenterMessage("Failed to update pricing. Please check server logs.");
@@ -4738,15 +4830,19 @@ function renderProfileEditBox(user) {
 function renderCustomerLevelBox(user) {
     if (user.role !== "customer" || user.approval_status !== "Approved") return "";
 
-    const currentLevel = user.customer_level || "A";
+    const currentLevel = String(user.customer_level || "A").toUpperCase();
+    const options = CUSTOMER_PRICE_LEVELS.map(level => {
+        const percentage = Number(pricingPercentagesCache[level] ?? 100);
+        const selected = currentLevel === level ? "selected" : "";
+        return `<option value="${level}" ${selected}>${level} Class · ${percentage}%</option>`;
+    }).join("");
 
     return `
         <div class="assign-box">
-            <div class="edit-title">Customer Level</div>
+            <div class="edit-title">Customer Price Level</div>
             <div class="assign-row">
                 <select class="sales-select" id="customer-level-${user.id}">
-                    <option value="A" ${currentLevel === "A" ? "selected" : ""}>A Class - Excel Price</option>
-                    <option value="B" ${currentLevel === "B" ? "selected" : ""}>B Class - Adjusted Price</option>
+                    ${options}
                 </select>
 
                 <button class="primary-btn" onclick="updateCustomerLevel(${user.id})">Save Level</button>
@@ -4934,7 +5030,7 @@ async function updateCustomerLevel(userId) {
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ customer_level: customerLevel })
+                body: JSON.stringify({ customer_level: customerLevel, requester_username: currentUser })
             }
         );
 

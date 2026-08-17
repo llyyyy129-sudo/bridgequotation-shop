@@ -166,6 +166,15 @@ def run_migrations():
     add_column_if_missing("products", "nearest_port", "VARCHAR DEFAULT ''")
     add_column_if_missing("products", "lead_time", "TEXT DEFAULT ''")
 
+    # A-G customer price levels. Keep the existing B multiplier and add the
+    # remaining levels without changing any current customer price.
+    add_column_if_missing("pricing_settings", "a_multiplier", "DOUBLE PRECISION DEFAULT 1.0")
+    add_column_if_missing("pricing_settings", "c_multiplier", "DOUBLE PRECISION DEFAULT 1.0")
+    add_column_if_missing("pricing_settings", "d_multiplier", "DOUBLE PRECISION DEFAULT 1.0")
+    add_column_if_missing("pricing_settings", "e_multiplier", "DOUBLE PRECISION DEFAULT 1.0")
+    add_column_if_missing("pricing_settings", "f_multiplier", "DOUBLE PRECISION DEFAULT 1.0")
+    add_column_if_missing("pricing_settings", "g_multiplier", "DOUBLE PRECISION DEFAULT 1.0")
+
     add_column_if_missing(
         "orders",
         "sales_username",
@@ -329,20 +338,73 @@ def ensure_pricing_setting():
 ensure_pricing_setting()
 
 
-def get_b_multiplier(db):
-    setting = db.query(PricingSetting).filter(
-        PricingSetting.id == 1
-    ).first()
+PRICE_LEVELS = ("A", "B", "C", "D", "E", "F", "G")
+PRICE_LEVEL_COLUMN_MAP = {
+    "A": "a_multiplier",
+    "B": "b_multiplier",
+    "C": "c_multiplier",
+    "D": "d_multiplier",
+    "E": "e_multiplier",
+    "F": "f_multiplier",
+    "G": "g_multiplier",
+}
+DEFAULT_PRICE_LEVEL_MULTIPLIERS = {
+    "A": 1.0,
+    "B": 1.2,
+    "C": 1.0,
+    "D": 1.0,
+    "E": 1.0,
+    "F": 1.0,
+    "G": 1.0,
+}
 
-    if not setting:
-        setting = PricingSetting(
-            id=1,
-            b_multiplier=1.2
-        )
+
+def get_price_level_multipliers(db):
+    row = db.execute(text("""
+        SELECT
+            a_multiplier,
+            b_multiplier,
+            c_multiplier,
+            d_multiplier,
+            e_multiplier,
+            f_multiplier,
+            g_multiplier
+        FROM pricing_settings
+        WHERE id = 1
+    """)).mappings().first()
+
+    if not row:
+        setting = PricingSetting(id=1, b_multiplier=DEFAULT_PRICE_LEVEL_MULTIPLIERS["B"])
         db.add(setting)
         db.commit()
+        row = db.execute(text("""
+            SELECT
+                a_multiplier,
+                b_multiplier,
+                c_multiplier,
+                d_multiplier,
+                e_multiplier,
+                f_multiplier,
+                g_multiplier
+            FROM pricing_settings
+            WHERE id = 1
+        """)).mappings().first()
 
-    return float(setting.b_multiplier or 1.2)
+    result = {}
+    for level in PRICE_LEVELS:
+        column_name = PRICE_LEVEL_COLUMN_MAP[level]
+        raw_value = row.get(column_name) if row else None
+        try:
+            result[level] = float(raw_value) if raw_value is not None else DEFAULT_PRICE_LEVEL_MULTIPLIERS[level]
+        except Exception:
+            result[level] = DEFAULT_PRICE_LEVEL_MULTIPLIERS[level]
+
+    return result
+
+
+def get_b_multiplier(db):
+    # Backward-compatible helper for any older code that still asks for B.
+    return get_price_level_multipliers(db).get("B", 1.2)
 
 
 def get_price_multiplier(db, username=None):
@@ -356,12 +418,9 @@ def get_price_multiplier(db, username=None):
     if not user:
         return 1.0
 
-    level = (user.customer_level or "A").upper()
-
-    if level == "B":
-        return get_b_multiplier(db)
-
-    return 1.0
+    level = str(user.customer_level or "A").strip().upper()
+    multipliers = get_price_level_multipliers(db)
+    return float(multipliers.get(level, multipliers.get("A", 1.0)))
 
 
 def apply_price_multiplier(value, multiplier):
@@ -1610,29 +1669,33 @@ def get_sales_users():
 
 
 @app.get("/admin/pricing")
-def get_admin_pricing():
+def get_admin_pricing(requester_username: str = ""):
     db = SessionLocal()
 
-    setting = db.query(PricingSetting).filter(
-        PricingSetting.id == 1
-    ).first()
+    try:
+        if not can_approved_admin(db, str(requester_username or "").strip()):
+            return {
+                "success": False,
+                "message": "Only an approved admin can view pricing settings."
+            }
 
-    if not setting:
-        setting = PricingSetting(
-            id=1,
-            b_multiplier=1.2
-        )
-        db.add(setting)
-        db.commit()
+        multipliers = get_price_level_multipliers(db)
+        percentages = {
+            level: round(float(multiplier) * 100, 2)
+            for level, multiplier in multipliers.items()
+        }
 
-    result = {
-        "success": True,
-        "b_multiplier": float(setting.b_multiplier or 1.2),
-        "b_percentage": round(float(setting.b_multiplier or 1.2) * 100, 2)
-    }
-
-    db.close()
-    return result
+        return {
+            "success": True,
+            "levels": list(PRICE_LEVELS),
+            "multipliers": multipliers,
+            "percentages": percentages,
+            # Legacy fields retained so older Admin pages do not break.
+            "b_multiplier": multipliers.get("B", 1.2),
+            "b_percentage": percentages.get("B", 120),
+        }
+    finally:
+        db.close()
 
 
 @app.post("/admin/pricing")
@@ -1640,87 +1703,157 @@ def update_admin_pricing(data: dict):
     db = SessionLocal()
 
     try:
-        percentage = float(data.get("b_percentage", 120))
-    except Exception:
-        percentage = 120
+        requester_username = str(data.get("requester_username", "") or "").strip()
+        if not can_approved_admin(db, requester_username):
+            return {
+                "success": False,
+                "message": "Only an approved admin can update pricing settings."
+            }
 
-    if percentage < 100:
-        db.close()
-        return {
-            "success": False,
-            "message": "B Class percentage cannot be lower than 100%."
+        current_multipliers = get_price_level_multipliers(db)
+        incoming = data.get("percentages")
+
+        # Backward compatibility with the former B-only endpoint.
+        if not isinstance(incoming, dict):
+            incoming = {
+                level: round(current_multipliers.get(level, 1.0) * 100, 2)
+                for level in PRICE_LEVELS
+            }
+            if "b_percentage" in data:
+                incoming["B"] = data.get("b_percentage")
+
+        percentages = {}
+        for level in PRICE_LEVELS:
+            raw_value = incoming.get(level, round(current_multipliers.get(level, 1.0) * 100, 2))
+            try:
+                percentage = float(raw_value)
+            except Exception:
+                return {
+                    "success": False,
+                    "message": f"{level} Class percentage must be a valid number."
+                }
+
+            if percentage < 1 or percentage > 300:
+                return {
+                    "success": False,
+                    "message": f"{level} Class percentage must be between 1% and 300%."
+                }
+
+            percentages[level] = percentage
+
+        params = {
+            "a": percentages["A"] / 100,
+            "b": percentages["B"] / 100,
+            "c": percentages["C"] / 100,
+            "d": percentages["D"] / 100,
+            "e": percentages["E"] / 100,
+            "f": percentages["F"] / 100,
+            "g": percentages["G"] / 100,
         }
 
-    if percentage > 300:
-        db.close()
-        return {
-            "success": False,
-            "message": "B Class percentage cannot be higher than 300%."
-        }
+        existing = db.execute(text("SELECT id FROM pricing_settings WHERE id = 1")).first()
+        if not existing:
+            db.execute(text("""
+                INSERT INTO pricing_settings
+                    (id, b_multiplier, a_multiplier, c_multiplier, d_multiplier, e_multiplier, f_multiplier, g_multiplier)
+                VALUES
+                    (1, :b, :a, :c, :d, :e, :f, :g)
+            """), params)
+        else:
+            db.execute(text("""
+                UPDATE pricing_settings
+                SET
+                    a_multiplier = :a,
+                    b_multiplier = :b,
+                    c_multiplier = :c,
+                    d_multiplier = :d,
+                    e_multiplier = :e,
+                    f_multiplier = :f,
+                    g_multiplier = :g
+                WHERE id = 1
+            """), params)
 
-    setting = db.query(PricingSetting).filter(
-        PricingSetting.id == 1
-    ).first()
+        db.commit()
 
-    if not setting:
-        setting = PricingSetting(
-            id=1,
-            b_multiplier=percentage / 100
+        summary = ", ".join(
+            f"{level}={percentages[level]:g}%"
+            for level in PRICE_LEVELS
         )
-        db.add(setting)
-    else:
-        setting.b_multiplier = percentage / 100
-
-    db.commit()
-    db.close()
-
-    return {
-        "success": True,
-        "message": f"B Class price percentage updated to {percentage}%."
-    }
+        return {
+            "success": True,
+            "message": "Customer price levels updated: " + summary,
+            "percentages": percentages,
+        }
+    except Exception as exc:
+        db.rollback()
+        return {
+            "success": False,
+            "message": "Failed to update pricing settings: " + str(exc)
+        }
+    finally:
+        db.close()
 
 
 @app.post("/admin/customers/{customer_id}/level")
 def update_customer_level(customer_id: int, data: dict):
     db = SessionLocal()
 
-    customer = db.query(User).filter(
-        User.id == customer_id
-    ).first()
+    try:
+        requester_username = str(data.get("requester_username", "") or "").strip()
+        if not can_approved_admin(db, requester_username):
+            return {
+                "success": False,
+                "message": "Only an approved admin can change customer price level."
+            }
 
-    if not customer:
-        db.close()
+        customer = db.query(User).filter(
+            User.id == customer_id
+        ).first()
+
+        if not customer:
+            return {
+                "success": False,
+                "message": "Customer not found."
+            }
+
+        if str(customer.role or "").strip().lower() != "customer":
+            return {
+                "success": False,
+                "message": "Only customer users can have customer price level."
+            }
+
+        level = str(data.get("customer_level", "A") or "A").strip().upper()
+        if level not in PRICE_LEVELS:
+            return {
+                "success": False,
+                "message": "Customer level must be A, B, C, D, E, F or G."
+            }
+
+        customer_username = customer.username
+        customer.customer_level = level
+        db.commit()
+
+        percentages = {
+            key: round(value * 100, 2)
+            for key, value in get_price_level_multipliers(db).items()
+        }
+        level_percent = percentages.get(level, 100)
+
+        return {
+            "success": True,
+            "message": f"{customer_username} price level updated to {level} ({level_percent:g}%).",
+            "customer_level": level,
+            "percentage": level_percent,
+        }
+    except Exception as exc:
+        db.rollback()
         return {
             "success": False,
-            "message": "Customer not found."
+            "message": "Level update failed: " + str(exc)
         }
-
-    if customer.role != "customer":
+    finally:
         db.close()
-        return {
-            "success": False,
-            "message": "Only customer users can have customer level."
-        }
 
-    level = data.get("customer_level", "A").strip().upper()
-
-    if level not in ["A", "B"]:
-        db.close()
-        return {
-            "success": False,
-            "message": "Customer level must be A or B."
-        }
-
-    customer_username = customer.username
-    customer.customer_level = level
-
-    db.commit()
-    db.close()
-
-    return {
-        "success": True,
-        "message": f"{customer_username} customer level updated to {level}."
-    }
 
 @app.post("/admin/customers/{customer_id}/assign-sales")
 def assign_sales_to_customer(customer_id: int, data: dict):
