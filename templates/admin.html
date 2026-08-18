@@ -1379,6 +1379,161 @@
         .shared-folder-count { color: #64748b; font-size: 12px; font-weight: 800; margin-top: 6px; }
         .shared-folder-view-head { display: flex; align-items: center; gap: 10px; margin-top: 14px; color: #1e3a8a; font-weight: 900; }
 
+        /* Shared Files: compact Explorer-style thumbnail view */
+        .shared-folder-card-content {
+            display: block;
+        }
+
+        .shared-folder-management {
+            margin-bottom: 14px;
+        }
+
+        .shared-folder-file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+            gap: 14px;
+            align-items: start;
+        }
+
+        .shared-file-item {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: flex-start;
+            gap: 0;
+            min-width: 0;
+            padding: 9px;
+            border: 1px solid #dbe3ef;
+            border-radius: 14px;
+            background: #ffffff;
+            transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+        }
+
+        .shared-file-item:hover {
+            border-color: #93c5fd;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.09);
+            transform: translateY(-1px);
+        }
+
+        .shared-file-preview-link {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .shared-file-preview {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            background: #f8fafc;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .shared-file-preview img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain;
+            background: #ffffff;
+        }
+
+        .shared-file-type-icon {
+            width: 62px;
+            height: 76px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            font-size: 15px;
+            font-weight: 1000;
+            letter-spacing: 0.03em;
+            color: #ffffff;
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.10);
+        }
+
+        .shared-file-type-icon::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 18px;
+            height: 18px;
+            border-bottom-left-radius: 6px;
+            background: rgba(255,255,255,0.38);
+        }
+
+        .shared-file-type-image { background: #0f766e; }
+        .shared-file-type-pdf { background: #dc2626; }
+        .shared-file-type-ppt { background: #ea580c; }
+        .shared-file-type-xls { background: #16a34a; }
+        .shared-file-type-doc { background: #2563eb; }
+        .shared-file-type-video { background: #7c3aed; }
+        .shared-file-type-archive { background: #475569; }
+        .shared-file-type-text { background: #64748b; }
+        .shared-file-type-other { background: #334155; }
+
+        .shared-file-main {
+            min-width: 0;
+            padding: 9px 2px 2px;
+        }
+
+        .shared-file-name {
+            color: #0f172a;
+            font-size: 12px;
+            font-weight: 900;
+            line-height: 1.35;
+            word-break: break-word;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            min-height: 32px;
+        }
+
+        .shared-file-meta {
+            margin-top: 5px;
+            color: #64748b;
+            font-size: 10px;
+            font-weight: 750;
+            line-height: 1.35;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .shared-file-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            flex-wrap: nowrap;
+        }
+
+        .shared-file-download,
+        .shared-file-delete {
+            min-width: 0;
+            flex: 1 1 0;
+            border-radius: 8px;
+            padding: 6px 7px;
+            font-size: 10px;
+            font-weight: 900;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        @media (max-width: 720px) {
+            .shared-folder-file-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+        }
+
         .admin-product-card {
             border: 1px solid #e5e7eb;
             border-radius: 18px;
@@ -2406,7 +2561,7 @@ function renderAdminSharedFolderCard(folder, keyword) {
             </summary>
             <div class="shared-folder-card-content">
                 ${folderManagement}
-                ${files.length ? files.map(renderAdminSharedFile).join("") : `<div class="empty-message">${keyword ? "No matching files." : "This folder is empty."}</div>`}
+                ${files.length ? `<div class="shared-folder-file-grid">${files.map(renderAdminSharedFile).join("")}</div>` : `<div class="empty-message">${keyword ? "No matching files." : "This folder is empty."}</div>`}
             </div>
         </details>
     `;
@@ -2579,19 +2734,77 @@ async function deleteAdminSharedFolder(folderId, folderName) {
 }
 
 
+function getAdminSharedFileExtension(file) {
+    const name = String(file?.original_name || file?.file_url || file?.file_path || "").toLowerCase();
+    const match = name.match(/\.([a-z0-9]+)(?:[?#].*)?$/i);
+    return match ? match[1].toLowerCase() : "";
+}
+
+
+function getAdminSharedFilePreview(file) {
+    const extension = getAdminSharedFileExtension(file);
+    const url = String(file?.file_url || file?.file_path || "");
+    const imageExtensions = new Set(["jpg", "jpeg", "png", "webp", "gif"]);
+
+    if (imageExtensions.has(extension) && url) {
+        return `
+            <img src="${escapeAttr(url)}" alt="${escapeAttr(file.original_name || "Image")}"
+                 loading="lazy"
+                 onerror="this.onerror=null;this.parentElement.innerHTML='<div class=&quot;shared-file-type-icon shared-file-type-image&quot;>IMG</div>';">
+        `;
+    }
+
+    let label = extension ? extension.toUpperCase() : "FILE";
+    let typeClass = "shared-file-type-other";
+
+    if (extension === "pdf") {
+        label = "PDF";
+        typeClass = "shared-file-type-pdf";
+    } else if (["ppt", "pptx"].includes(extension)) {
+        label = "PPT";
+        typeClass = "shared-file-type-ppt";
+    } else if (["xls", "xlsx", "csv"].includes(extension)) {
+        label = extension === "csv" ? "CSV" : "XLS";
+        typeClass = "shared-file-type-xls";
+    } else if (["doc", "docx"].includes(extension)) {
+        label = "DOC";
+        typeClass = "shared-file-type-doc";
+    } else if (["mp4", "webm", "mov", "m4v"].includes(extension)) {
+        label = "VIDEO";
+        typeClass = "shared-file-type-video";
+    } else if (["zip", "rar"].includes(extension)) {
+        label = "ZIP";
+        typeClass = "shared-file-type-archive";
+    } else if (extension === "txt") {
+        label = "TXT";
+        typeClass = "shared-file-type-text";
+    }
+
+    return `<div class="shared-file-type-icon ${typeClass}">${escapeHtml(label)}</div>`;
+}
+
+
 function renderAdminSharedFile(file) {
+    const fileUrl = String(file.file_url || file.file_path || "");
+    const fileType = escapeHtml(file.file_type || getAdminSharedFileExtension(file).toUpperCase() || "Document");
+    const fileSize = formatAdminSharedFileSize(file.file_size);
+
     return `
-        <div class="shared-file-item">
+        <div class="shared-file-item" title="${escapeAttr(file.original_name || "File")}">
+            <a class="shared-file-preview-link" href="${escapeAttr(fileUrl)}" target="_blank">
+                <div class="shared-file-preview">
+                    ${getAdminSharedFilePreview(file)}
+                </div>
+            </a>
+
             <div class="shared-file-main">
                 <div class="shared-file-name">${escapeHtml(file.original_name || "File")}</div>
-                <div class="shared-file-meta">
-                    ${escapeHtml(file.file_type || "Document")} · ${formatAdminSharedFileSize(file.file_size)}<br>
-                    Uploaded by ${escapeHtml(file.uploaded_by || "")}${file.uploaded_at ? " · " + escapeHtml(file.uploaded_at) : ""}
-                </div>
+                <div class="shared-file-meta">${fileType} · ${fileSize}</div>
             </div>
+
             <div class="shared-file-actions">
-                <a class="shared-file-download" href="${escapeAttr(file.file_url || file.file_path || "")}" target="_blank" download>Download</a>
-                ${canManageAdminSharedFiles ? `<button class="shared-file-delete" onclick="deleteAdminSharedFile(${file.id})">Delete</button>` : ""}
+                <a class="shared-file-download" href="${escapeAttr(fileUrl)}" target="_blank" download>Download</a>
+                ${canManageAdminSharedFiles ? `<button class="shared-file-delete" type="button" onclick="deleteAdminSharedFile(${file.id})">Delete</button>` : ""}
             </div>
         </div>
     `;
