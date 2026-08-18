@@ -2737,12 +2737,12 @@ async function deleteAdminSharedFile(fileId) {
 
 
 const PRODUCT_FIELDS = [
-    { key: "name", label: "Product Name", type: "text", required: true, className: "wide-field" },
+    { key: "name", label: "Description", type: "text", required: true, className: "wide-field" },
     { key: "category", label: "Category", type: "text" },
     { key: "slogan", label: "Product Slogan / Badge", type: "text", className: "wide-field" },
     { key: "moq", label: "MOQ", type: "number", step: "1" },
     { key: "material", label: "Material", type: "textarea", className: "wide-field", placeholder: "Example:\nPP\nPS\nPVC" },
-    { key: "size", label: "Product Dimension", type: "text" },
+    { key: "size", label: "Product Dimension", type: "hidden" },
     { key: "packing", label: "Packing", type: "text", className: "wide-field" },
     { key: "carton_dimensions", label: "Carton Dimension", type: "carton" },
     { key: "volume", label: "Legacy Carton Dimension", type: "hidden" },
@@ -2761,7 +2761,7 @@ const PRODUCT_FIELDS = [
     { key: "image_5", label: "Image 5", type: "file", media: "image", accept: "image/*", className: "wide-field" },
     { key: "image_6", label: "Image 6", type: "file", media: "image", accept: "image/*", className: "wide-field" },
     { key: "video", label: "Video", type: "file", media: "video", accept: "video/*", className: "wide-field" },
-    { key: "description", label: "Description", type: "textarea", className: "full-field" }
+    { key: "description", label: "Specification", type: "textarea", className: "full-field" }
 ];
 
 
@@ -2905,11 +2905,10 @@ function excelPreviewText(value) {
 }
 
 const EXCEL_EDITOR_COLUMNS = [
-    { key: "name", label: "Product Name", multiline: true },
+    { key: "name", label: "Description", multiline: true },
     { key: "category", label: "Category", wide: true },
     { key: "moq", label: "MOQ", numeric: true },
     { key: "material", label: "Material", multiline: true },
-    { key: "size", label: "Product Dimension", wide: true },
     { key: "packing", label: "Packing", multiline: true },
     { key: "carton_length", label: "Carton L", numeric: true },
     { key: "carton_width", label: "Carton W", numeric: true },
@@ -2977,7 +2976,7 @@ function validateExcelEditorRow(record) {
     const errors = [];
 
     if (!String(row.name || "").trim()) {
-        errors.push("Product Name is required");
+        errors.push("Description is required");
     }
 
     EXCEL_EDITOR_NUMERIC_KEYS.forEach(key => {
@@ -3326,7 +3325,7 @@ function renderExcelImportPreview(data) {
             <b>Excel images detected:</b> ${Number(data.attached_product_images || 0)}<br>
             <b>Matched columns:</b><br>
             ${matched.length
-                ? matched.map(item => `<span class="excel-mapping-chip">${escapeHtml(item.excel_column)} → ${escapeHtml(item.website_field)}</span>`).join("")
+                ? matched.map(item => `<span class="excel-mapping-chip">${escapeHtml(item.excel_column)} → ${escapeHtml(item.website_field === "Product Name" ? "Description" : item.website_field)}</span>`).join("")
                 : "None"
             }
             ${unmatched.length
@@ -4164,7 +4163,7 @@ async function createAdminProduct() {
     const payload = getProductPayload("new-product");
 
     if (!payload.name) {
-        showCenterMessage("Product name is required.");
+        showCenterMessage("Description is required.");
         return;
     }
 
@@ -4195,7 +4194,7 @@ async function saveAdminProduct(productId) {
     const payload = getProductPayload("edit-" + productId);
 
     if (!payload.name) {
-        showCenterMessage("Product name cannot be empty.");
+        showCenterMessage("Description cannot be empty.");
         return;
     }
 
