@@ -4353,6 +4353,75 @@ def upload_shared_sales_file_chunk(data: dict):
         return {"success": False, "message": "Upload failed: " + str(e)}
 
 
+
+@app.post("/shared-sales-files/{file_id}/rename")
+def rename_shared_sales_file(file_id: int, data: dict):
+    db = SessionLocal()
+    username = str(data.get("username", "") or "").strip()
+    requested_name = Path(str(data.get("new_name", "") or "")).name.strip()
+
+    if not can_manage_shared_files(db, username):
+        db.close()
+        return {
+            "success": False,
+            "message": "Only BILL and approved admin users can rename shared files."
+        }
+
+    shared_file = db.query(SharedSalesFile).filter(
+        SharedSalesFile.id == file_id
+    ).first()
+
+    if not shared_file:
+        db.close()
+        return {"success": False, "message": "Shared file not found."}
+
+    if not requested_name:
+        db.close()
+        return {"success": False, "message": "File name cannot be empty."}
+
+    if len(requested_name) > 255:
+        db.close()
+        return {"success": False, "message": "File name must be 255 characters or less."}
+
+    if any(character in requested_name for character in ['\\', '/', ':', '*', '?', '"', '<', '>', '|']):
+        db.close()
+        return {
+            "success": False,
+            "message": 'File name cannot contain: \\ / : * ? " < > |'
+        }
+
+    current_name = str(shared_file.original_name or "").strip()
+    current_extension = Path(current_name).suffix
+
+    requested_path = Path(requested_name)
+    requested_base = requested_path.stem if requested_path.suffix else requested_name
+
+    requested_base = requested_base.strip().rstrip(".")
+    if not requested_base:
+        db.close()
+        return {"success": False, "message": "File name cannot be empty."}
+
+    # Keep the original extension so renaming cannot change the actual file type.
+    final_name = (requested_base + current_extension)[:255]
+
+    shared_file.original_name = final_name
+    shared_file.file_type = get_shared_file_type(final_name)
+
+    try:
+        db.commit()
+        result = {
+            "success": True,
+            "message": "Shared file renamed.",
+            "file": serialize_shared_file(shared_file)
+        }
+        db.close()
+        return result
+    except Exception as e:
+        db.rollback()
+        db.close()
+        return {"success": False, "message": "Rename failed: " + str(e)}
+
+
 @app.post("/shared-sales-files/{file_id}/delete")
 def delete_shared_sales_file(file_id: int, data: dict):
     db = SessionLocal()
