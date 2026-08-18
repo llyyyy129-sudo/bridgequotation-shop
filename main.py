@@ -3820,6 +3820,169 @@ def get_shared_file_type(filename):
     return "Document"
 
 
+
+def _shared_file_local_path(shared_file):
+    raw_path = str(getattr(shared_file, "file_path", "") or "").strip()
+    if not raw_path:
+        return None
+
+    if raw_path.startswith("/"):
+        return Path("." + raw_path)
+    return Path(raw_path)
+
+
+def _shared_preview_public_url(preview_path):
+    try:
+        relative = preview_path.as_posix()
+        if relative.startswith("./"):
+            relative = relative[2:]
+        return "/" + relative.lstrip("/")
+    except Exception:
+        return ""
+
+
+def _existing_shared_file_preview(local_path):
+    if not local_path:
+        return ""
+
+    preview_dir = local_path.parent / "_previews"
+    base = local_path.stem + "_cover"
+
+    for extension in [".jpg", ".jpeg", ".png", ".webp"]:
+        candidate = preview_dir / (base + extension)
+        if candidate.exists() and candidate.is_file() and candidate.stat().st_size > 0:
+            return _shared_preview_public_url(candidate)
+
+    return ""
+
+
+def _pptx_archive_image_target(slide_rels_xml, relationship_id):
+    try:
+        root = ET.fromstring(slide_rels_xml)
+    except Exception:
+        return None
+
+    for relation in root:
+        rel_id = relation.attrib.get("Id", "")
+        rel_type = relation.attrib.get("Type", "")
+        target = relation.attrib.get("Target", "")
+        if rel_id != relationship_id:
+            continue
+        if not rel_type.endswith("/image"):
+            continue
+        if not target:
+            continue
+
+        normalized = posixpath.normpath(posixpath.join("ppt/slides", target))
+        return normalized
+
+    return None
+
+
+def _extract_pptx_cover_bytes(local_path):
+    """Return (bytes, extension) for the best no-render PowerPoint cover preview."""
+    if not local_path or not local_path.exists() or local_path.suffix.lower() != ".pptx":
+        return None, None
+
+    supported = {".jpg", ".jpeg", ".png", ".webp"}
+
+    try:
+        with zipfile.ZipFile(str(local_path), "r") as archive:
+            names = set(archive.namelist())
+
+            # Best case: Office saved an actual presentation thumbnail.
+            for thumbnail_name in [
+                "docProps/thumbnail.jpeg",
+                "docProps/thumbnail.jpg",
+                "docProps/thumbnail.png",
+                "docProps/thumbnail.webp",
+            ]:
+                if thumbnail_name in names:
+                    data = archive.read(thumbnail_name)
+                    if data:
+                        return data, Path(thumbnail_name).suffix.lower()
+
+            # Fallback: inspect slide 1 relationships and use the largest raster
+            # image referenced by the cover slide. This works especially well for
+            # catalog decks whose cover is built from a large background/render.
+            slide_name = "ppt/slides/slide1.xml"
+            rels_name = "ppt/slides/_rels/slide1.xml.rels"
+
+            if slide_name not in names or rels_name not in names:
+                return None, None
+
+            try:
+                slide_root = ET.fromstring(archive.read(slide_name))
+            except Exception:
+                return None, None
+
+            relationship_ids = []
+            for node in slide_root.iter():
+                for attr_name, attr_value in node.attrib.items():
+                    if not attr_value:
+                        continue
+                    if attr_name.endswith("}embed") or attr_name.endswith("}link"):
+                        relationship_ids.append(attr_value)
+
+            rels_xml = archive.read(rels_name)
+            candidates = []
+            seen = set()
+
+            for rel_id in relationship_ids:
+                target = _pptx_archive_image_target(rels_xml, rel_id)
+                if not target or target in seen or target not in names:
+                    continue
+                seen.add(target)
+                extension = Path(target).suffix.lower()
+                if extension not in supported:
+                    continue
+                try:
+                    data = archive.read(target)
+                except Exception:
+                    continue
+                if data:
+                    candidates.append((len(data), data, extension))
+
+            if candidates:
+                candidates.sort(key=lambda item: item[0], reverse=True)
+                _, data, extension = candidates[0]
+                return data, extension
+
+    except Exception as exc:
+        print("PowerPoint cover extraction skipped:", exc)
+
+    return None, None
+
+
+def ensure_shared_file_preview(shared_file):
+    """Create/cache a cover preview for supported shared files and return its URL."""
+    local_path = _shared_file_local_path(shared_file)
+    if not local_path or not local_path.exists() or not local_path.is_file():
+        return ""
+
+    existing = _existing_shared_file_preview(local_path)
+    if existing:
+        return existing
+
+    extension = local_path.suffix.lower()
+    if extension != ".pptx":
+        return ""
+
+    preview_bytes, preview_extension = _extract_pptx_cover_bytes(local_path)
+    if not preview_bytes or preview_extension not in {".jpg", ".jpeg", ".png", ".webp"}:
+        return ""
+
+    try:
+        preview_dir = local_path.parent / "_previews"
+        preview_dir.mkdir(parents=True, exist_ok=True)
+        preview_path = preview_dir / (local_path.stem + "_cover" + preview_extension)
+        preview_path.write_bytes(preview_bytes)
+        return _shared_preview_public_url(preview_path)
+    except Exception as exc:
+        print("PowerPoint cover preview save skipped:", exc)
+        return ""
+
+
 def serialize_shared_file(shared_file):
     return {
         "id": shared_file.id,
@@ -3827,6 +3990,7 @@ def serialize_shared_file(shared_file):
         "original_name": shared_file.original_name or "",
         "file_path": shared_file.file_path or "",
         "file_url": shared_file.file_path or "",
+        "preview_url": ensure_shared_file_preview(shared_file),
         "file_type": shared_file.file_type or "Document",
         "file_size": int(shared_file.file_size or 0),
         "uploaded_by": shared_file.uploaded_by or "",
@@ -4442,6 +4606,11 @@ def delete_shared_sales_file(file_id: int, data: dict):
     local_path = Path("." + str(shared_file.file_path or ""))
 
     try:
+        preview_url = ensure_shared_file_preview(shared_file)
+        if preview_url:
+            preview_path = Path("." + preview_url) if preview_url.startswith("/") else Path(preview_url)
+            if preview_path.exists() and preview_path.is_file():
+                preview_path.unlink()
         if local_path.exists() and local_path.is_file():
             local_path.unlink()
         db.delete(shared_file)

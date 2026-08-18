@@ -1442,6 +1442,10 @@
             background: #ffffff;
         }
 
+        .view-icons .shared-file-preview img {
+            object-fit: contain;
+        }
+
         .shared-file-type-icon {
             width: 62px;
             height: 76px;
@@ -3001,7 +3005,16 @@ function getAdminSharedFileExtension(file) {
 function getAdminSharedFilePreview(file) {
     const extension = getAdminSharedFileExtension(file);
     const url = String(file?.file_url || file?.file_path || "");
+    const previewUrl = String(file?.preview_url || "");
     const imageExtensions = new Set(["jpg", "jpeg", "png", "webp", "gif"]);
+
+    if (previewUrl) {
+        return `
+            <img src="${escapeAttr(previewUrl)}" alt="${escapeAttr(file.original_name || "File cover")}"
+                 loading="lazy"
+                 onerror="this.onerror=null;this.parentElement.innerHTML='<div class=&quot;shared-file-type-icon shared-file-type-ppt&quot;>PPT</div>';">
+        `;
+    }
 
     if (imageExtensions.has(extension) && url) {
         return `
