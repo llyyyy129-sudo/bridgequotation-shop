@@ -1588,7 +1588,7 @@
         /* Icon view: wider cards so 3 action buttons do not collide */
         .shared-folder-file-grid.view-icons {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(205px, 1fr));
             gap: 14px;
             align-items: start;
         }
@@ -1599,7 +1599,29 @@
         }
 
         .view-icons .shared-file-actions {
+            display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 5px;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .view-icons .shared-file-download,
+        .view-icons .shared-file-rename,
+        .view-icons .shared-file-delete {
+            box-sizing: border-box;
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            padding: 7px 2px;
+            font-size: 9px;
+            line-height: 1.1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: clip;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         /* List view: compact rows with full filename visible */
@@ -1695,6 +1717,14 @@
             .shared-folder-file-grid.view-icons {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
                 gap: 10px;
+            }
+
+            .view-icons .shared-file-download,
+            .view-icons .shared-file-rename,
+            .view-icons .shared-file-delete {
+                font-size: 8.5px;
+                padding-left: 1px;
+                padding-right: 1px;
             }
 
             .view-list .shared-file-item {
